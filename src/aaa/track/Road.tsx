@@ -30,7 +30,7 @@ function buildApron(): THREE.BufferGeometry {
       const x = x0 + ((x1 - x0) * i) / nx
       const z = z0 + ((z1 - z0) * j) / nz
       const lat = lateralOf(x, z)
-      const water = Math.hypot((x + 12.2) / 5.7, (z - 4.6) / 4.6)
+      const water = Math.hypot((x + 12.2) / 5.15, (z - 4.6) / 4.05)
       // Inside the inner curb, including the lagoon shore, so the cut stays on asphalt.
       keep[j * stride + i] = lat < -4.15 && water > 1 ? 1 : 0
       positions.push(x, 0.045, z)

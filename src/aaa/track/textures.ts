@@ -166,8 +166,8 @@ function loadRepeat(url: string, color: boolean, repeat: [number, number]): Prom
 
 export async function createTrackTextures(): Promise<TrackTextures> {
   const asset = (file: string) => new URL(`./assets/${file}`, import.meta.url).href
-  // Sparse Grass is a 2m photo. The lawn plane is 210m, so the repeat matches that scale.
-  const bladeRepeat: [number, number] = [105, 105]
+  // Sparse Grass is a 2m photo. Stretched across about 5m so the blades read from the chase camera.
+  const bladeRepeat: [number, number] = [42, 42]
   const [grass, grassNormal, fairway, sand, sandNormal, bank, bankNormal] = await Promise.all([
     loadRepeat(asset('sparse_grass_diff_1k.jpg'), true, bladeRepeat),
     loadRepeat(asset('sparse_grass_nor_gl_1k.jpg'), false, bladeRepeat),

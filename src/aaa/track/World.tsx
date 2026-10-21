@@ -106,19 +106,19 @@ function Grass({
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
     // Berm on the inside of the first corner only. The lagoon shore stays flat asphalt.
-    const crestLat = -5.6
-    const half = 1.35
+    const crestLat = -6.4
+    const half = 2.4
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const along = lat - crestLat
-      const besideRoad = z < -2 && Math.abs(along) < half
+      const besideRoad = z < -1 && z > -20 && Math.abs(along) < half
       c.copy(lawn)
       if (besideRoad) {
         c.copy(along >= 0 ? strawTone : lawn)
-        const rise = 1.25 * Math.max(0, 1 - Math.abs(along) / half)
+        const rise = 1.45 * Math.max(0, 1 - Math.abs(along) / half)
         pos.setY(i, pos.getY(i) + rise)
       }
       c.lerp(far, horizon * horizon)
@@ -160,7 +160,7 @@ function Grass({
           `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
            float blade = smoothstep(0.02, 0.28, lawnPhoto.g - lawnPhoto.r * 0.35);
            vec3 fiber = mix(vec3(0.07, 0.26, 0.08), vec3(0.78, 1.0, 0.46), blade);
-           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.18).rgb;
+           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.45).rgb;
            diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
         )
     }
