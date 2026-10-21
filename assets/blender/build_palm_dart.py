@@ -574,21 +574,21 @@ def build_wheel(name, center, mats, nut):
 def sidewall_mark(name, center, outer, mat):
     """One block P on the outer sidewall, faced at the chase camera.
 
-    The wheel axle stays straight so the tire sits in the fender. The letter
-    is turned to face the tail on the rear wheels (and the nose on the front)
-    so the chase still reads it. Stem is toward +X, which is the viewer's
-    left from behind the kart.
+    The wheel axle stays straight so the tire sits in the sidepod. The letter
+    faces the tail on the rear wheels. The stem is toward -X so it sits on
+    the viewer's left from behind the kart.
     """
     facing = 1.0 if center.y > 0 else -1.0
-    depth = 0.045
-    y = facing * 0.42
-    x0 = outer * 0.10
-    z0 = 0.16
+    depth = 0.06
+    y = facing * 0.40
+    x0 = outer * 0.12
+    z0 = 0.20
+    # Stem toward -X. The rear workbench view showed the +X stem as the right side of the letter.
     parts = [
-        box(f"{name}Stem", center + Vector((x0 + 0.07, y, z0)), (0.075, depth, 0.34), mat, bevel=0.004),
-        box(f"{name}Top", center + Vector((x0 - 0.01, y, z0 + 0.135)), (0.22, depth, 0.075), mat, bevel=0.004),
-        box(f"{name}Bar", center + Vector((x0, y, z0)), (0.18, depth, 0.07), mat, bevel=0.004),
-        box(f"{name}Bowl", center + Vector((x0 - 0.08, y, z0 + 0.065)), (0.075, depth, 0.21), mat, bevel=0.004),
+        box(f"{name}Stem", center + Vector((x0 - 0.08, y, z0)), (0.08, depth, 0.38), mat, bevel=0.004),
+        box(f"{name}Top", center + Vector((x0 + 0.01, y, z0 + 0.15)), (0.26, depth, 0.08), mat, bevel=0.004),
+        box(f"{name}Bar", center + Vector((x0, y, z0)), (0.22, depth, 0.075), mat, bevel=0.004),
+        box(f"{name}Bowl", center + Vector((x0 + 0.09, y, z0 + 0.075)), (0.08, depth, 0.23), mat, bevel=0.004),
     ]
     select_only(parts[0])
     for part in parts[1:]:
@@ -768,14 +768,6 @@ def build_body(mats):
     made.append(box("Splitter", (0, -1.05, 0.18), (0.90, 0.22, 0.03), mats["cream"], bevel=0.008))
     made.append(box("SidepodL", (-0.50, 0.02, 0.34), (0.24, 1.48, 0.18), mats["blue"], bevel=0.02))
     made.append(box("SidepodR", (0.50, 0.02, 0.34), (0.24, 1.48, 0.18), mats["blue"], bevel=0.02))
-    for name, center in WHEELS.items():
-        made.append(box(
-            f"Fender{name}",
-            (center.x * 0.82, center.y, 0.60),
-            (0.28, 0.52, 0.10),
-            mats["coral"],
-            bevel=0.015,
-        ))
     made.append(box("Seat", (0, 0.16, 0.46), (0.36, 0.34, 0.08), mats["plum"], bevel=0.015))
     made.append(box("SeatBack", (0, 0.32, 0.60), (0.34, 0.08, 0.28), mats["plum"], bevel=0.012))
     made.append(box("Wing", (0, 0.98, 1.02), (0.96, 0.30, 0.028), mats["coral"], bevel=0.008))
