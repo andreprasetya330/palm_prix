@@ -210,6 +210,7 @@ def make_materials():
         "groove": material("TreadGroove", (0.015, 0.015, 0.018), rough=0.96),
         "sidewall": material("Sidewall", (0.541, 0.557, 0.596), rough=0.78),
         "letter": material("SidewallLetter", (0.965, 0.945, 0.902), rough=0.55),
+        "ink": material("SidewallInk", (0.012, 0.012, 0.016), rough=0.45),
         "glove": material("Glove", (0.957, 0.918, 0.847), rough=0.9),
         "metal": material("Metal", (0.835, 0.871, 0.910), rough=0.25, metal=1.0),
         "skin": material("Skin", (0.953, 0.761, 0.643), rough=0.58),
@@ -566,39 +567,44 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    # One mark on each rear outer sidewall, faced at the chase. Front wheels stay clear.
+    # Dark P on the rear face of each rear tire, the sidewall the chase camera sees.
     if center.y > 0:
-        made.append(sidewall_mark(f"SidewallMark{name}", center, outer, mats["blue"]))
+        made.append(sidewall_mark(f"SidewallMark{name}", center, mats["ink"]))
     return made
 
 
-def sidewall_mark(name, center, outer, mat):
-    """One block P on the outer sidewall, faced at the chase camera.
+def sidewall_mark(name, center, mat):
+    """A real P on the rear face of the tire.
 
-    The wheel axle stays straight so the tire sits in the sidepod. The letter
-    faces the tail on the rear wheels. The stem is toward -X so it sits on
-    the viewer's left from behind the kart.
+    The chase camera sits behind the kart and above it, so it sees the back
+    of the sidewall, not the outer disc and not the blue side pod. The letter
+    is ink, tilted up toward that camera, and centered on the pale band.
     """
-    facing = 1.0 if center.y > 0 else -1.0
-    depth = 0.07
-    y = facing * 0.36
-    x0 = outer * 0.02
-    z0 = 0.22
-    # Stem toward -X so the chase, looking at the tail, sees a P.
-    parts = [
-        box(f"{name}Stem", center + Vector((x0 - 0.10, y, z0)), (0.11, depth, 0.52), mat, bevel=0.005),
-        box(f"{name}Top", center + Vector((x0 + 0.02, y, z0 + 0.20)), (0.36, depth, 0.11), mat, bevel=0.005),
-        box(f"{name}Bar", center + Vector((x0 + 0.01, y, z0)), (0.30, depth, 0.10), mat, bevel=0.005),
-        box(f"{name}Bowl", center + Vector((x0 + 0.13, y, z0 + 0.10)), (0.11, depth, 0.32), mat, bevel=0.005),
-    ]
-    select_only(parts[0])
-    for part in parts[1:]:
-        part.select_set(True)
-    bpy.context.view_layer.objects.active = parts[0]
-    bpy.ops.object.join()
-    mark = bpy.context.active_object
-    mark.name = name
-    return mark
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.ops.object.text_add()
+    obj = bpy.context.active_object
+    obj.data.body = "P"
+    obj.data.size = 0.62
+    obj.data.extrude = 0.03
+    obj.data.bevel_depth = 0.008
+    obj.data.bevel_resolution = 1
+    obj.data.align_x = "CENTER"
+    obj.data.align_y = "CENTER"
+    obj.data.resolution_u = 8
+    select_only(obj)
+    bpy.ops.object.convert(target="MESH")
+    obj = bpy.context.active_object
+    obj.name = name
+    select_only(obj)
+    # Stem toward +X, which is the viewer's left from behind the kart.
+    obj.scale = (-1.0, 1.0, 1.0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    # Face up-and-back, about 29 degrees above the rear axis.
+    obj.rotation_euler = (math.radians(-61.0), 0.0, 0.0)
+    obj.location = center + Vector((0.0, 0.34, 0.18))
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+    return obj
 
 
 def cut_helmet_opening(obj):
