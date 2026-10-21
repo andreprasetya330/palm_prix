@@ -1,4 +1,4 @@
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef, type MutableRefObject } from 'react'
 import * as THREE from 'three'
 import type { ControlState } from '../../game/controlState'
@@ -51,7 +51,6 @@ export function SurfaceFx({
   kart: KartState
   control: ControlState
 }) {
-  const camera = useThree((s) => s.camera)
   const kartRef = useRef(kart)
   const controlRef = useRef(control)
   kartRef.current = kart
@@ -77,7 +76,9 @@ export function SurfaceFx({
   const burstAge = useRef(-1)
   const burstAt = useRef(new THREE.Vector3())
   const boxReady = useRef(ITEM_BOXES.map(() => 0))
-  const shardGeom = useMemo(() => makePaintedGeometry((SHARDS + 2) * 6), [])
+  const burstPieces = useRef<(THREE.Mesh | null)[]>([])
+  const burstFlash = useRef<THREE.Mesh | null>(null)
+  const burstRing = useRef<THREE.Mesh | null>(null)
   const shards = useRef(
     Array.from({ length: SHARDS }, () => ({
       ang: 0,
@@ -100,12 +101,24 @@ export function SurfaceFx({
     const sand = onSand(k.x, k.z)
     const pond = inPond(k.x, k.z)
     const speed = Math.abs(k.speed)
+    const step = Math.min(dt, 0.05)
     kartAxes(k.yaw, _fwd, _right)
 
-    stepDust(dust.current, dustGeom, k, dt, !asphalt && speed > 2.2, sand, _fwd)
-    stepPond(splash.current, splashGeom, rings.current, ringRefs.current, wakeClock, k, dt, pond && speed > 1.5, _fwd)
-    stepSkid(skidGeom, skidL.current, skidR.current, strip, prev.current, k, c, dt, asphalt, speed, _right)
-    stepBurst(shardGeom, shards.current, burstAge, burstAt.current, boxReady.current, k, dt, speed, camera)
+    stepDust(dust.current, dustGeom, k, step, !asphalt && speed > 2.2, sand, _fwd)
+    stepPond(splash.current, splashGeom, rings.current, ringRefs.current, wakeClock, k, step, pond && speed > 1.5, _fwd)
+    stepSkid(skidGeom, skidL.current, skidR.current, strip, prev.current, k, c, step, asphalt, speed, _right)
+    stepBurst(
+      burstPieces.current,
+      burstFlash.current,
+      burstRing.current,
+      shards.current,
+      burstAge,
+      burstAt.current,
+      boxReady.current,
+      k,
+      step,
+      speed,
+    )
     prev.current.yaw = k.yaw
     prev.current.speed = k.speed
   })
@@ -135,10 +148,50 @@ export function SurfaceFx({
           />
         </mesh>
       ))}
-      <mesh geometry={shardGeom} frustumCulled={false} renderOrder={7}>
+      {Array.from({ length: SHARDS }, (_, i) => (
+        <mesh
+          key={`shard-${i}`}
+          ref={(el) => {
+            burstPieces.current[i] = el
+          }}
+          visible={false}
+          frustumCulled={false}
+          renderOrder={7}
+        >
+          <boxGeometry args={[0.42, 0.42, 0.42]} />
+          <meshBasicMaterial
+            color={i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      <mesh
+        ref={burstFlash}
+        visible={false}
+        frustumCulled={false}
+        renderOrder={6}
+      >
+        <sphereGeometry args={[1.15, 18, 14]} />
         <meshBasicMaterial
-          vertexColors
+          color="#fff3b0"
           transparent
+          opacity={0.8}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh
+        ref={burstRing}
+        visible={false}
+        rotation={[-Math.PI / 2, 0, 0]}
+        frustumCulled={false}
+        renderOrder={5}
+      >
+        <ringGeometry args={[0.7, 1.15, 40]} />
+        <meshBasicMaterial
+          color="#ffe566"
+          transparent
+          opacity={0.9}
           depthWrite={false}
           side={THREE.DoubleSide}
           toneMapped={false}
@@ -361,8 +414,22 @@ function stepPond(
   })
 }
 
+function hideBurst(
+  pieces: (THREE.Mesh | null)[],
+  flash: THREE.Mesh | null,
+  ring: THREE.Mesh | null,
+) {
+  pieces.forEach((mesh) => {
+    if (mesh) mesh.visible = false
+  })
+  if (flash) flash.visible = false
+  if (ring) ring.visible = false
+}
+
 function stepBurst(
-  geom: THREE.BufferGeometry,
+  pieces: (THREE.Mesh | null)[],
+  flash: THREE.Mesh | null,
+  ring: THREE.Mesh | null,
   shards: { ang: number; spd: number; lift: number; spin: number }[],
   ageRef: MutableRefObject<number>,
   at: THREE.Vector3,
@@ -370,7 +437,6 @@ function stepBurst(
   k: KartState,
   dt: number,
   speed: number,
-  camera: THREE.Camera,
 ) {
   ITEM_BOXES.forEach((box, i) => {
     ready[i] -= dt
@@ -383,57 +449,50 @@ function stepBurst(
     at.set(box.x, box.y, box.z)
     shards.forEach((s) => {
       s.ang = Math.random() * Math.PI * 2
-      s.spd = 3.6 + Math.random() * 6.5
-      s.lift = 4.2 + Math.random() * 7
-      s.spin = Math.random() * Math.PI
+      s.spd = 2.8 + Math.random() * 4.2
+      s.lift = 3.4 + Math.random() * 4.6
+      s.spin = 0.4 + Math.random() * 1.4
     })
   })
 
-  const pos = geom.getAttribute('position').array as Float32Array
-  const col = geom.getAttribute('color').array as Float32Array
-  let v = 0
-  if (ageRef.current >= 0) {
-    ageRef.current += dt
-    const u = ageRef.current / 1.45
-    if (u < 1) {
-      const e = camera.matrixWorld.elements
-      _right.set(e[0], e[1], e[2])
-      _fwd.set(e[4], e[5], e[6])
-      const flash = (1 - u) * (1 - u)
-      _p.copy(at)
-      _p.y += 1.4
-      const span = 4.6 * (0.62 + u * 0.55)
-      _a.copy(_right).multiplyScalar(span)
-      _b.copy(_fwd).multiplyScalar(span * 0.72)
-      v = writeQuad(pos, col, v, _p, _a, _b, {
-        r: 2.5,
-        g: 1.55,
-        b: 0.35,
-        a: flash,
-      })
-      shards.forEach((s, i) => {
-        const dist = s.spd * ageRef.current
-        _p.set(
-          at.x + Math.cos(s.ang) * dist,
-          at.y + s.lift * ageRef.current - 2.4 * ageRef.current * ageRef.current,
-          at.z + Math.sin(s.ang) * dist,
-        )
-        const w = 0.72 * (1 - u * 0.55)
-        _a.set(Math.cos(s.spin), 0.15, Math.sin(s.spin)).multiplyScalar(w)
-        _b.set(-Math.sin(s.spin), 0.85, Math.cos(s.spin)).multiplyScalar(w * 1.35)
-        const gold = i % 2 === 0
-        v = writeQuad(pos, col, v, _p, _a, _b, {
-          r: gold ? 2.2 : 1.4,
-          g: gold ? 1.35 : 0.35,
-          b: gold ? 0.3 : 1.3,
-          a: 1 - u,
-        })
-      })
-    } else {
-      ageRef.current = -1
-    }
+  const life = 1.7
+  if (ageRef.current < 0) {
+    hideBurst(pieces, flash, ring)
+    return
   }
-  paint(geom, v)
+  const u = ageRef.current / life
+  if (u >= 1) {
+    ageRef.current = -1
+    hideBurst(pieces, flash, ring)
+    return
+  }
+  shards.forEach((s, i) => {
+    const mesh = pieces[i]
+    if (!mesh) return
+    const dist = s.spd * ageRef.current
+    const y = at.y + s.lift * ageRef.current - 1.8 * ageRef.current * ageRef.current
+    mesh.visible = true
+    mesh.position.set(at.x + Math.cos(s.ang) * dist, Math.max(0.35, y), at.z + Math.sin(s.ang) * dist)
+    mesh.rotation.x += s.spin * dt
+    mesh.rotation.y += s.spin * dt * 1.4
+    const sc = 1.15 * (1 - u * 0.55)
+    mesh.scale.setScalar(sc)
+  })
+  if (flash) {
+    flash.visible = true
+    flash.position.set(at.x, at.y + 1.35 + u * 1.2, at.z)
+    flash.scale.setScalar(0.7 + u * 3.4)
+    const mat = flash.material as THREE.MeshBasicMaterial
+    mat.opacity = (1 - u) * (1 - u) * 0.82
+  }
+  if (ring) {
+    ring.visible = true
+    ring.position.set(at.x, 0.16, at.z)
+    ring.scale.setScalar(0.5 + u * 6.5)
+    const mat = ring.material as THREE.MeshBasicMaterial
+    mat.opacity = (1 - u) * 0.9
+  }
+  ageRef.current += dt
 }
 
 function stepSkid(
