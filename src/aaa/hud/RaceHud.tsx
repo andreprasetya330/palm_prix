@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { KartState } from '../../game/kartPhysics'
 import type { RaceStatus } from '../../game/raceLoop'
 import { ITEM_BOXES, POND } from '../vfx/world'
@@ -13,11 +13,11 @@ const BOOST_TOP = 28 * 1.45
 
 export function RaceHud({ race, kart }: Props) {
   const camLive = useWebcamLive()
-  const go = useGoFlash(race.phase)
   const boosting = kart.boostTimer > 0
   const pace = Math.round(Math.abs(kart.speed) * 8)
   const fill = Math.min(100, (Math.abs(kart.speed) / BOOST_TOP) * 100)
   const count = Math.max(1, Math.ceil(race.countdown))
+  const go = race.phase === 'racing' && race.elapsed < 1.05
   const showCount = race.phase === 'countdown' || go
 
   return (
@@ -174,23 +174,6 @@ function formatTime(seconds: number): string {
   const whole = Math.floor(rem)
   const tenth = Math.floor((rem - whole) * 10)
   return `${m}:${whole.toString().padStart(2, '0')}.${tenth}`
-}
-
-function useGoFlash(phase: RaceStatus['phase']): boolean {
-  const [go, setGo] = useState(false)
-  const prev = useRef(phase)
-  useEffect(() => {
-    const from = prev.current
-    prev.current = phase
-    if (from !== 'countdown' || phase !== 'racing') return
-    setGo(true)
-    const id = window.setTimeout(() => setGo(false), 680)
-    return () => {
-      window.clearTimeout(id)
-      prev.current = 'countdown'
-    }
-  }, [phase])
-  return go
 }
 
 function useWebcamLive(): boolean {
