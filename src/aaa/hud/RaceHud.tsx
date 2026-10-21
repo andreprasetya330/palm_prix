@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import type { KartState } from '../../game/kartPhysics'
 import type { RaceStatus } from '../../game/raceLoop'
 import { ITEM_BOXES, POND, SAND, ovalRadius } from '../vfx/world'
@@ -12,7 +11,6 @@ type Props = {
 const BOOST_TOP = 28 * 1.45
 
 export function RaceHud({ race, kart }: Props) {
-  const camLive = useWebcamLive()
   const boosting = kart.boostTimer > 0
   const pace = Math.min(100, Math.round((Math.abs(kart.speed) / BOOST_TOP) * 100))
   const fill = pace
@@ -21,14 +19,7 @@ export function RaceHud({ race, kart }: Props) {
   const showCount = race.phase === 'countdown' || go
 
   return (
-    <div className={`pp-race${boosting ? ' is-boost' : ''}${camLive ? ' pp-cam-live' : ''}`}>
-      <div className="pp-place">
-        <span>Place</span>
-        <strong>
-          1<sup>st</sup>
-        </strong>
-      </div>
-
+    <div className={`pp-race${boosting ? ' is-boost' : ''}`}>
       <div className="pp-ticket">
         <div className="pp-laps">
           <span>Lap</span>
@@ -88,10 +79,6 @@ export function RaceHud({ race, kart }: Props) {
           <em>{boosting ? 'Burst' : 'Ready'}</em>
         </div>
       </div>
-
-      {!camLive && (
-        <div className="pp-keys">Keyboard</div>
-      )}
     </div>
   )
 }
@@ -221,21 +208,3 @@ function formatTime(seconds: number): string {
   return `${m}:${whole.toString().padStart(2, '0')}.${tenth}`
 }
 
-function useWebcamLive(): boolean {
-  const [live, setLive] = useState(false)
-  useEffect(() => {
-    const tick = () => {
-      const video = document.querySelector('.webcam-pip video')
-      if (!(video instanceof HTMLVideoElement)) {
-        setLive(false)
-        return
-      }
-      const next = video.readyState >= 2 && video.videoWidth > 8
-      setLive((prev) => (prev === next ? prev : next))
-    }
-    tick()
-    const id = window.setInterval(tick, 400)
-    return () => window.clearInterval(id)
-  }, [])
-  return live
-}
