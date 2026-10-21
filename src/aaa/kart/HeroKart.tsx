@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
-import { createGlassShade, createNoseBadge, createPalmTexture, createShadowTexture } from './decals'
+import { createNoseBadge, createPalmTexture, createShadowTexture } from './decals'
 import {
   anchors,
   capGeo,
@@ -133,7 +133,6 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const origin = useRef(new THREE.Vector3())
 
   const shadowTex = useMemo(() => createShadowTexture(), [])
-  const glassShade = useMemo(() => createGlassShade(), [])
   const palmTex = useMemo(() => createPalmTexture(), [])
   const noseTex = useMemo(() => createNoseBadge(), [])
   const avatar = useMemo(() => {
@@ -263,10 +262,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <mesh geometry={lowerBodyGeo} castShadow receiveShadow>
               <meshPhysicalMaterial
                 color="#fff3e4"
-                roughness={0.22}
+                roughness={0.16}
                 metalness={0.04}
                 clearcoat={1}
-                clearcoatRoughness={0.12}
+                clearcoatRoughness={0.05}
                 envMap={env ?? undefined}
                 envMapIntensity={0.85}
               />
@@ -274,10 +273,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <mesh geometry={cowlGeo} castShadow receiveShadow>
               <meshPhysicalMaterial
                 color="#ff3d66"
-                roughness={0.18}
-                metalness={0.05}
+                roughness={0.12}
+                metalness={0.04}
                 clearcoat={1}
-                clearcoatRoughness={0.08}
+                clearcoatRoughness={0.04}
                 envMap={env ?? undefined}
                 envMapIntensity={0.9}
               />
@@ -315,16 +314,18 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <group position={[0, 0.76, 0.48]} rotation={[-0.18, 0, 0]}>
               <mesh geometry={glassGeo}>
                 <meshPhysicalMaterial
-                  color="#d7fbff"
-                  map={glassShade}
+                  color="#c5f3ff"
                   transparent
-                  opacity={0.92}
-                  roughness={0.04}
+                  opacity={0.32}
+                  roughness={0.02}
                   metalness={0}
                   clearcoat={1}
-                  clearcoatRoughness={0.04}
+                  clearcoatRoughness={0.02}
+                  transmission={0.55}
+                  thickness={0.04}
+                  ior={1.45}
                   envMap={env ?? undefined}
-                  envMapIntensity={0.18}
+                  envMapIntensity={0.08}
                   side={THREE.DoubleSide}
                   depthWrite={false}
                 />

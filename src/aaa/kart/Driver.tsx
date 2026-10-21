@@ -12,12 +12,10 @@ const cream = {
   clearcoatRoughness: 0.18,
 }
 
-const coral = {
-  color: '#ff3d66',
-  roughness: 0.4,
-  metalness: 0.02,
-  clearcoat: 0.45,
-  clearcoatRoughness: 0.25,
+const cloth = {
+  color: '#c4254a',
+  roughness: 0.96,
+  metalness: 0,
 }
 
 /**
@@ -29,42 +27,30 @@ export function Driver({ texture, envMap }: Props) {
     <group position={[0, 0.5, -0.06]}>
       <mesh position={[0, 0.08, 0.02]} scale={[0.34, 0.16, 0.26]} castShadow>
         <sphereGeometry args={[1, 24, 16]} />
-        <meshPhysicalMaterial {...coral} envMap={envMap ?? undefined} />
+        <meshStandardMaterial {...cloth} />
       </mesh>
       <mesh position={[0, 0.28, 0.02]} scale={[0.32, 0.26, 0.22]} castShadow>
         <sphereGeometry args={[1, 28, 20]} />
-        <meshPhysicalMaterial {...coral} envMap={envMap ?? undefined} />
+        <meshStandardMaterial {...cloth} />
       </mesh>
       <mesh position={[0, 0.3, 0.16]} rotation={[0.15, 0, 0]}>
         <sphereGeometry args={[0.1, 16, 12]} />
-        <meshPhysicalMaterial color="#fff3e4" roughness={0.45} clearcoat={0.3} />
+        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
       </mesh>
       <mesh position={[0, 0.4, 0]} rotation={[0.4, 0, 0]}>
         <torusGeometry args={[0.16, 0.045, 10, 22]} />
-        <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} />
+        <meshStandardMaterial color="#f6efe4" roughness={0.92} />
       </mesh>
 
-      <Limb
-        from={[-0.22, 0.34, 0.04]}
-        to={[-0.16, 0.22, 0.28]}
-        radius={0.055}
-        color="#2f6bff"
-        envMap={envMap}
-      />
-      <Limb
-        from={[0.22, 0.34, 0.04]}
-        to={[0.16, 0.22, 0.28]}
-        radius={0.055}
-        color="#2f6bff"
-        envMap={envMap}
-      />
+      <Limb from={[-0.22, 0.34, 0.04]} to={[-0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
+      <Limb from={[0.22, 0.34, 0.04]} to={[0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
       <mesh position={[-0.16, 0.2, 0.3]}>
         <sphereGeometry args={[0.07, 16, 12]} />
-        <meshStandardMaterial color="#fff3e4" roughness={0.45} />
+        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
       </mesh>
       <mesh position={[0.16, 0.2, 0.3]}>
         <sphereGeometry args={[0.07, 16, 12]} />
-        <meshStandardMaterial color="#fff3e4" roughness={0.45} />
+        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
       </mesh>
 
       <group position={[0, 0.56, 0.04]}>
@@ -194,13 +180,11 @@ function Limb({
   to,
   radius,
   color,
-  envMap,
 }: {
   from: [number, number, number]
   to: [number, number, number]
   radius: number
   color: string
-  envMap: THREE.Texture | null
 }) {
   const a = new THREE.Vector3(...from)
   const b = new THREE.Vector3(...to)
@@ -214,12 +198,7 @@ function Limb({
   return (
     <mesh position={mid} quaternion={q} castShadow>
       <capsuleGeometry args={[radius, shaft, 6, 12]} />
-      <meshPhysicalMaterial
-        color={color}
-        roughness={0.42}
-        clearcoat={0.35}
-        envMap={envMap ?? undefined}
-      />
+      <meshStandardMaterial color={color} roughness={0.94} metalness={0} />
     </mesh>
   )
 }
