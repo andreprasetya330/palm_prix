@@ -383,8 +383,8 @@ function stepBurst(
     at.set(box.x, box.y, box.z)
     shards.forEach((s) => {
       s.ang = Math.random() * Math.PI * 2
-      s.spd = 2.4 + Math.random() * 4.5
-      s.lift = 1.5 + Math.random() * 4
+      s.spd = 3.6 + Math.random() * 6.5
+      s.lift = 4.2 + Math.random() * 7
       s.spin = Math.random() * Math.PI
     })
   })
@@ -394,31 +394,33 @@ function stepBurst(
   let v = 0
   if (ageRef.current >= 0) {
     ageRef.current += dt
-    const u = ageRef.current / 0.85
+    const u = ageRef.current / 1.45
     if (u < 1) {
       const e = camera.matrixWorld.elements
       _right.set(e[0], e[1], e[2])
       _fwd.set(e[4], e[5], e[6])
       const flash = (1 - u) * (1 - u)
       _p.copy(at)
-      _a.copy(_right).multiplyScalar(2.2 * (0.45 + u))
-      _b.copy(_fwd).multiplyScalar(2.2 * (0.45 + u))
+      _p.y += 1.4
+      const span = 4.6 * (0.62 + u * 0.55)
+      _a.copy(_right).multiplyScalar(span)
+      _b.copy(_fwd).multiplyScalar(span * 0.72)
       v = writeQuad(pos, col, v, _p, _a, _b, {
-        r: 2.4,
-        g: 1.7,
-        b: 0.45,
+        r: 2.5,
+        g: 1.55,
+        b: 0.35,
         a: flash,
       })
       shards.forEach((s, i) => {
         const dist = s.spd * ageRef.current
         _p.set(
           at.x + Math.cos(s.ang) * dist,
-          at.y + s.lift * ageRef.current - 3.2 * ageRef.current * ageRef.current,
+          at.y + s.lift * ageRef.current - 2.4 * ageRef.current * ageRef.current,
           at.z + Math.sin(s.ang) * dist,
         )
-        const w = 0.22 * (1 - u)
-        _a.set(Math.cos(s.spin), 0.2, Math.sin(s.spin)).multiplyScalar(w)
-        _b.set(-Math.sin(s.spin), 0.35, Math.cos(s.spin)).multiplyScalar(w)
+        const w = 0.72 * (1 - u * 0.55)
+        _a.set(Math.cos(s.spin), 0.15, Math.sin(s.spin)).multiplyScalar(w)
+        _b.set(-Math.sin(s.spin), 0.85, Math.cos(s.spin)).multiplyScalar(w * 1.35)
         const gold = i % 2 === 0
         v = writeQuad(pos, col, v, _p, _a, _b, {
           r: gold ? 2.2 : 1.4,
