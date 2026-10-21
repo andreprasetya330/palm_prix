@@ -52,6 +52,7 @@ const _rz = new THREE.Matrix4()
 const _rx = new THREE.Matrix4()
 const _qYaw = new THREE.Quaternion()
 const _qStock = new THREE.Quaternion()
+const _qSteer = new THREE.Quaternion()
 const _up = new THREE.Vector3(0, 1, 0)
 const _aim = new THREE.Vector3()
 
@@ -107,11 +108,22 @@ function bankChassis(matrix: THREE.Matrix4, roll: number, pitch: number): void {
 
 function steerWheel(wheel: THREE.Object3D): void {
   const spin = wheel.rotation.x
-  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.85, 0.85)
+  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.9, 0.9)
   _euler.set(spin, 0, Math.PI / 2, 'XYZ')
   _qStock.setFromEuler(_euler)
   _qYaw.setFromAxisAngle(_up, steer)
-  wheel.quaternion.copy(_qYaw).multiply(_qStock)
+  _qSteer.copy(_qYaw).multiply(_qStock)
+  // The kart adds spin with `rotation.x += speed`. Restoring that euler fires
+  // the quaternion callback and would draw an unsteered tire. Keep the euler
+  // for the next spin, then put the yaw back with that callback quiet.
+  wheel.rotation.set(spin, 0, Math.PI / 2)
+  const q = wheel.quaternion as THREE.Quaternion & { _onChangeCallback: () => void }
+  const cb = q._onChangeCallback
+  q._onChangeCallback = () => {}
+  q.copy(_qSteer)
+  q._onChangeCallback = cb
+  wheel.matrix.compose(wheel.position, wheel.quaternion, wheel.scale)
+  wheel.matrixWorldNeedsUpdate = true
 }
 
 /**
@@ -148,18 +160,6 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
   if (!group) {
     group = new THREE.Group()
     group.name = SURFACE
-    const dustMat = new THREE.MeshBasicMaterial({
-      color: '#c4a46a',
-      transparent: true,
-      opacity: 0.8,
-      depthWrite: false,
-    })
-    for (let i = 0; i < 5; i++) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), dustMat)
-      puff.position.set((i - 2) * 0.22, 0.22, -1.15 - i * 0.28)
-      puff.name = 'dust'
-      group.add(puff)
-    }
     const spray = new THREE.Mesh(
       new THREE.CircleGeometry(1.35, 18),
       new THREE.MeshBasicMaterial({
@@ -175,16 +175,16 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     spray.name = 'spray'
     group.add(spray)
     const plume = new THREE.Group()
-    // Aft of the chassis, exhaust height. Cone +Y, rolled to point along −Z.
-    plume.position.set(0, 0.4, -1.05)
+    // Exhaust height, aft. Cone +Y rolled onto −Z so the flame points back along the road.
+    plume.position.set(0, 0.38, -1.02)
     plume.rotation.set(Math.PI / 2, 0, 0)
     plume.name = 'plume'
     const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.22, 1.25, 12),
+      new THREE.ConeGeometry(0.16, 0.85, 12),
       new THREE.MeshBasicMaterial({ color: '#ff3d0a' }),
     )
     const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.1, 0.7, 10),
+      new THREE.ConeGeometry(0.08, 0.48, 10),
       new THREE.MeshBasicMaterial({ color: '#ff7a18' }),
     )
     core.position.y = 0.12
@@ -193,22 +193,23 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     group.add(plume)
     root.add(group)
   }
-  const showDust = picture.dust > 0.2
+  for (const child of [...group.children]) {
+    if (child.name === 'dust') group.remove(child)
+  }
   const showSpray = picture.spray > 0.25
   const showPlume = picture.boostPull > 0
   for (const child of group.children) {
-    if (child.name === 'dust') child.visible = showDust
-    else if (child.name === 'spray') child.visible = showSpray
+    if (child.name === 'spray') child.visible = showSpray
     else if (child.name === 'plume') child.visible = showPlume
   }
-  group.visible = showDust || showSpray || showPlume
+  group.visible = showSpray || showPlume
 }
 
 function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => void): void {
   kartRoot = root
   root.position.y = 0.05 + picture.y + picture.squat
   origUpdate.call(root)
-  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.45, 0.45), picture.pitch)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.32, 0.32), picture.pitch)
   tameStockFlame(root)
   ensureSurfaceBits(root)
   hideSkyBalls(root)
@@ -228,8 +229,8 @@ const _look = new THREE.Vector3()
 /**
  * Chase from behind, low enough that the kart sits in the lower third.
  * Distance is absolute so a boost cannot walk the camera overhead.
- * Shoulder is wide enough that neither arch post (x = ±3.4) covers the kart.
- * Distance and height stay a chase: 6.6 m behind, 2.45 m up.
+ * A short shoulder keeps the near arch post off the body. The rear stays the face
+ * the camera sees: 6.6 m behind, 2.5 m up, 4.8 m to the side.
  */
 function frameChase(
   cam: THREE.Object3D,
@@ -242,18 +243,18 @@ function frameChase(
   const rx = Math.cos(yaw)
   const rz = -Math.sin(yaw)
   const back = 6.6 + (picture.boostPull > 0 ? picture.boostPull : 0)
-  const shoulder = 7.2
+  const shoulder = 4.8
   const persp = cam as THREE.PerspectiveCamera
-  if (persp.isPerspectiveCamera && Math.abs(persp.fov - 42) > 0.4) {
-    persp.fov = 42
+  if (persp.isPerspectiveCamera && Math.abs(persp.fov - 52) > 0.5) {
+    persp.fov = 52
     persp.updateProjectionMatrix()
   }
   cam.position.set(
     target.x - fx * back + rx * shoulder,
-    2.45,
+    2.5,
     target.z - fz * back + rz * shoulder,
   )
-  _look.set(target.x + fx * 5.2, 1.2, target.z + fz * 5.2)
+  _look.set(target.x + fx * 3.6, 1.15, target.z + fz * 3.6)
   origLook.call(cam, _look)
   if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(THREE.MathUtils.clamp(picture.camRoll, -0.04, 0.04))
 }
@@ -272,12 +273,7 @@ export function installPictureHooks(): void {
       return
     }
     if (picture.active && isFrontWheel(this)) {
-      const spin = this.rotation.x
       steerWheel(this)
-      origUpdate.call(this)
-      // The draw matrix already has the steer. Put the axle euler back so the
-      // kart's spin (`rotation.x += speed`) does not tumble the tire.
-      this.rotation.set(spin, 0, Math.PI / 2)
       return
     }
     origUpdate.call(this)
