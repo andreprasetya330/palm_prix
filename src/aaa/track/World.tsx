@@ -149,7 +149,7 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
         .replace(
           '#include <map_fragment>',
           `#include <map_fragment>
-           vec4 strawSample = texture2D(uStraw, vUv * 10.0);
+           vec4 strawSample = texture2D(uStraw, vMapUv);
            diffuseColor.rgb *= mix(vec3(1.0), strawSample.rgb, vStraw);`,
         )
     }
