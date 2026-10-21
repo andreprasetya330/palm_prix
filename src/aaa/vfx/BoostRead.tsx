@@ -9,9 +9,8 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, cross-section width, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> = [
-  [0.2, 2.15, 0.62, 0.9, '#ff7a28'],
-  [1.05, 1.95, 0.46, 0.75, '#ff5418'],
-  [1.8, 1.75, 0.4, 0.65, '#ffb15a'],
+  [0.15, 1.9, 0.82, 0.92, '#ff7a28'],
+  [0.95, 1.72, 0.58, 0.78, '#ff5418'],
 ]
 
 const flameTex = loadTongue(new URL('./assets/flame_05.png', import.meta.url).href)
@@ -96,13 +95,13 @@ function loadSprite(url: string) {
   return tex
 }
 
-/** Crop to the flame graphic so the ribbon is fire for its whole length. */
+/** Crop to the thick body of the flame so the ribbon stays wide for its whole length. */
 function loadTongue(url: string) {
   const tex = loadSprite(url)
   tex.wrapS = THREE.ClampToEdgeWrapping
   tex.wrapT = THREE.ClampToEdgeWrapping
-  tex.offset.set(213 / 512, 140 / 512)
-  tex.repeat.set(92 / 512, 252 / 512)
+  tex.offset.set(214 / 512, 152 / 512)
+  tex.repeat.set(92 / 512, 140 / 512)
   return tex
 }
 
