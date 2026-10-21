@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadCachedAvatar } from './avatar/stylizeClient'
 import { type ControlState } from './game/controlState'
-import { DEFAULT_KART, stepKart, type KartState } from './game/kartPhysics'
+import { DEFAULT_KART, type KartState } from './game/kartPhysics'
+import { stepKart } from './aaa/physics'
 import {
   createRaceStatus,
   updateCheckpoints,
