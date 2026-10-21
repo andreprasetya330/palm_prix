@@ -177,7 +177,7 @@ function pointMat(splash: boolean) {
     transparent: true,
     depthWrite: false,
     toneMapped: false,
-    uniforms: { uScale: { value: splash ? 36 : 52 } },
+    uniforms: { uScale: { value: splash ? 64 : 110 } },
     vertexShader: /* glsl */ `
       attribute float aLife;
       attribute vec3 aColor;
@@ -199,7 +199,7 @@ function pointMat(splash: boolean) {
         vec2 p = gl_PointCoord * 2.0 - 1.0;
         float d = dot(p, p);
         if (d > 1.0) discard;
-        float a = smoothstep(1.0, 0.15, d) * vLife;
+        float a = smoothstep(1.0, 0.05, d) * vLife * 0.92;
         gl_FragColor = vec4(vColor, a);
       }
     `,
@@ -245,7 +245,7 @@ function spawnDust(p: DustP, k: KartState, sand: boolean, forward: THREE.Vector3
   p.vx = -forward.x * back + (Math.random() - 0.5) * 1.4
   p.vy = 1.4 + Math.random() * 2.2
   p.vz = -forward.z * back + (Math.random() - 0.5) * 1.4
-  p.life = 0.55 + Math.random() * 0.35
+  p.life = 0.7 + Math.random() * 0.4
   p.max = p.life
   if (sand) {
     p.cr = 1.15
@@ -267,10 +267,10 @@ function stepDust(
   sand: boolean,
   forward: THREE.Vector3,
 ) {
-  if (emit) {
+    if (emit) {
     let spawned = 0
     for (const p of pool) {
-      if (spawned >= 4) break
+      if (spawned >= 7) break
       if (p.life > 0) continue
       spawnDust(p, k, sand, forward)
       spawned += 1
