@@ -486,12 +486,23 @@ function WheelMesh({ side, env }: { side: 1 | -1; env: THREE.Texture | null }) {
         <meshStandardMaterial vertexColors roughness={1} metalness={0} />
       </mesh>
       <mesh>
-        <cylinderGeometry args={[0.12, 0.12, 0.16, 16]} />
+        <cylinderGeometry args={[0.12, 0.12, 0.16, 32]} />
         <meshStandardMaterial color="#1c1e26" metalness={0.4} roughness={0.55} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.09, 0]}>
-        <ringGeometry args={[0.07, 0.16, 28]} />
+        <ringGeometry args={[0.07, 0.16, 48]} />
         <meshStandardMaterial color="#2c313c" metalness={0.5} roughness={0.45} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.108, 0]}>
+        <torusGeometry args={[0.214, 0.016, 16, 72]} />
+        <meshPhysicalMaterial
+          color="#ffc83d"
+          metalness={0.92}
+          roughness={0.14}
+          clearcoat={0.4}
+          envMap={env ?? undefined}
+          envMapIntensity={1}
+        />
       </mesh>
       <mesh geometry={rimGeo} castShadow>
         <meshPhysicalMaterial

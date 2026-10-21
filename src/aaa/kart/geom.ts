@@ -292,7 +292,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
     let z = pos.getZ(i)
     const radial = Math.hypot(x, z) || 1
     const ang = Math.atan2(z, x)
-    const blocks = 12
+    const blocks = 22
     let r = paint.sidewall.r
     let g = paint.sidewall.g
     let b = paint.sidewall.b
@@ -300,7 +300,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
     if (radial > 0.318 && Math.abs(y) < 0.07) {
       const row = y >= 0 ? 0 : Math.PI / blocks
       const wave = Math.sin(ang * blocks + row)
-      const bump = wave > 0.15 ? 0.022 : -0.014
+      const bump = wave > 0.15 ? 0.01 : -0.006
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -309,7 +309,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
       b = paint.tire.b
     } else if (radial > 0.292 && Math.abs(y) >= 0.078 && Math.abs(y) < 0.112) {
       const wave = Math.sin(ang * blocks + 0.4)
-      const bump = wave > 0 ? 0.016 : -0.01
+      const bump = wave > 0 ? 0.008 : -0.004
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -318,7 +318,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
       b = paint.tire.b
     }
 
-    const band = Math.abs(Math.abs(y) - 0.1) < 0.012 && radial > 0.23 && radial < 0.3
+    const band = Math.abs(Math.abs(y) - 0.1) < 0.02 && radial > 0.22 && radial < 0.31
     if (band) {
       r = paint.letter.r
       g = paint.letter.g
@@ -352,7 +352,7 @@ export function createTire(): THREE.BufferGeometry {
     new THREE.Vector2(bead + 0.012, 0.078),
     new THREE.Vector2(bead, 0.055),
   ]
-  const geo = new THREE.LatheGeometry(pts, 72)
+  const geo = new THREE.LatheGeometry(pts, 128)
   displaceTread(geo)
   orientNormals(geo, (p, n) => n.dot(p))
   return geo
@@ -369,7 +369,7 @@ export function createRim(): THREE.BufferGeometry {
     new THREE.Vector2(0.2, 0.078),
     new THREE.Vector2(0.11, 0.06),
   ]
-  const geo = new THREE.LatheGeometry(pts, 48)
+  const geo = new THREE.LatheGeometry(pts, 96)
   orientNormals(geo, (p, n) => n.dot(p))
   return geo
 }
