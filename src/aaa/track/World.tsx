@@ -342,34 +342,37 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
   )
 }
 
-/** Outside the north apex, in the chase sightline down the first straight. */
+/**
+ * Outside the first corner, on the right of the chase that looks down the straight.
+ * High enough that the name sits in the sky above the gate banner.
+ */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[-14, 0, -26]}>
-      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.7, 2.05, 0.7, 12]} />
+    <group position={[15, 0, -16]}>
+      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[2.2, 2.6, 0.9, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 4.15, 0]} castShadow>
-        <cylinderGeometry args={[0.42, 0.72, 6.8, 10]} />
+      <mesh position={[0, 5.4, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.9, 9.2, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 7.7, 0]} castShadow>
-        <sphereGeometry args={[0.85, 16, 14]} />
+      <mesh position={[0, 10.6, 0]} castShadow>
+        <sphereGeometry args={[1.15, 18, 14]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
-          emissiveIntensity={0.85}
-          roughness={0.28}
+          emissiveIntensity={1.1}
+          roughness={0.25}
         />
       </mesh>
-      <mesh position={[0, 7.7, 0]}>
-        <sphereGeometry args={[1.35, 16, 12]} />
-        <meshBasicMaterial color={palette.sun} transparent opacity={0.28} depthWrite={false} />
+      <mesh position={[0, 10.6, 0]}>
+        <sphereGeometry args={[1.9, 16, 12]} />
+        <meshBasicMaterial color={palette.sun} transparent opacity={0.35} depthWrite={false} />
       </mesh>
-      <mesh position={[0, 5.15, 1.15]} castShadow>
-        <planeGeometry args={[6.4, 1.7]} />
-        <meshStandardMaterial map={sign} roughness={0.45} />
+      <mesh position={[0, 7.6, 1.2]} castShadow>
+        <planeGeometry args={[11.5, 3]} />
+        <meshStandardMaterial map={sign} roughness={0.45} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
