@@ -216,28 +216,30 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
     }
   })
 
-  useFrame(({ camera }) => {
-    if (SHOT !== 'close' || !(camera instanceof THREE.PerspectiveCamera)) return
-    const yaw = kart.yaw
-    camFwd.current.set(Math.sin(yaw), 0, Math.cos(yaw))
-    camRight.current.set(Math.cos(yaw), 0, -Math.sin(yaw))
-    origin.current.set(kart.x, 0, kart.z)
-    camera.position
-      .copy(origin.current)
-      .addScaledVector(camRight.current, 1.45)
-      .addScaledVector(camFwd.current, -1.05)
-    camera.position.y += 0.82
-    camLook.current
-      .copy(origin.current)
-      .addScaledVector(camFwd.current, -0.05)
-    camLook.current.y += 0.58
-    camera.lookAt(camLook.current)
-    if (camera.fov !== 30 || camera.near !== 0.08) {
-      camera.fov = 30
-      camera.near = 0.08
-      camera.updateProjectionMatrix()
+  // Priority above 0 disables R3F's automatic render, so this hook paints the frame.
+  // It runs after the chase camera and can pull in for ?shot=close.
+  useFrame(({ gl, scene, camera }) => {
+    if (SHOT === 'close' && camera instanceof THREE.PerspectiveCamera) {
+      const yaw = kart.yaw
+      camFwd.current.set(Math.sin(yaw), 0, Math.cos(yaw))
+      camRight.current.set(Math.cos(yaw), 0, -Math.sin(yaw))
+      origin.current.set(kart.x, 0, kart.z)
+      camera.position
+        .copy(origin.current)
+        .addScaledVector(camRight.current, 1.45)
+        .addScaledVector(camFwd.current, -1.05)
+      camera.position.y += 0.82
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.05)
+      camLook.current.y += 0.58
+      camera.lookAt(camLook.current)
+      if (camera.fov !== 30 || camera.near !== 0.08) {
+        camera.fov = 30
+        camera.near = 0.08
+        camera.updateProjectionMatrix()
+      }
     }
-  }, 20)
+    gl.render(scene, camera)
+  }, 1)
 
   const boosting = kart.boostTimer > 0
   const noseZ = anchors.nose.z
