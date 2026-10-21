@@ -185,33 +185,28 @@ function Brow({ x }: { x: number }) {
   )
 }
 
-function Lip({
-  y,
-  radius,
-  tube,
-  color,
-}: {
-  y: number
-  radius: number
-  tube: number
-  color: string
-}) {
-  return (
-    <mesh position={[0, y, 0.02]} rotation={[0.15, 0, Math.PI]} castShadow>
-      <torusGeometry args={[radius, tube, 10, 18, Math.PI]} />
-      <meshStandardMaterial color={color} roughness={0.48} />
-    </mesh>
-  )
-}
-
 function Mouth() {
   return (
-    <group position={[0, -0.045, 0.06]} rotation={[0.2, 0, 0]}>
-      <Lip y={0.012} radius={0.05} tube={0.014} color="#c45b58" />
-      <Lip y={-0.012} radius={0.052} tube={0.016} color="#d4706c" />
-      <mesh position={[0, 0, 0.012]} scale={[1.3, 0.35, 0.4]}>
-        <sphereGeometry args={[0.03, 14, 10]} />
-        <meshStandardMaterial color="#6a2430" roughness={0.7} />
+    <group position={[0, -0.05, 0.068]}>
+      <mesh position={[0, 0.018, 0.028]} scale={[1.7, 0.48, 0.85]} castShadow>
+        <sphereGeometry args={[0.032, 18, 14]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.48} />
+      </mesh>
+      <mesh position={[0, -0.012, 0.034]} scale={[1.5, 0.55, 0.9]} castShadow>
+        <sphereGeometry args={[0.03, 18, 14]} />
+        <meshStandardMaterial color="#d4706c" roughness={0.5} />
+      </mesh>
+      <mesh position={[-0.05, 0.026, 0.02]} scale={[0.6, 0.45, 0.55]} castShadow>
+        <sphereGeometry args={[0.018, 12, 10]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.5} />
+      </mesh>
+      <mesh position={[0.05, 0.026, 0.02]} scale={[0.6, 0.45, 0.55]} castShadow>
+        <sphereGeometry args={[0.018, 12, 10]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.004, 0.01]} scale={[1.15, 0.28, 0.4]}>
+        <sphereGeometry args={[0.026, 12, 8]} />
+        <meshStandardMaterial color="#6a2430" roughness={0.75} />
       </mesh>
     </group>
   )
