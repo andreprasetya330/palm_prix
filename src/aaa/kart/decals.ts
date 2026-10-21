@@ -48,32 +48,32 @@ export function createGlassShade() {
   }, 256)
 }
 
-/** Flat palm fan for the wing. Transparent outside the mark. */
+/** Flat palm fan. The leaves fill the badge so the mark still reads small. */
 export function createPalmTexture() {
   return canvasTex((ctx, s) => {
     ctx.clearRect(0, 0, s, s)
     ctx.beginPath()
-    ctx.arc(s * 0.5, s * 0.56, s * 0.4, 0, Math.PI * 2)
+    ctx.arc(s * 0.5, s * 0.52, s * 0.48, 0, Math.PI * 2)
     ctx.fillStyle = '#ffc83d'
     ctx.fill()
     ctx.beginPath()
-    ctx.arc(s * 0.5, s * 0.56, s * 0.33, 0, Math.PI * 2)
-    ctx.fillStyle = '#fff3e4'
+    ctx.arc(s * 0.5, s * 0.52, s * 0.4, 0, Math.PI * 2)
+    ctx.fillStyle = '#fff8ea'
     ctx.fill()
     ctx.fillStyle = '#0c7a40'
-    ctx.fillRect(s * 0.46, s * 0.52, s * 0.08, s * 0.3)
-    const fans = [-1.05, -0.55, 0, 0.55, 1.05]
+    ctx.fillRect(s * 0.44, s * 0.48, s * 0.12, s * 0.38)
+    const fans = [-1.15, -0.58, 0, 0.58, 1.15]
     fans.forEach((ang, i) => {
       ctx.save()
       ctx.translate(s * 0.5, s * 0.5)
       ctx.rotate(ang)
-      ctx.fillStyle = i % 2 === 0 ? '#14a35a' : '#0c7a40'
+      ctx.fillStyle = i % 2 === 0 ? '#14a35a' : '#0b6b38'
       ctx.beginPath()
-      ctx.ellipse(0, -s * 0.16, s * 0.07, s * 0.22, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, -s * 0.2, s * 0.11, s * 0.3, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     })
-  }, 256)
+  }, 512)
 }
 
 /** Nose badge: a second 7 that reads from the three-quarter. */

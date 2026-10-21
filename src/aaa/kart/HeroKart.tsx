@@ -378,45 +378,19 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                   envMapIntensity={0.8}
                 />
               </mesh>
-              <mesh
-                position={[0, 0.08, 0]}
-                rotation={[-Math.PI / 2, 0, 0]}
-              >
-                <planeGeometry args={[0.92, 0.5]} />
+              <mesh position={[0, 0.09, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[1.38, 0.46]} />
                 <meshBasicMaterial
                   map={palmTex}
                   transparent
                   depthWrite={false}
                   polygonOffset
                   polygonOffsetFactor={-4}
+                  side={THREE.DoubleSide}
                 />
               </mesh>
-              <mesh geometry={endplateGeo} position={[0.82, 0.02, 0]} scale={0.62} castShadow>
-                <meshStandardMaterial color="#2f6bff" roughness={0.35} />
-              </mesh>
-              <mesh geometry={endplateGeo} position={[-0.82, 0.02, 0]} scale={0.62} castShadow>
-                <meshStandardMaterial color="#2f6bff" roughness={0.35} />
-              </mesh>
-              <mesh position={[0.98, 0.14, 0.05]}>
-                <planeGeometry args={[0.32, 0.28]} />
-                <meshBasicMaterial
-                  map={palmTex}
-                  transparent
-                  depthWrite={false}
-                  polygonOffset
-                  polygonOffsetFactor={-3}
-                />
-              </mesh>
-              <mesh position={[-0.98, 0.14, 0.05]} rotation={[0, Math.PI, 0]}>
-                <planeGeometry args={[0.32, 0.28]} />
-                <meshBasicMaterial
-                  map={palmTex}
-                  transparent
-                  depthWrite={false}
-                  polygonOffset
-                  polygonOffsetFactor={-3}
-                />
-              </mesh>
+              <Endplate x={0.72} yaw={-0.65} palmTex={palmTex} />
+              <Endplate x={-0.72} yaw={0.65} palmTex={palmTex} />
             </group>
             {struts.map((g, i) => (
               <mesh key={i} geometry={g} castShadow>
@@ -532,6 +506,46 @@ function WheelMesh({ side, env }: { side: 1 | -1; env: THREE.Texture | null }) {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.172, 0]}>
         <circleGeometry args={[0.045, 20]} />
         <meshStandardMaterial color="#14a35a" />
+      </mesh>
+    </group>
+  )
+}
+
+function Endplate({
+  x,
+  yaw,
+  palmTex,
+}: {
+  x: number
+  yaw: number
+  palmTex: THREE.Texture
+}) {
+  return (
+    <group position={[x, 0.02, 0.04]} rotation={[0.05, yaw, 0]} scale={1.35}>
+      <mesh geometry={endplateGeo} castShadow>
+        <meshStandardMaterial color="#2f6bff" roughness={0.35} />
+      </mesh>
+      <mesh position={[0.28, 0.16, 0.06]}>
+        <planeGeometry args={[0.46, 0.32]} />
+        <meshBasicMaterial
+          map={palmTex}
+          transparent
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-3}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0.28, 0.16, -0.06]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[0.46, 0.32]} />
+        <meshBasicMaterial
+          map={palmTex}
+          transparent
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-3}
+          side={THREE.DoubleSide}
+        />
       </mesh>
     </group>
   )
