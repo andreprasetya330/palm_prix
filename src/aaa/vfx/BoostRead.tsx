@@ -9,7 +9,7 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, width, height of the crown, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
-  [0, 1.26, 0.94, 0.62, 0.98, '#ffffff'],
+  [0, 1.26, 0.92, 0.74, 0.98, '#ffffff'],
 ]
 
 /**
@@ -91,70 +91,52 @@ function loadSprite(url: string) {
   return tex
 }
 
-/**
- * Outline of flame_05.png, base at local y=-0.5 and the lick at y=+0.5.
- * Each row is left x, right x, y, left u, right u, v. The mesh edge is the
- * flame, so the tongue is not a rectangle with the thick middle stretched on it.
- */
-const FLAME_EDGE: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
-  [-0.383, 0.362, -0.5, 0.43555, 0.57227, 0.28125],
-  [-0.404, 0.457, -0.422, 0.43164, 0.58984, 0.31836],
-  [-0.383, 0.5, -0.344, 0.43555, 0.59766, 0.35547],
-  [-0.362, 0.5, -0.271, 0.43945, 0.59766, 0.39062],
-  [-0.362, 0.447, -0.193, 0.43945, 0.58789, 0.42773],
-  [-0.394, 0.372, -0.115, 0.43359, 0.57422, 0.46484],
-  [-0.447, 0.309, -0.037, 0.42383, 0.5625, 0.50195],
-  [-0.5, 0.277, 0.037, 0.41406, 0.55664, 0.53711],
-  [-0.489, 0.245, 0.115, 0.41602, 0.55078, 0.57422],
-  [-0.394, 0.213, 0.193, 0.43359, 0.54492, 0.61133],
-  [-0.298, 0.16, 0.271, 0.45117, 0.53516, 0.64844],
-  [-0.255, 0.085, 0.344, 0.45898, 0.52148, 0.68359],
-  [-0.277, -0.021, 0.422, 0.45508, 0.50195, 0.7207],
-  [-0.319, -0.16, 0.5, 0.44727, 0.47656, 0.75781],
-]
-
-const ARCH = 9
+const FLAME_ROWS = 18
+const FLAME_SEGS = 12
 
 /** Hot crown, darker lip. t is 0 at the exhaust and 1 at the lick. */
 function flameRgb(t: number, rim: boolean): [number, number, number] {
-  if (rim) return [0.55 + (1 - t) * 0.28, 0.05 + (1 - t) * 0.1, 0.015]
-  return [1, 0.92 * (1 - t) + 0.18 * t, 0.58 * (1 - t) * (1 - t) + 0.03]
+  if (rim) return [0.62 + (1 - t) * 0.22, 0.06 + (1 - t) * 0.08, 0.015]
+  return [1, 0.94 * (1 - t) + 0.2 * t, 0.62 * (1 - t) * (1 - t) + 0.04]
 }
 
+/** Half-tube: wide on the road, crowned upward, pinched at the lick. */
 function makeFlameGeometry() {
   const positions: number[] = []
-  const uvs: number[] = []
   const colors: number[] = []
   const indices: number[] = []
-  FLAME_EDGE.forEach(([lx, rx, ly, lu, ru, v], row) => {
-    const t = ly + 0.5
-    const env = Math.pow(1 - t, 0.8)
+  const cols = FLAME_SEGS + 1
+  for (let row = 0; row < FLAME_ROWS; row++) {
+    const t = row / (FLAME_ROWS - 1)
+    const ly = -0.5 + t
+    const profile = Math.pow(1 - t, 0.62) * (0.78 + 0.22 * Math.sin(t * Math.PI))
+    const wobble = 1 + 0.06 * Math.sin(t * 11.0) 
+    const radX = 0.5 * profile * wobble
+    const radZ = profile
     const hot = flameRgb(t, false)
     const rim = flameRgb(t, true)
-    for (let s = 0; s < ARCH; s++) {
-      const u = s / (ARCH - 1)
-      const dome = Math.pow(Math.sin(u * Math.PI), 0.42)
-      positions.push(lx + (rx - lx) * u, ly, dome * env)
-      uvs.push(lu + (ru - lu) * u, v)
-      const k = Math.pow(dome, 0.55)
+    for (let s = 0; s < cols; s++) {
+      const ang = (s / FLAME_SEGS) * Math.PI
+      const lift = Math.sin(ang)
+      positions.push(Math.cos(ang) * radX, ly, lift * radZ)
+      const k = Math.pow(lift, 0.5)
       colors.push(
         rim[0] + (hot[0] - rim[0]) * k,
         rim[1] + (hot[1] - rim[1]) * k,
         rim[2] + (hot[2] - rim[2]) * k,
       )
     }
-    if (row === 0) return
-    const prev = (row - 1) * ARCH
-    const curr = row * ARCH
-    for (let s = 0; s < ARCH - 1; s++) {
+    if (row === 0) continue
+    const prev = (row - 1) * cols
+    const curr = row * cols
+    for (let s = 0; s < FLAME_SEGS; s++) {
       const a = prev + s
       const c = curr + s
       indices.push(a, a + 1, c + 1, a, c + 1, c)
     }
-  })
+  }
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
   geo.setIndex(indices)
   return geo
