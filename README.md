@@ -91,3 +91,8 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 `POST /api/stylize` — multipart field `image` → `{ ok, imageUrl, placeholder? }`
 
 `GET /api/health` — `{ ok, falConfigured, model }`
+
+## Blender MCP (kart glTF)
+
+Cloud Agents install Blender via `scripts/install-blender-mcp.sh` and open the addon socket with `scripts/env-start-blender-mcp.sh` (`127.0.0.1:9876`). Kart glTF work lives on the AAA feature branches; road, physics, and HUD stay in TypeScript.
+
