@@ -112,24 +112,25 @@ function writePlume(
 
     for (let i = 0; i < 12; i++) {
       const side = (i - 5.5) / 5.5
-      const lift = ((i % 4) - 1.5) * 0.05
-      _center.copy(_mouth).addScaledVector(_right, side * 0.16)
-      _center.y += 0.05 + lift
-      _dir.copy(_fwd).multiplyScalar(-1)
-      _dir.addScaledVector(_right, side * 0.9)
-      _dir.addScaledVector(_up, 0.16 + Math.abs(side) * 0.18)
+      const outward = side >= 0 ? 1 : -1
+      const fan = -0.08 - (i % 5) * 0.11
+      _center.copy(_mouth).addScaledVector(_camRight, side * 0.2)
+      _center.addScaledVector(_fwd, -0.12)
+      _center.y += 0.03
+      _dir.copy(_camRight).multiplyScalar(outward * (0.7 + Math.abs(side) * 0.45))
+      _dir.addScaledVector(_camUp, fan)
       _dir.normalize()
-      const len = 1.25 + Math.abs(side) * 0.95
+      const len = 0.7 + Math.abs(side) * 1.05
       _center.addScaledVector(_dir, len * 0.5)
       _axisA.copy(_dir).multiplyScalar(len * 0.5)
       _axisB.crossVectors(_dir, _view)
       if (_axisB.lengthSq() < 1e-4) _axisB.copy(_camUp)
-      _axisB.normalize().multiplyScalar(0.018)
+      _axisB.normalize().multiplyScalar(0.028)
       v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
-        r: 1.02,
-        g: 0.46,
-        b: 0.14,
-        a: 0.72 * punch,
+        r: 1.05,
+        g: 0.52,
+        b: 0.16,
+        a: 0.88 * punch,
       })
     }
   }
