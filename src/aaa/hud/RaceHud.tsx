@@ -14,8 +14,8 @@ const BOOST_TOP = 28 * 1.45
 export function RaceHud({ race, kart }: Props) {
   const camLive = useWebcamLive()
   const boosting = kart.boostTimer > 0
-  const pace = Math.round(Math.abs(kart.speed) * 8)
-  const fill = Math.min(100, (Math.abs(kart.speed) / BOOST_TOP) * 100)
+  const pace = Math.min(100, Math.round((Math.abs(kart.speed) / BOOST_TOP) * 100))
+  const fill = pace
   const count = Math.max(1, Math.ceil(race.countdown))
   const go = race.phase === 'racing' && race.elapsed < 1.05
   const showCount = race.phase === 'countdown' || go
