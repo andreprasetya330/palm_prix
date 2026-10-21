@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { Sky } from '@react-three/drei'
 import type { KartState } from '../game/kartPhysics'
 import { FollowCamera } from './FollowCamera'
-import { Kart } from './Kart'
+import { Kart } from '../aaa/kart'
 import { Track } from './Track'
 
 type Props = {
