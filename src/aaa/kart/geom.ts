@@ -300,7 +300,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
     if (radial > 0.318 && Math.abs(y) < 0.07) {
       const row = y >= 0 ? 0 : Math.PI / blocks
       const wave = Math.sin(ang * blocks + row)
-      const bump = wave > 0.15 ? 0.01 : -0.006
+      const bump = wave * 0.004
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -309,7 +309,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
       b = paint.tire.b
     } else if (radial > 0.292 && Math.abs(y) >= 0.078 && Math.abs(y) < 0.112) {
       const wave = Math.sin(ang * blocks + 0.4)
-      const bump = wave > 0 ? 0.008 : -0.004
+      const bump = wave * 0.003
       const k = (radial + bump) / radial
       x *= k
       z *= k
