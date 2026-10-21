@@ -14,8 +14,32 @@ import { ITEM_BOXES, inPond, onAsphalt, onSand } from './world'
 
 const DUST = 90
 const SPLASH = 36
-const SHARDS = 22
 const SKID = 70
+
+const FRUIT_TEX = [
+  loadFruit(new URL('./assets/fruit/orange.png', import.meta.url).href),
+  loadFruit(new URL('./assets/fruit/lemon.png', import.meta.url).href),
+  loadFruit(new URL('./assets/fruit/strawberry.png', import.meta.url).href),
+  loadFruit(new URL('./assets/fruit/grapes.png', import.meta.url).href),
+  loadFruit(new URL('./assets/fruit/banana.png', import.meta.url).href),
+  loadFruit(new URL('./assets/fruit/cherries.png', import.meta.url).href),
+]
+
+/** Beside the shell: right, up, forward, scale. Not a ring of spheres. */
+const FRUIT_BUNCH: ReadonlyArray<readonly [number, number, number, number]> = [
+  [0, 0.08, 0, 0.58],
+  [0.36, -0.1, 0.1, 0.44],
+  [-0.3, 0.02, -0.06, 0.42],
+  [0.08, 0.4, 0.08, 0.48],
+  [-0.04, -0.36, 0.12, 0.5],
+  [0.38, 0.28, -0.08, 0.4],
+]
+
+function loadFruit(url: string) {
+  const tex = new THREE.TextureLoader().load(url)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
 
 type DustP = {
   x: number
@@ -76,8 +100,7 @@ export function SurfaceFx({
   const burstAge = useRef(-1)
   const burstAt = useRef(new THREE.Vector3())
   const boxReady = useRef(ITEM_BOXES.map(() => 0))
-  const burstPieces = useRef<(THREE.Mesh | null)[]>([])
-  const burstFlash = useRef<THREE.Mesh | null>(null)
+  const burstPieces = useRef<(THREE.Sprite | null)[]>([])
   const burstRing = useRef<THREE.Mesh | null>(null)
 
   const skidL = useRef<SkidPt[]>([])
@@ -101,7 +124,6 @@ export function SurfaceFx({
     stepSkid(skidGeom, skidL.current, skidR.current, strip, prev.current, k, c, step, asphalt, speed, _right)
     stepBurst(
       burstPieces.current,
-      burstFlash.current,
       burstRing.current,
       burstAge,
       burstAt.current,
@@ -139,9 +161,9 @@ export function SurfaceFx({
           />
         </mesh>
       ))}
-      {Array.from({ length: SHARDS }, (_, i) => (
-        <mesh
-          key={`shard-${i}`}
+      {FRUIT_TEX.map((tex, i) => (
+        <sprite
+          key={`fruit-${i}`}
           ref={(el) => {
             burstPieces.current[i] = el
           }}
@@ -149,22 +171,15 @@ export function SurfaceFx({
           frustumCulled={false}
           renderOrder={7}
         >
-          <sphereGeometry args={[0.26, 12, 10]} />
-          <meshBasicMaterial
-            color={i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
+          <spriteMaterial
+            map={tex}
+            transparent
+            depthWrite={false}
             toneMapped={false}
+            premultipliedAlpha={false}
           />
-        </mesh>
+        </sprite>
       ))}
-      <mesh
-        ref={burstFlash}
-        visible={false}
-        frustumCulled={false}
-        renderOrder={6}
-      >
-        <sphereGeometry args={[0.48, 18, 14]} />
-        <meshBasicMaterial color="#ffc83d" toneMapped={false} />
-      </mesh>
       <mesh
         ref={burstRing}
         visible={false}
@@ -404,21 +419,15 @@ function stepPond(
   })
 }
 
-function hideBurst(
-  pieces: (THREE.Mesh | null)[],
-  flash: THREE.Mesh | null,
-  ring: THREE.Mesh | null,
-) {
+function hideBurst(pieces: (THREE.Sprite | null)[], ring: THREE.Mesh | null) {
   pieces.forEach((mesh) => {
     if (mesh) mesh.visible = false
   })
-  if (flash) flash.visible = false
   if (ring) ring.visible = false
 }
 
 function stepBurst(
-  pieces: (THREE.Mesh | null)[],
-  flash: THREE.Mesh | null,
+  pieces: (THREE.Sprite | null)[],
   ring: THREE.Mesh | null,
   ageRef: MutableRefObject<number>,
   at: THREE.Vector3,
@@ -428,7 +437,7 @@ function stepBurst(
   speed: number,
 ) {
   if (k.boostTimer > 0) {
-    drawCrown(pieces, flash, k.yaw, k.x, 0.55, k.z)
+    drawCrown(pieces, k.yaw, k.x, k.z)
     if (ring) ring.visible = false
     return
   }
@@ -446,53 +455,36 @@ function stepBurst(
 
   const life = 1.15
   if (ageRef.current < 0) {
-    hideBurst(pieces, flash, ring)
+    hideBurst(pieces, ring)
     return
   }
   const u = ageRef.current / life
   if (u >= 1) {
     ageRef.current = -1
-    hideBurst(pieces, flash, ring)
+    hideBurst(pieces, ring)
     return
   }
-  drawCrown(pieces, flash, k.yaw, at.x, at.y, at.z)
+  drawCrown(pieces, k.yaw, at.x, at.z)
   if (ring) ring.visible = false
   ageRef.current += dt
 }
 
-function drawCrown(
-  pieces: (THREE.Mesh | null)[],
-  flash: THREE.Mesh | null,
-  yaw: number,
-  x: number,
-  y: number,
-  z: number,
-) {
-  const crown = 10
-  const radius = 0.85
-  const lift = 1.35
-  const ox = x + Math.cos(yaw) * 2.15
-  const oz = z - Math.sin(yaw) * 2.15
-  pieces.forEach((mesh, i) => {
-    if (!mesh) return
-    if (i >= crown) {
-      mesh.visible = false
+function drawCrown(pieces: (THREE.Sprite | null)[], yaw: number, x: number, z: number) {
+  kartToWorld(x, z, yaw, 1.55, 0.92, 0.05, _p)
+  pieces.forEach((sprite, i) => {
+    const lay = FRUIT_BUNCH[i]
+    if (!sprite || !lay) {
+      if (sprite) sprite.visible = false
       return
     }
-    mesh.visible = true
-    const a = (i / crown) * Math.PI * 2
-    mesh.position.set(
-      ox + Math.cos(a) * radius,
-      y + lift + (i % 2 === 0 ? 0.28 : -0.02),
-      oz + Math.sin(a) * radius,
-    )
-    mesh.scale.setScalar(0.85)
+    const [rx, up, fz, scale] = lay
+    sprite.visible = true
+    sprite.position.copy(_p)
+    sprite.position.addScaledVector(_right, rx)
+    sprite.position.addScaledVector(_fwd, fz)
+    sprite.position.y += up
+    sprite.scale.set(scale, scale, 1)
   })
-  if (flash) {
-    flash.visible = true
-    flash.position.set(ox, y + lift, oz)
-    flash.scale.setScalar(1.05)
-  }
 }
 
 function stepSkid(
