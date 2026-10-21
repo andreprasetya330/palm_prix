@@ -1,13 +1,14 @@
-# Palm Kart (kart-cv)
+# Palm Prix
 
 Browser MVP scaffold: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
 
 Stack: Vite + React + TypeScript · MediaPipe Hands (`@mediapipe/tasks-vision`) · Three.js (`@react-three/fiber` + `@react-three/drei`) · tiny Express stylize proxy (fal.ai).
 
+Repo: [`andreprasetya330/palm_prix`](https://github.com/andreprasetya330/palm_prix)
+
 ## Quick start
 
 ```bash
-cd kart-cv
 cp .env.example .env   # optional: add FAL_KEY for real stylize
 npm install
 npm run dev            # Vite :5173 + stylize API :8787
@@ -32,7 +33,7 @@ Open **http://localhost:5173** (HTTPS not required on localhost for `getUserMedi
 | `FAL_KEY` | server `.env` / shell | No (placeholder if missing) | fal.ai API key — **never** commit or use `VITE_` prefix |
 | `FAL_STYLIZE_MODEL` | server | No | Defaults to `fal-ai/flux/dev/image-to-image` |
 | `STYLIZE_PORT` | server | No | Defaults to `8787` |
-| `VITE_STYLIZE_MODE` | client | No | Set to `local` to skip API and use canvas posterize fallback |
+| `VITE_STYLIZE_MODE` | client | No | Set to `local` to force canvas posterize fallback (no API) |
 
 Load server env yourself (`export FAL_KEY=...` or a dotenv tool). The Express process reads `process.env.FAL_KEY`.
 
@@ -64,7 +65,7 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 ## Project layout
 
 ```
-kart-cv/
+.
   server/index.ts          # /api/stylize + /api/health
   src/vision/              # camera, MediaPipe, wheel GestureMapper, debug overlay
   src/game/                # ControlState, arcade kart, race loop stub

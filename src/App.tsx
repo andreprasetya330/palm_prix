@@ -111,8 +111,8 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">Palm Kart</span>
-          <span className="brand-sub">gesture grand prix · MVP scaffold</span>
+          <span className="brand-mark">Palm Prix</span>
+          <span className="brand-sub">webcam hand-tracking kart · MVP scaffold</span>
         </div>
         <div className="topbar-actions">
           <label className="toggle">
@@ -158,7 +158,7 @@ export default function App() {
 
         {race.phase === 'menu' && (
           <div className="panel menu">
-            <h1>Palm Kart</h1>
+            <h1>Palm Prix</h1>
             <p>
               Drive with a virtual steering wheel — two fists twist to steer.
               Camera stays local; only an opt-in selfie still hits the stylize
