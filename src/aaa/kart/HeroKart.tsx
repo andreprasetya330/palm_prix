@@ -42,14 +42,13 @@ const SHOT =
 function poseOnOval(x: number, z: number, yaw: number) {
   const radius = Math.hypot(x / 1.15, z)
   if (radius >= 13.8 && radius <= 22.4) return { x, z, yaw, planted: false }
-  const t = Math.atan2(x / 1.15, z || 1e-4)
+  const t = Math.atan2(x / 1.15, z || 1e-4) + 1.2
   const tx = Math.cos(t) * 1.15
   const tz = -Math.sin(t)
   const len = Math.hypot(tx, tz) || 1
-  const along = 8
   return {
-    x: Math.sin(t) * 18 * 1.15 + (tx / len) * along,
-    z: Math.cos(t) * 18 + (tz / len) * along,
+    x: Math.sin(t) * 18 * 1.15,
+    z: Math.cos(t) * 18,
     yaw: Math.atan2(tx / len, tz / len),
     planted: true,
   }
