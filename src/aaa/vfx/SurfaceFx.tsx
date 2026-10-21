@@ -438,7 +438,7 @@ function stepBurst(
     at.set(box.x, box.y, box.z)
   })
 
-  const life = 0.72
+  const life = 1.15
   if (ageRef.current < 0) {
     hideBurst(pieces, flash, ring)
     return
@@ -451,9 +451,9 @@ function stepBurst(
   }
   const crown = 10
   const radius = 1.05
-  const lift = 3.8
-  const ox = at.x + Math.cos(k.yaw) * 2.8
-  const oz = at.z - Math.sin(k.yaw) * 2.8
+  const lift = 2.15
+  const ox = at.x + Math.cos(k.yaw) * 3.1
+  const oz = at.z - Math.sin(k.yaw) * 3.1
   pieces.forEach((mesh, i) => {
     if (!mesh) return
     if (i >= crown) {
