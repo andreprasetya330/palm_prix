@@ -295,14 +295,14 @@ function displaceTread(geo: THREE.BufferGeometry) {
     let g = paint.sidewall.g
     let b = paint.sidewall.b
 
-    // Crown stays black. The center channel is a real cut in the profile,
-    // and the bottom of that cut is darker so the groove reads in flat light.
-    if (radial > 0.3 && Math.abs(y) < 0.055) {
+    // Black crown. The groove is on the outer shoulder (positive lathe Y),
+    // which is the face the close camera sees after the wheel is turned.
+    if (radial > 0.28 && y > -0.02 && y < 0.1) {
       r = paint.tire.r
       g = paint.tire.g
       b = paint.tire.b
-      const groove = Math.exp(-Math.pow(y / 0.012, 2))
-      const shade = 1 - groove * 0.72
+      const groove = Math.exp(-Math.pow((y - 0.058) / 0.016, 2))
+      const shade = 1 - groove * 0.85
       r *= shade
       g *= shade
       b *= shade
@@ -338,14 +338,13 @@ export function createTire(): THREE.BufferGeometry {
     new THREE.Vector2(0.25, -half),
     new THREE.Vector2(0.29, -0.108),
     crownPoint(-1),
-    crownPoint(-0.55),
-    new THREE.Vector2(0.338, -0.032),
-    new THREE.Vector2(0.324, -0.014),
-    new THREE.Vector2(0.312, 0),
-    new THREE.Vector2(0.324, 0.014),
-    new THREE.Vector2(0.338, 0.032),
-    crownPoint(0.55),
-    crownPoint(1),
+    crownPoint(-0.35),
+    new THREE.Vector2(0.348, 0.0),
+    new THREE.Vector2(0.356, 0.028),
+    new THREE.Vector2(0.328, 0.044),
+    new THREE.Vector2(0.286, 0.058),
+    new THREE.Vector2(0.328, 0.072),
+    new THREE.Vector2(0.35, 0.088),
     new THREE.Vector2(0.29, 0.108),
     new THREE.Vector2(0.25, half),
     new THREE.Vector2(bead + 0.012, 0.078),

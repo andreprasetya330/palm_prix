@@ -515,6 +515,7 @@ function WheelMesh({
   rubberRough: THREE.Texture
 }) {
   return (
+    <group rotation={[0, 0.95, 0]}>
     <group rotation={[0, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2]}>
       <mesh geometry={tireGeo} castShadow>
         <meshStandardMaterial
@@ -573,6 +574,7 @@ function WheelMesh({
         <circleGeometry args={[0.045, 20]} />
         <meshStandardMaterial color="#14a35a" />
       </mesh>
+    </group>
     </group>
   )
 }
