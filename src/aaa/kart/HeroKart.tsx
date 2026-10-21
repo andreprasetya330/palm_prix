@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
-import { createShadowTexture } from './decals'
+import { createGlassShade, createShadowTexture } from './decals'
 import {
   anchors,
   capGeo,
@@ -11,9 +11,7 @@ import {
   exhaustGeo,
   flameGeo,
   cowlGeo,
-  glassFrameGeo,
   glassGeo,
-  leafGeo,
   lensGeo,
   lowerBodyGeo,
   numberBadgeBackGeo,
@@ -135,6 +133,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const origin = useRef(new THREE.Vector3())
 
   const shadowTex = useMemo(() => createShadowTexture(), [])
+  const glassShade = useMemo(() => createGlassShade(), [])
   const avatar = useMemo(() => {
     if (!driverTextureUrl) return null
     const t = new THREE.TextureLoader().load(driverTextureUrl)
@@ -312,28 +311,21 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
 
             <Driver texture={avatar} envMap={env} />
 
-            <group position={[0, 0.82, 0.66]} rotation={[-0.35, 0, 0]}>
+            <group position={[0, 0.76, 0.48]} rotation={[-0.18, 0, 0]}>
               <mesh geometry={glassGeo}>
                 <meshPhysicalMaterial
-                  color="#f4fdff"
+                  color="#d7fbff"
+                  map={glassShade}
                   transparent
-                  opacity={0.28}
-                  roughness={0.02}
+                  opacity={0.92}
+                  roughness={0.04}
                   metalness={0}
                   clearcoat={1}
-                  clearcoatRoughness={0.02}
+                  clearcoatRoughness={0.04}
                   envMap={env ?? undefined}
-                  envMapIntensity={0.22}
+                  envMapIntensity={0.18}
                   side={THREE.DoubleSide}
                   depthWrite={false}
-                />
-              </mesh>
-              <mesh geometry={glassFrameGeo}>
-                <meshStandardMaterial
-                  color="#fffaf2"
-                  metalness={0.15}
-                  roughness={0.25}
-                  envMap={env ?? undefined}
                 />
               </mesh>
             </group>
