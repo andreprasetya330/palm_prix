@@ -9,7 +9,7 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, width, height of the crown, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
-  [0, 1.26, 0.92, 0.74, 0.98, '#ffffff'],
+  [0, 1.26, 0.92, 0.74, 1, '#ffffff'],
 ]
 
 /**
@@ -64,7 +64,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
           <meshBasicMaterial
             vertexColors
             transparent
-            depthWrite={false}
+            depthWrite
             side={THREE.DoubleSide}
             toneMapped={false}
             premultipliedAlpha={false}
@@ -77,6 +77,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
           color="#fffef8"
           transparent
           depthWrite={false}
+          depthTest={false}
           toneMapped={false}
           premultipliedAlpha={false}
         />
@@ -135,6 +136,11 @@ function makeFlameGeometry() {
       indices.push(a, a + 1, c + 1, a, c + 1, c)
     }
   }
+  const base = flameRgb(0, false)
+  const spine = positions.length / 3
+  positions.push(0, -0.5, 0.42)
+  colors.push(base[0], base[1], base[2])
+  for (let s = 0; s < FLAME_SEGS; s++) indices.push(spine, s, s + 1)
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
