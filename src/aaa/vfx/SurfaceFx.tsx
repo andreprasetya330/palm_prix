@@ -79,14 +79,6 @@ export function SurfaceFx({
   const burstPieces = useRef<(THREE.Mesh | null)[]>([])
   const burstFlash = useRef<THREE.Mesh | null>(null)
   const burstRing = useRef<THREE.Mesh | null>(null)
-  const shards = useRef(
-    Array.from({ length: SHARDS }, () => ({
-      ang: 0,
-      spd: 1,
-      lift: 1,
-      spin: 0,
-    })),
-  )
 
   const skidL = useRef<SkidPt[]>([])
   const skidR = useRef<SkidPt[]>([])
@@ -111,7 +103,6 @@ export function SurfaceFx({
       burstPieces.current,
       burstFlash.current,
       burstRing.current,
-      shards.current,
       burstAge,
       burstAt.current,
       boxReady.current,
@@ -158,9 +149,9 @@ export function SurfaceFx({
           frustumCulled={false}
           renderOrder={7}
         >
-          <boxGeometry args={[0.42, 0.42, 0.42]} />
+          <sphereGeometry args={[0.26, 12, 10]} />
           <meshBasicMaterial
-            color={i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
+            color={i === 0 ? '#1f9e45' : i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
             toneMapped={false}
           />
         </mesh>
@@ -171,14 +162,8 @@ export function SurfaceFx({
         frustumCulled={false}
         renderOrder={6}
       >
-        <sphereGeometry args={[1.15, 18, 14]} />
-        <meshBasicMaterial
-          color="#fff3b0"
-          transparent
-          opacity={0.8}
-          depthWrite={false}
-          toneMapped={false}
-        />
+        <sphereGeometry args={[0.48, 18, 14]} />
+        <meshBasicMaterial color="#ffc83d" toneMapped={false} />
       </mesh>
       <mesh
         ref={burstRing}
@@ -435,7 +420,6 @@ function stepBurst(
   pieces: (THREE.Mesh | null)[],
   flash: THREE.Mesh | null,
   ring: THREE.Mesh | null,
-  shards: { ang: number; spd: number; lift: number; spin: number }[],
   ageRef: MutableRefObject<number>,
   at: THREE.Vector3,
   ready: number[],
@@ -452,15 +436,9 @@ function stepBurst(
     ready[i] = 2.4
     ageRef.current = 0
     at.set(box.x, box.y, box.z)
-    shards.forEach((s) => {
-      s.ang = Math.random() * Math.PI * 2
-      s.spd = 2.8 + Math.random() * 4.2
-      s.lift = 3.4 + Math.random() * 4.6
-      s.spin = 0.4 + Math.random() * 1.4
-    })
   })
 
-  const life = 1.7
+  const life = 0.72
   if (ageRef.current < 0) {
     hideBurst(pieces, flash, ring)
     return
@@ -471,32 +449,35 @@ function stepBurst(
     hideBurst(pieces, flash, ring)
     return
   }
-  shards.forEach((s, i) => {
-    const mesh = pieces[i]
+  const crown = 10
+  const radius = 1.05
+  const lift = 3.2
+  pieces.forEach((mesh, i) => {
     if (!mesh) return
-    const dist = s.spd * ageRef.current
-    const y = at.y + s.lift * ageRef.current - 1.8 * ageRef.current * ageRef.current
+    if (i >= crown) {
+      mesh.visible = false
+      return
+    }
     mesh.visible = true
-    mesh.position.set(at.x + Math.cos(s.ang) * dist, Math.max(0.35, y), at.z + Math.sin(s.ang) * dist)
-    mesh.rotation.x += s.spin * dt
-    mesh.rotation.y += s.spin * dt * 1.4
-    const sc = 1.15 * (1 - u * 0.55)
-    mesh.scale.setScalar(sc)
+    if (i === 0) {
+      mesh.position.set(at.x + 0.12, at.y + lift + 0.62, at.z)
+      mesh.scale.setScalar(0.55)
+      return
+    }
+    const a = ((i - 1) / (crown - 1)) * Math.PI * 2
+    mesh.position.set(
+      at.x + Math.cos(a) * radius,
+      at.y + lift + (i % 2 === 0 ? 0.42 : -0.08),
+      at.z + Math.sin(a) * radius,
+    )
+    mesh.scale.setScalar(0.9)
   })
   if (flash) {
     flash.visible = true
-    flash.position.set(at.x, at.y + 1.35 + u * 1.2, at.z)
-    flash.scale.setScalar(0.7 + u * 3.4)
-    const mat = flash.material as THREE.MeshBasicMaterial
-    mat.opacity = (1 - u) * (1 - u) * 0.82
+    flash.position.set(at.x, at.y + lift, at.z)
+    flash.scale.setScalar(1.2)
   }
-  if (ring) {
-    ring.visible = true
-    ring.position.set(at.x, 0.16, at.z)
-    ring.scale.setScalar(0.5 + u * 6.5)
-    const mat = ring.material as THREE.MeshBasicMaterial
-    mat.opacity = (1 - u) * 0.9
-  }
+  if (ring) ring.visible = false
   ageRef.current += dt
 }
 
