@@ -111,6 +111,7 @@ export type TrackTextures = {
   signCrown: THREE.CanvasTexture
   signBank: THREE.CanvasTexture
   signBeach: THREE.CanvasTexture
+  signApex: THREE.CanvasTexture
 }
 
 function roundRect(
@@ -130,7 +131,7 @@ function roundRect(
   ctx.closePath()
 }
 
-function makeSign(title: string, bg: string, fg: string): THREE.CanvasTexture {
+function makeSign(title: string, bg: string, fg: string, fontSize = 64): THREE.CanvasTexture {
   return canvasTexture(512, 160, (ctx) => {
     ctx.fillStyle = bg
     roundRect(ctx, 8, 8, 496, 144, 28)
@@ -139,7 +140,7 @@ function makeSign(title: string, bg: string, fg: string): THREE.CanvasTexture {
     ctx.strokeStyle = fg
     ctx.stroke()
     ctx.fillStyle = fg
-    ctx.font = '800 64px Inter, sans-serif'
+    ctx.font = `800 ${fontSize}px Inter, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(title, 256, 84)
@@ -285,6 +286,7 @@ export function createTrackTextures(): TrackTextures {
     signCrown: makeSign('TIDE CROWN', palette.archDeep, palette.gold),
     signBank: makeSign('CORAL BANK', palette.coral, palette.cream),
     signBeach: makeSign('SHELL BEACH', '#e7a04a', palette.ink),
+    signApex: makeSign('APEX LANTERN', '#143d3a', palette.gold, 48),
   }
 }
 

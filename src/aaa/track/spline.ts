@@ -118,7 +118,7 @@ function buildFrames(): Frame[] {
   let distance = 0
   for (let i = 0; i < n; i++) {
     frames[i].distance = distance
-    frames[i].bank = THREE.MathUtils.clamp(0.015 + smooth[i] * 1.35, 0.015, 0.24)
+    frames[i].bank = THREE.MathUtils.clamp(smooth[i] * 3.2, 0.02, 0.42)
     distance += frames[i].p.distanceTo(pts[(i + 1) % n])
   }
 

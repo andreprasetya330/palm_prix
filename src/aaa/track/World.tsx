@@ -342,6 +342,39 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
   )
 }
 
+/** Outside the north apex, in the chase sightline down the first straight. */
+function ApexLantern({ sign }: { sign: THREE.Texture }) {
+  return (
+    <group position={[-14, 0, -26]}>
+      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.7, 2.05, 0.7, 12]} />
+        <meshStandardMaterial color={palette.stone} roughness={0.72} />
+      </mesh>
+      <mesh position={[0, 4.15, 0]} castShadow>
+        <cylinderGeometry args={[0.42, 0.72, 6.8, 10]} />
+        <meshStandardMaterial color={palette.arch} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 7.7, 0]} castShadow>
+        <sphereGeometry args={[0.85, 16, 14]} />
+        <meshStandardMaterial
+          color={palette.gold}
+          emissive={palette.gold}
+          emissiveIntensity={0.85}
+          roughness={0.28}
+        />
+      </mesh>
+      <mesh position={[0, 7.7, 0]}>
+        <sphereGeometry args={[1.35, 16, 12]} />
+        <meshBasicMaterial color={palette.sun} transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 5.15, 1.15]} castShadow>
+        <planeGeometry args={[6.4, 1.7]} />
+        <meshStandardMaterial map={sign} roughness={0.45} />
+      </mesh>
+    </group>
+  )
+}
+
 function ShellBeach({
   textures,
 }: {
@@ -400,6 +433,7 @@ export function World({ textures }: { textures: TrackTextures }) {
       <ShellBeach textures={textures} />
       <CoralBank sign={textures.signBank} />
       <TideCrown sign={textures.signCrown} />
+      <ApexLantern sign={textures.signApex} />
       <ItemCrate position={[6.5, 0.7, 1.6]} phase={0.2} question={textures.question} />
       <ItemCrate position={[8.6, 0.7, -14]} phase={1.3} question={textures.question} />
       <ItemCrate position={[-22, 0.7, 22]} phase={2.1} question={textures.question} />
