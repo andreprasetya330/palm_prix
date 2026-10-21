@@ -93,12 +93,12 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const inside = new THREE.Color('#1c8a42')
-    const strawTone = new THREE.Color('#f0d15a')
+    const inside = new THREE.Color('#146b34')
+    const strawTone = new THREE.Color('#c4923a')
     const outside = new THREE.Color(palette.grassOutside)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Gate key comes from +X +Z. The infield ridge runs across that axis.
+    // Gate key comes from +X +Z. The ridge crosses the infield the corner sees.
     const sunX = 0.86
     const sunZ = 0.51
     for (let i = 0; i < pos.count; i++) {
@@ -107,11 +107,11 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      const along = (x + 11) * sunX + (z + 2) * sunZ
+      const along = (x + 8) * sunX + (z - 3) * sunZ
       const infield = lat < -1.2
       if (infield) {
         c.copy(along >= 0 ? strawTone : inside)
-        const rise = Math.max(0, 1.35 - Math.min(Math.abs(along), 9) * 0.15)
+        const rise = Math.max(0, 0.95 - Math.min(Math.abs(along), 8) * 0.12)
         pos.setY(i, pos.getY(i) + rise)
       } else {
         c.copy(inside).lerp(outside, edge)
@@ -123,6 +123,12 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
     }
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     g.computeVertexNormals()
+    const normals = g.attributes.normal
+    for (let i = 0; i < normals.count; i++) {
+      if (normals.getY(i) < 0) {
+        normals.setXYZ(i, -normals.getX(i), -normals.getY(i), -normals.getZ(i))
+      }
+    }
     return g
   }, [])
 
@@ -145,8 +151,8 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
         .replace(
           '#include <map_fragment>',
           `#include <map_fragment>
-           vec4 strawSample = texture2D(uStraw, vUv * 12.0);
-           diffuseColor.rgb = mix(diffuseColor.rgb, strawSample.rgb, vStraw);`,
+           vec4 strawSample = texture2D(uStraw, vUv * 10.0);
+           diffuseColor.rgb *= mix(vec3(1.0), strawSample.rgb, vStraw);`,
         )
     }
     return mat
