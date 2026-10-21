@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { KartState } from '../../game/kartPhysics'
 import type { RaceStatus } from '../../game/raceLoop'
-import { ITEM_BOXES, POND } from '../vfx/world'
+import { ITEM_BOXES, POND, ovalRadius } from '../vfx/world'
 import './hud.css'
 
 type Props = {
@@ -97,51 +97,56 @@ export function RaceHud({ race, kart }: Props) {
 }
 
 function MiniMap({ kart }: { kart: KartState }) {
-  const px = (x: number) => 70 + (x / 34) * 54
-  const py = (z: number) => 70 - (z / 34) * 54
-  const yaw = (kart.yaw * 180) / Math.PI
-  const rx = (r: number) => (r * 1.15 * 54) / 34
-  const ry = (r: number) => (r * 54) / 34
+  const px = (x: number) => 88 + x * 2.72
+  const py = (z: number) => 54 - z * 1.68
+  const rx = (r: number) => r * 1.15 * 2.72
+  const ry = (r: number) => r * 1.68
+  const dot = ribbonDot(kart.x, kart.z)
   return (
     <div className="pp-map" aria-label="Oval map">
-      <svg viewBox="0 0 140 140">
-        <ellipse cx="70" cy="70" rx="64" ry="56" className="pp-map-grass" />
+      <svg viewBox="0 0 176 108">
+        <ellipse cx="88" cy="54" rx="84" ry="50" className="pp-map-grass" />
+        <ellipse cx="88" cy="54" rx={rx(21.85)} ry={ry(21.85)} className="pp-map-asphalt" />
+        <ellipse cx="88" cy="54" rx={rx(14.15)} ry={ry(14.15)} className="pp-map-infield" />
         <ellipse
-          cx="70"
-          cy="70"
-          rx={rx(18)}
-          ry={ry(18)}
-          fill="none"
-          stroke="#2c3142"
-          strokeWidth={ry(8.2)}
-        />
-        <ellipse
-          cx="70"
-          cy="70"
+          cx="88"
+          cy="54"
           rx={rx(18)}
           ry={ry(18)}
           fill="none"
           stroke="#ffe566"
-          strokeWidth="1.6"
-          strokeDasharray="3.2 2.4"
+          strokeWidth="1.5"
+          strokeDasharray="4 3.2"
         />
-        <circle cx={px(POND.x)} cy={py(POND.z)} r={(POND.radius * 54) / 34} className="pp-map-pond" />
+        <ellipse
+          cx={px(POND.x)}
+          cy={py(POND.z)}
+          rx={POND.radius * 2.72}
+          ry={POND.radius * 1.68}
+          className="pp-map-pond"
+        />
         {ITEM_BOXES.map((b, i) => (
           <rect
             key={i}
-            x={px(b.x) - 2.2}
-            y={py(b.z) - 2.2}
-            width="4.4"
-            height="4.4"
+            x={px(b.x) - 1.8}
+            y={py(b.z) - 1.8}
+            width="3.6"
+            height="3.6"
             className="pp-map-box"
           />
         ))}
-        <g transform={`translate(${px(kart.x)} ${py(kart.z)}) rotate(${yaw})`}>
-          <path d="M0 -6 L4.2 5 L0 2.6 L-4.2 5 Z" className="pp-map-kart" />
-        </g>
+        <circle cx={px(dot.x)} cy={py(dot.z)} r="3.5" className="pp-map-kart" />
       </svg>
     </div>
   )
+}
+
+/** Off the asphalt, the dot sits on this oval's centerline. */
+function ribbonDot(x: number, z: number) {
+  const r = ovalRadius(x, z)
+  if (r > 14.15 && r < 21.85) return { x, z }
+  const s = 18 / Math.max(r, 0.001)
+  return { x: x * s, z: z * s }
 }
 
 function ZephyrIcon() {
