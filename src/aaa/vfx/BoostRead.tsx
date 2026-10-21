@@ -9,20 +9,17 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, cross-section width, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> = [
-  [0, 2.3, 0.72, 0.72, '#ff8a32'],
-  [Math.PI / 2, 2.15, 0.5, 0.68, '#ff641c'],
-  [Math.PI / 4, 2.0, 0.58, 0.62, '#ff9a3c'],
-  [(Math.PI * 3) / 4, 1.85, 0.52, 0.58, '#ff5418'],
-  [0.35, 1.15, 0.88, 0.8, '#ffd27a'],
-  [1.25, 1.05, 0.7, 0.74, '#ffe6a4'],
+  [0.2, 2.15, 0.62, 0.9, '#ff7a28'],
+  [1.05, 1.95, 0.46, 0.75, '#ff5418'],
+  [1.8, 1.75, 0.4, 0.65, '#ffb15a'],
 ]
 
-const flameTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
+const flameTex = loadTongue(new URL('./assets/flame_05.png', import.meta.url).href)
 const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
 
 /**
- * The white core stays on the pipe. The body is a set of ribbons
- * whose long axis runs back along the road, not cards facing the lens.
+ * The white core stays on the pipe. The tongue runs back along the road
+ * for the full length of the ribbon, not a spark on the bumper.
  * The camera stays at the idle chase distance so the kart does not shrink.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
@@ -96,6 +93,16 @@ export function BoostRead({ kart }: { kart: KartState }) {
 function loadSprite(url: string) {
   const tex = new THREE.TextureLoader().load(url)
   tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** Crop to the flame graphic so the ribbon is fire for its whole length. */
+function loadTongue(url: string) {
+  const tex = loadSprite(url)
+  tex.wrapS = THREE.ClampToEdgeWrapping
+  tex.wrapT = THREE.ClampToEdgeWrapping
+  tex.offset.set(213 / 512, 140 / 512)
+  tex.repeat.set(92 / 512, 252 / 512)
   return tex
 }
 
