@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
-import { createGlassShade, createPalmTexture, createShadowTexture } from './decals'
+import { createGlassShade, createNoseBadge, createPalmTexture, createShadowTexture } from './decals'
 import {
   anchors,
   capGeo,
@@ -135,6 +135,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const shadowTex = useMemo(() => createShadowTexture(), [])
   const glassShade = useMemo(() => createGlassShade(), [])
   const palmTex = useMemo(() => createPalmTexture(), [])
+  const noseTex = useMemo(() => createNoseBadge(), [])
   const avatar = useMemo(() => {
     if (!driverTextureUrl) return null
     const t = new THREE.TextureLoader().load(driverTextureUrl)
@@ -329,6 +330,37 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                 />
               </mesh>
             </group>
+
+            <mesh position={[0, 0.8, 0.78]} rotation={[-0.95, 0, 0]}>
+              <planeGeometry args={[0.34, 0.3]} />
+              <meshBasicMaterial
+                map={noseTex}
+                transparent
+                polygonOffset
+                polygonOffsetFactor={-2}
+                depthWrite={false}
+              />
+            </mesh>
+            <mesh position={[0.56, 0.38, 0.18]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[0.36, 0.32]} />
+              <meshBasicMaterial
+                map={noseTex}
+                transparent
+                polygonOffset
+                polygonOffsetFactor={-2}
+                depthWrite={false}
+              />
+            </mesh>
+            <mesh position={[-0.56, 0.38, 0.18]} rotation={[0, -Math.PI / 2, 0]}>
+              <planeGeometry args={[0.36, 0.32]} />
+              <meshBasicMaterial
+                map={noseTex}
+                transparent
+                polygonOffset
+                polygonOffsetFactor={-2}
+                depthWrite={false}
+              />
+            </mesh>
 
             <Headlight x={-0.2} z={noseZ - 0.02} />
             <Headlight x={0.2} z={noseZ - 0.02} />
