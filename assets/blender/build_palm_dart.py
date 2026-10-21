@@ -58,9 +58,14 @@ def main() -> None:
     for name, center in WHEELS.items():
         hub = empty(f"Wheel{name}", center)
         adopt(hub, root)
-        for obj in build_wheel(name, center, mats, nut):
+        parts, marks = build_wheel(name, center, mats, nut)
+        for obj in parts:
             adopt(obj, hub)
             wheel_objects.append(obj)
+        # The letter stays on the body. Parenting it to the hub makes the
+        # chase lose it as soon as the tire spins.
+        for mark in marks:
+            adopt(mark, root)
         # Straight axle. A cocked wheel reads as a separate ring from the chase.
         hub.rotation_euler = (0.0, 0.0, 0.0)
         wheel_objects.append(hub)
@@ -567,24 +572,25 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    # Dark P on the rear face of each rear tire, the sidewall the chase camera sees.
+    # Returned separately so the letter parents to the body, not the spinning hub.
+    marks = []
     if center.y > 0:
-        made.append(sidewall_mark(f"SidewallMark{name}", center, mats["ink"]))
-    return made
+        marks.append(sidewall_mark(f"SidewallMark{name}", center, mats["ink"]))
+    return made, marks
 
 
 def sidewall_mark(name, center, mat):
     """A real P on the rear face of the tire.
 
-    The chase camera sits behind the kart and above it, so it sees the back
-    of the sidewall, not the outer disc and not the blue side pod. The letter
-    is ink, tilted up toward that camera, and centered on the pale band.
+    The chase camera sits behind the kart and above it. The letter is parented
+    to the body, not the hub, so tire spin cannot turn it off that face.
+    It is ink, tilted up toward the camera, and centered on the rear sidewall.
     """
     bpy.ops.object.select_all(action="DESELECT")
     bpy.ops.object.text_add()
     obj = bpy.context.active_object
     obj.data.body = "P"
-    obj.data.size = 0.62
+    obj.data.size = 0.84
     obj.data.extrude = 0.03
     obj.data.bevel_depth = 0.008
     obj.data.bevel_resolution = 1
@@ -603,7 +609,7 @@ def sidewall_mark(name, center, mat):
     normal = Vector((0.0, 0.875, 0.485)).normalized()
     up = Vector((0.0, -0.485, 0.875)).normalized()
     right = Vector((-1.0, 0.0, 0.0))
-    loc = center + Vector((0.0, 0.34, 0.18))
+    loc = center + Vector((0.0, 0.42, 0.20))
     obj.matrix_world = Matrix((
         (right.x, up.x, normal.x, loc.x),
         (right.y, up.y, normal.y, loc.y),
