@@ -209,14 +209,14 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       origin.current.set(kart.x, 0, kart.z)
       camera.position
         .copy(origin.current)
-        .addScaledVector(camRight.current, 1.7)
-        .addScaledVector(camFwd.current, 1.05)
-      camera.position.y += 2.55
-      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.55)
-      camLook.current.y += 1.02
+        .addScaledVector(camRight.current, 1.95)
+        .addScaledVector(camFwd.current, 1.85)
+      camera.position.y += 2.15
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.15)
+      camLook.current.y += 0.92
       camera.lookAt(camLook.current)
-      if (camera.fov !== 42 || camera.near !== 0.08) {
-        camera.fov = 42
+      if (camera.fov !== 46 || camera.near !== 0.08) {
+        camera.fov = 46
         camera.near = 0.08
         camera.updateProjectionMatrix()
       }
