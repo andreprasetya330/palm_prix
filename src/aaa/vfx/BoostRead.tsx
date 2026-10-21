@@ -13,10 +13,6 @@ const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> 
   [-0.48, 1.16, 0.56, 0.76, '#ffb25a'],
 ]
 
-const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
-const flameGeo = makeFlameGeometry()
-const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
-
 /**
  * The white core stays on the pipe. The tongue is the flame's own outline,
  * thick at the exhaust and pointed at the tip, and it ends on the road
@@ -136,6 +132,10 @@ function makeFlameGeometry() {
   geo.setIndex(indices)
   return geo
 }
+
+const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
+const flameGeo = makeFlameGeometry()
+const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
 
 /** The kart mesh draws a green boost cone. The still cannot keep that ball. */
 function hideKartBoostFlame(scene: THREE.Scene) {
