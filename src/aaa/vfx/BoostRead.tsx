@@ -2,25 +2,14 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
-import { makePaintedGeometry, paint, writeQuad, type Rgba } from './quads'
+import { kartAxes, kartToWorld, makePaintedGeometry, paint, writeQuad, type Rgba } from './quads'
 
-const STREAKS = 36
 const CHASE_BACK = 6.5
 const CHASE_HEIGHT = 3.6
 
-type Streak = {
-  side: number
-  lift: number
-  depth: number
-  len: number
-  width: number
-  life: number
-  hot: number
-}
-
 /**
- * Hairline streaks at the frame edge.
- * While boosting, the camera stays at the idle chase distance so the kart does not shrink.
+ * A short plume leaves the exhaust, with thin streaks trailing from that pipe.
+ * The camera stays at the idle chase distance so the kart does not shrink.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
@@ -28,10 +17,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
   const kartRef = useRef(kart)
   kartRef.current = kart
   const kick = useRef(0)
-  const streakGeom = useMemo(() => makePaintedGeometry(STREAKS * 6), [])
-  const streaks = useRef<Streak[]>(
-    Array.from({ length: STREAKS }, () => spawnStreak(true)),
-  )
+  const streakGeom = useMemo(() => makePaintedGeometry(20 * 6), [])
 
   const positions = streakGeom.getAttribute('position').array as Float32Array
   const colors = streakGeom.getAttribute('color').array as Float32Array
@@ -54,7 +40,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
       }
     }
     if (boosting) hideKartBoostFlame(scene)
-    writeStreaks(streakGeom, positions, colors, streaks.current, camera, punch, dt)
+    writePlume(streakGeom, positions, colors, k, punch)
   })
 
   return (
@@ -78,66 +64,55 @@ function hideKartBoostFlame(scene: THREE.Scene) {
   })
 }
 
-function spawnStreak(fresh: boolean): Streak {
-  const edge = 1.65 + Math.random() * 1.35
-  return {
-    side: (Math.random() < 0.5 ? -1 : 1) * edge,
-    lift: (Math.random() - 0.45) * 1.8,
-    depth: fresh ? 2.2 + Math.random() * 7 : 3 + Math.random() * 6,
-    len: 1.8 + Math.random() * 2.4,
-    width: 0.004 + Math.random() * 0.007,
-    life: Math.random(),
-    hot: Math.random(),
-  }
-}
-
 const _fwd = new THREE.Vector3()
 const _right = new THREE.Vector3()
-const _up = new THREE.Vector3()
+const _up = new THREE.Vector3(0, 1, 0)
+const _mouth = new THREE.Vector3()
 const _center = new THREE.Vector3()
 const _axisA = new THREE.Vector3()
 const _axisB = new THREE.Vector3()
 
-function writeStreaks(
+function writePlume(
   geom: THREE.BufferGeometry,
   positions: Float32Array,
   colors: Float32Array,
-  pool: Streak[],
-  camera: THREE.Camera,
+  kart: KartState,
   punch: number,
-  dt: number,
 ) {
-  const e = camera.matrixWorld.elements
-  _right.set(e[0], e[1], e[2])
-  _up.set(e[4], e[5], e[6])
-  _fwd.set(-e[8], -e[9], -e[10])
-  const origin = camera.position
   let v = 0
-  const step = 26 * dt
-  for (const s of pool) {
-    s.depth -= step * (0.45 + s.life)
-    s.life -= dt * 0.55
-    if (s.life <= 0 || s.depth < 0.8) {
-      if (punch < 0.35) continue
-      Object.assign(s, spawnStreak(false))
+  if (punch > 0.2) {
+    kartAxes(kart.yaw, _fwd, _right)
+    kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.46, -0.98, _mouth)
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7
+      const along = 0.06 + t * 1.15
+      const width = 0.055 * (1 - t * 0.55)
+      _center.copy(_mouth).addScaledVector(_fwd, -along)
+      _center.y += t * 0.16
+      _axisA.copy(_fwd).multiplyScalar(0.12)
+      _axisB.copy(_right).multiplyScalar(width).addScaledVector(_up, width * 0.65)
+      const color: Rgba = {
+        r: 1.1 - t * 0.28,
+        g: 0.48 - t * 0.22,
+        b: 0.1,
+        a: (1 - t * 0.75) * punch,
+      }
+      v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
     }
-    if (punch < 0.35) continue
-    _center
-      .copy(origin)
-      .addScaledVector(_fwd, s.depth)
-      .addScaledVector(_right, s.side)
-      .addScaledVector(_up, s.lift)
-    _axisA.copy(_fwd).multiplyScalar(s.len)
-    _axisB.copy(_up).multiplyScalar(s.width)
-    const alpha = Math.min(1, s.life) * punch * 0.55
-    const hot = s.hot
-    const color: Rgba = {
-      r: 1.02 + hot * 0.08,
-      g: 0.48 + hot * 0.1,
-      b: 0.14,
-      a: alpha,
+    for (let i = 0; i < 8; i++) {
+      const side = (i - 3.5) * 0.07
+      const along = 0.85 + (i % 4) * 0.28
+      _center.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, side)
+      _center.y += 0.12 + (i % 3) * 0.08
+      _axisA.copy(_fwd).multiplyScalar(0.34)
+      _axisB.copy(_up).multiplyScalar(0.012)
+      v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
+        r: 1.02,
+        g: 0.42,
+        b: 0.12,
+        a: 0.55 * punch,
+      })
     }
-    v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
   }
   paint(geom, v)
 }
