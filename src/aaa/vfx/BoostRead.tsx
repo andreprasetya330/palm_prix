@@ -6,15 +6,22 @@ import { kartAxes, kartToWorld } from './quads'
 
 const CHASE_BACK = 6.5
 const CHASE_HEIGHT = 3.6
-const FLAMES = 4
-const STREAKS = 7
 
-const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
+/** Soft puffs stacked along the road, widening as they leave the core. */
+const BANDS: ReadonlyArray<readonly [number, number, number, number, string]> = [
+  [0.22, 0.18, 0.78, 0.94, '#fff1b8'],
+  [0.68, 0.34, 1.02, 0.86, '#ff9a3c'],
+  [1.18, 0.48, 1.16, 0.78, '#ff6a24'],
+  [1.72, 0.58, 1.22, 0.66, '#ff4e18'],
+]
+const PUFF_PER_BAND = 4
+const PUFFS = BANDS.length * PUFF_PER_BAND
+
+const puffTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
 const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
-const traceTex = loadSprite(new URL('./assets/trace_02.png', import.meta.url).href)
 
 /**
- * A plume with a bright core leaves the exhaust. Streaks start on that core.
+ * A thick plume leaves the exhaust. The white core and the fire point back along the road.
  * The camera stays at the idle chase distance so the kart does not shrink.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
@@ -24,8 +31,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
   kartRef.current = kart
   const kick = useRef(0)
   const coreRef = useRef<THREE.Sprite>(null)
-  const flameRefs = useRef<Array<THREE.Sprite | null>>([])
-  const streakRefs = useRef<Array<THREE.Sprite | null>>([])
+  const puffRefs = useRef<Array<THREE.Sprite | null>>([])
 
   useFrame((_, dt) => {
     const k = kartRef.current
@@ -46,44 +52,23 @@ export function BoostRead({ kart }: { kart: KartState }) {
       camera.updateMatrixWorld()
     }
     if (boosting) hideKartBoostFlame(scene)
-    placePlume(k, camera, punch, coreRef.current, flameRefs.current, streakRefs.current)
+    placePlume(k, punch, coreRef.current, puffRefs.current)
   })
 
   return (
     <group>
-      {Array.from({ length: FLAMES }, (_, i) => (
+      {Array.from({ length: PUFFS }, (_, i) => (
         <sprite
-          key={`flame-${i}`}
+          key={`puff-${i}`}
           ref={(el) => {
-            flameRefs.current[i] = el
+            puffRefs.current[i] = el
           }}
           visible={false}
           renderOrder={6}
           frustumCulled={false}
         >
           <spriteMaterial
-            map={flameTex}
-            color={i === 0 ? '#ffd27a' : '#ff7a32'}
-            transparent
-            depthWrite={false}
-            toneMapped={false}
-            premultipliedAlpha={false}
-          />
-        </sprite>
-      ))}
-      {Array.from({ length: STREAKS }, (_, i) => (
-        <sprite
-          key={`streak-${i}`}
-          ref={(el) => {
-            streakRefs.current[i] = el
-          }}
-          visible={false}
-          renderOrder={5}
-          frustumCulled={false}
-        >
-          <spriteMaterial
-            map={traceTex}
-            color="#ffb15a"
+            map={puffTex}
             transparent
             depthWrite={false}
             toneMapped={false}
@@ -123,32 +108,17 @@ function hideKartBoostFlame(scene: THREE.Scene) {
 const _fwd = new THREE.Vector3()
 const _right = new THREE.Vector3()
 const _mouth = new THREE.Vector3()
-const _tip = new THREE.Vector3()
-const _ndcA = new THREE.Vector3()
-const _ndcB = new THREE.Vector3()
-
-const FLAME_LAYERS: ReadonlyArray<readonly [number, number, number, number, number]> = [
-  [0.55, 0, 0.62, 1.35, 0],
-  [1.05, -0.1, 0.86, 1.75, -0.1],
-  [1.6, 0.12, 1.05, 2.05, 0.12],
-  [0.75, 0.04, 0.48, 1.15, 0.04],
-]
 
 function placePlume(
   kart: KartState,
-  camera: THREE.Camera,
   punch: number,
   core: THREE.Sprite | null,
-  flames: Array<THREE.Sprite | null>,
-  streaks: Array<THREE.Sprite | null>,
+  puffs: Array<THREE.Sprite | null>,
 ) {
   const show = punch > 0.2
   if (!show) {
     if (core) core.visible = false
-    flames.forEach((sprite) => {
-      if (sprite) sprite.visible = false
-    })
-    streaks.forEach((sprite) => {
+    puffs.forEach((sprite) => {
       if (sprite) sprite.visible = false
     })
     return
@@ -157,42 +127,33 @@ function placePlume(
   kartAxes(kart.yaw, _fwd, _right)
   kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.42, -1.16, _mouth)
 
-  flames.forEach((sprite, i) => {
-    const layer = FLAME_LAYERS[i]
-    if (!sprite || !layer) return
-    const [along, side, width, length, twist] = layer
-    const mat = sprite.material as THREE.SpriteMaterial
-    sprite.visible = true
-    sprite.position.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, side)
-    sprite.position.y += 0.04
-    sprite.scale.set(width, length, 1)
-    mat.rotation = Math.PI + twist
-    mat.opacity = (i === 3 ? 0.95 : 0.78) * punch
-  })
-
-  streaks.forEach((sprite, i) => {
-    if (!sprite) return
-    const mat = sprite.material as THREE.SpriteMaterial
-    const side = i - (STREAKS - 1) / 2
-    const len = 2.05 + Math.abs(side) * 0.12
-    const lateral = side * 0.14
-    _tip.copy(_mouth).addScaledVector(_fwd, -len).addScaledVector(_right, lateral)
-    _tip.y = _mouth.y
-    _ndcA.copy(_mouth).project(camera)
-    _ndcB.copy(_tip).project(camera)
-    sprite.visible = true
-    sprite.position.copy(_mouth).lerp(_tip, 0.46)
-    sprite.scale.set(0.1, 1.65, 1)
-    mat.rotation = Math.atan2(_ndcB.x - _ndcA.x, _ndcB.y - _ndcA.y)
-    mat.opacity = 0.95 * punch
-  })
+  let index = 0
+  for (const [along, radius, scale, opacity, color] of BANDS) {
+    for (let n = 0; n < PUFF_PER_BAND; n += 1) {
+      const sprite = puffs[index]
+      index += 1
+      if (!sprite) continue
+      const turn = (n / PUFF_PER_BAND) * Math.PI * 2 + along
+      const side = Math.cos(turn) * radius
+      const lift = Math.sin(turn) * radius * 0.55
+      const mat = sprite.material as THREE.SpriteMaterial
+      sprite.visible = true
+      sprite.position.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, side)
+      sprite.position.y += 0.08 + lift
+      if (sprite.position.y < 0.22) sprite.position.y = 0.22
+      sprite.scale.set(scale, scale * 1.2, 1)
+      mat.rotation = turn * 0.2
+      mat.opacity = opacity * punch
+      mat.color.set(color)
+    }
+  }
 
   if (core) {
     const mat = core.material as THREE.SpriteMaterial
     core.visible = true
     core.position.copy(_mouth)
-    core.scale.set(0.52, 0.52, 1)
-    mat.rotation = 0
+    core.scale.set(0.58, 0.62, 1)
+    mat.rotation = Math.PI
     mat.opacity = punch
   }
 }
