@@ -101,46 +101,48 @@ function flameRgb(t: number, rim: boolean): [number, number, number] {
   return [1, 0.94 * (1 - t) + 0.2 * t, 0.62 * (1 - t) * (1 - t) + 0.04]
 }
 
-/** Half-tube: wide on the road, crowned upward, pinched at the lick. */
+/**
+ * Solid half-rounds along the road. Each round faces the chase camera,
+ * so the lick has a filled body and a lip instead of an empty tube.
+ */
 function makeFlameGeometry() {
   const positions: number[] = []
   const colors: number[] = []
   const indices: number[] = []
   const cols = FLAME_SEGS + 1
+  const stride = cols + 1
   for (let row = 0; row < FLAME_ROWS; row++) {
     const t = row / (FLAME_ROWS - 1)
     const ly = -0.5 + t
-    const profile = Math.pow(1 - t, 0.62) * (0.78 + 0.22 * Math.sin(t * Math.PI))
-    const wobble = 1 + 0.06 * Math.sin(t * 11.0) 
-    const radX = 0.5 * profile * wobble
+    const profile = Math.pow(1 - t, 0.58) * (0.8 + 0.2 * Math.sin(t * Math.PI))
+    const radX = 0.5 * profile
     const radZ = profile
     const hot = flameRgb(t, false)
     const rim = flameRgb(t, true)
+    const arch = row * stride
     for (let s = 0; s < cols; s++) {
       const ang = (s / FLAME_SEGS) * Math.PI
       const lift = Math.sin(ang)
       positions.push(Math.cos(ang) * radX, ly, lift * radZ)
-      const k = Math.pow(lift, 0.5)
+      const k = Math.pow(lift, 0.4)
       colors.push(
         rim[0] + (hot[0] - rim[0]) * k,
         rim[1] + (hot[1] - rim[1]) * k,
         rim[2] + (hot[2] - rim[2]) * k,
       )
     }
+    const spine = arch + cols
+    positions.push(0, ly, radZ * 0.42)
+    colors.push(hot[0], hot[1], hot[2])
+    for (let s = 0; s < FLAME_SEGS; s++) indices.push(spine, arch + s, arch + s + 1)
     if (row === 0) continue
-    const prev = (row - 1) * cols
-    const curr = row * cols
+    const prev = (row - 1) * stride
     for (let s = 0; s < FLAME_SEGS; s++) {
       const a = prev + s
-      const c = curr + s
+      const c = arch + s
       indices.push(a, a + 1, c + 1, a, c + 1, c)
     }
   }
-  const base = flameRgb(0, false)
-  const spine = positions.length / 3
-  positions.push(0, -0.5, 0.42)
-  colors.push(base[0], base[1], base[2])
-  for (let s = 0; s < FLAME_SEGS; s++) indices.push(spine, s, s + 1)
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
