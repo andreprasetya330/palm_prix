@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { leafGeo } from './geom'
 import { paint } from './palette'
 
 type Props = {
@@ -24,7 +23,7 @@ const coral = {
 }
 
 /**
- * Original Palm Prix driver. Cream helmet, coral team suit, palm crest.
+ * Original Palm Prix driver. Open-face cream helmet, eyes, coral team suit.
  * Not a Nintendo character — no cap, no mustache, no borrowed marks.
  */
 export function Driver({ texture, envMap }: Props) {
@@ -70,93 +69,106 @@ export function Driver({ texture, envMap }: Props) {
         <meshStandardMaterial color="#fff3e4" roughness={0.45} />
       </mesh>
 
-      <group position={[0, 0.56, 0.03]}>
+      <group position={[0, 0.56, 0.04]}>
         <mesh castShadow>
-          <sphereGeometry args={[0.25, 32, 24]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.9} />
+          <sphereGeometry args={[0.25, 40, 28]} />
+          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.85} />
         </mesh>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.252, 0.028, 8, 28]} />
+          <torusGeometry args={[0.252, 0.018, 8, 32]} />
           <meshPhysicalMaterial color="#ff3d66" roughness={0.35} clearcoat={0.5} />
         </mesh>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.25, 0.02, 8, 28, Math.PI]} />
-          <meshStandardMaterial color="#2f6bff" roughness={0.4} />
+        <mesh position={[-0.22, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <sphereGeometry args={[0.07, 16, 12]} />
+          <meshPhysicalMaterial color="#2f6bff" roughness={0.35} clearcoat={0.4} />
+        </mesh>
+        <mesh position={[0.22, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <sphereGeometry args={[0.07, 16, 12]} />
+          <meshPhysicalMaterial color="#2f6bff" roughness={0.35} clearcoat={0.4} />
         </mesh>
 
         {texture ? (
-          <mesh position={[0, -0.01, 0.16]}>
-            <circleGeometry args={[0.12, 24]} />
+          <mesh position={[0, -0.01, 0.2]}>
+            <circleGeometry args={[0.13, 24]} />
             <meshStandardMaterial map={texture} roughness={0.5} />
           </mesh>
         ) : (
-          <group position={[0, -0.02, 0.12]}>
-            <mesh position={[-0.07, 0.02, 0.06]}>
-              <sphereGeometry args={[0.035, 12, 10]} />
-              <meshStandardMaterial color="#fffaf2" />
-            </mesh>
-            <mesh position={[0.07, 0.02, 0.06]}>
-              <sphereGeometry args={[0.035, 12, 10]} />
-              <meshStandardMaterial color="#fffaf2" />
-            </mesh>
-            <mesh position={[-0.07, 0.02, 0.085]}>
-              <sphereGeometry args={[0.018, 10, 8]} />
-              <meshStandardMaterial color="#3a2a22" />
-            </mesh>
-            <mesh position={[0.07, 0.02, 0.085]}>
-              <sphereGeometry args={[0.018, 10, 8]} />
-              <meshStandardMaterial color="#3a2a22" />
-            </mesh>
-            <mesh position={[0, -0.045, 0.07]} rotation={[0.2, 0, 0]}>
-              <torusGeometry args={[0.04, 0.008, 6, 10, Math.PI]} />
-              <meshStandardMaterial color="#c46a62" />
-            </mesh>
-          </group>
+          <Face />
         )}
 
-        <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 0.02, -0.02]}>
-          <torusGeometry args={[0.25, 0.04, 8, 18, Math.PI]} />
-          <meshPhysicalMaterial color="#ff3d66" roughness={0.32} clearcoat={0.6} />
-        </mesh>
-        <mesh position={[0, -0.01, 0.12]} scale={[1.25, 0.78, 0.62]}>
-          <sphereGeometry args={[0.2, 24, 16]} />
+        <mesh position={[0, 0.02, 0.02]} rotation={[0.15, 0, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.15, 28, 1, true, Math.PI / 2 - 0.7, 1.4]} />
           <meshPhysicalMaterial
-            color={paint.visor}
+            color="#c9f6ff"
             transparent
-            opacity={0.42}
-            roughness={0.05}
-            metalness={0.15}
+            opacity={0.22}
+            roughness={0.04}
+            metalness={0}
             clearcoat={1}
-            clearcoatRoughness={0.06}
+            clearcoatRoughness={0.04}
             envMap={envMap ?? undefined}
-            envMapIntensity={1.3}
+            envMapIntensity={0.25}
             side={THREE.DoubleSide}
+            depthWrite={false}
           />
         </mesh>
-        <mesh position={[0, 0.08, 0.14]} rotation={[1.15, 0, 0]}>
-          <torusGeometry args={[0.14, 0.012, 8, 20, Math.PI]} />
-          <meshStandardMaterial color="#ffc83d" metalness={0.7} roughness={0.22} />
+        <mesh position={[0, 0.1, 0.16]} rotation={[1.05, 0, 0]}>
+          <torusGeometry args={[0.15, 0.01, 8, 20, Math.PI]} />
+          <meshStandardMaterial color={paint.plum} roughness={0.4} />
         </mesh>
-
-        {[
-          [-0.7, 0.85],
-          [-0.3, 1],
-          [0, 1.15],
-          [0.3, 1],
-          [0.7, 0.85],
-        ].map(([yaw, sc], i) => (
-          <mesh
-            key={i}
-            geometry={leafGeo}
-            position={[0, 0.2, 0]}
-            rotation={[0.35, yaw, 0]}
-            scale={sc}
-            castShadow
-          >
-            <meshStandardMaterial color={i % 2 === 0 ? '#14a35a' : '#0c7a40'} roughness={0.55} />
-          </mesh>
-        ))}
       </group>
+    </group>
+  )
+}
+
+function Face() {
+  return (
+    <group position={[0, -0.015, 0.16]}>
+      <mesh scale={[1.05, 0.92, 0.62]}>
+        <sphereGeometry args={[0.13, 24, 16]} />
+        <meshStandardMaterial color="#f3c2a4" roughness={0.58} />
+      </mesh>
+      <Eye x={-0.055} />
+      <Eye x={0.055} />
+      <mesh position={[0, -0.015, 0.075]} scale={[0.7, 0.85, 1]}>
+        <sphereGeometry args={[0.016, 10, 8]} />
+        <meshStandardMaterial color="#e0a184" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, -0.055, 0.07]} rotation={[0.35, 0, 0]}>
+        <torusGeometry args={[0.038, 0.008, 6, 14, Math.PI]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.45} />
+      </mesh>
+      <mesh position={[-0.055, 0.055, 0.06]} rotation={[0, 0, 0.35]}>
+        <capsuleGeometry args={[0.008, 0.04, 4, 8]} />
+        <meshStandardMaterial color="#3a2a22" roughness={0.5} />
+      </mesh>
+      <mesh position={[0.055, 0.055, 0.06]} rotation={[0, 0, -0.35]}>
+        <capsuleGeometry args={[0.008, 0.04, 4, 8]} />
+        <meshStandardMaterial color="#3a2a22" roughness={0.5} />
+      </mesh>
+    </group>
+  )
+}
+
+function Eye({ x }: { x: number }) {
+  return (
+    <group position={[x, 0.02, 0.07]}>
+      <mesh>
+        <sphereGeometry args={[0.038, 16, 12]} />
+        <meshStandardMaterial color="#fffaf4" roughness={0.25} emissive="#fffaf4" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.02]}>
+        <sphereGeometry args={[0.02, 12, 10]} />
+        <meshStandardMaterial color="#5a3a28" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.032]}>
+        <sphereGeometry args={[0.011, 10, 8]} />
+        <meshStandardMaterial color="#1a1020" roughness={0.3} />
+      </mesh>
+      <mesh position={[0.01, 0.012, 0.04]}>
+        <sphereGeometry args={[0.006, 8, 6]} />
+        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.8} />
+      </mesh>
     </group>
   )
 }
