@@ -1,8 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
+import { PalmDartModel } from './PalmDartModel'
 import { createNoseBadge, createPalmTexture, createShadowTexture } from './decals'
 import {
   anchors,
@@ -278,7 +279,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
         <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
       </mesh>
 
-      <group ref={roll} position={[0, LAYOUT.wheelY, 0]}>
+      <Suspense fallback={null}>
+        <PalmDartModel speed={kart.speed} />
+      </Suspense>
+      <group ref={roll} visible={false} position={[0, LAYOUT.wheelY, 0]}>
         <group position={[0, -LAYOUT.wheelY, 0]}>
           {WHEELS.map((w, i) => (
             <group
