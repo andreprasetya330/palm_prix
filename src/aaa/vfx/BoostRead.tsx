@@ -92,8 +92,8 @@ function loadSprite(url: string) {
   return tex
 }
 
-const FLAME_ROWS = 18
-const FLAME_SEGS = 12
+const FLAME_ROWS = 36
+const FLAME_SEGS = 14
 
 /** Hot crown, darker lip. t is 0 at the exhaust and 1 at the lick. */
 function flameRgb(t: number, rim: boolean): [number, number, number] {
@@ -124,7 +124,7 @@ function makeFlameGeometry() {
       const ang = (s / FLAME_SEGS) * Math.PI
       const lift = Math.sin(ang)
       positions.push(Math.cos(ang) * radX, ly, lift * radZ)
-      const k = Math.pow(lift, 0.4)
+      const k = 0.62 + 0.38 * lift
       colors.push(
         rim[0] + (hot[0] - rim[0]) * k,
         rim[1] + (hot[1] - rim[1]) * k,
