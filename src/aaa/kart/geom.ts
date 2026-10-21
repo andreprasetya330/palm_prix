@@ -295,17 +295,17 @@ function displaceTread(geo: THREE.BufferGeometry) {
     let g = paint.sidewall.g
     let b = paint.sidewall.b
 
-    // Rounded ribs run around the crown. The profile is a cosine, so each
-    // groove is a smooth channel instead of a zigzag cut into the circle.
-    if (radial > 0.3 && Math.abs(y) < 0.068) {
-      const ribs = Math.cos((y / 0.068) * Math.PI * 3)
-      const bump = ribs * 0.008
-      const k = (radial + bump) / radial
-      x *= k
-      z *= k
+    // Crown stays black. The center channel is a real cut in the profile,
+    // and the bottom of that cut is darker so the groove reads in flat light.
+    if (radial > 0.3 && Math.abs(y) < 0.055) {
       r = paint.tire.r
       g = paint.tire.g
       b = paint.tire.b
+      const groove = Math.exp(-Math.pow(y / 0.012, 2))
+      const shade = 1 - groove * 0.72
+      r *= shade
+      g *= shade
+      b *= shade
     }
 
     const band = Math.abs(Math.abs(y) - 0.1) < 0.018 && radial > 0.22 && radial < 0.32
@@ -339,7 +339,11 @@ export function createTire(): THREE.BufferGeometry {
     new THREE.Vector2(0.29, -0.108),
     crownPoint(-1),
     crownPoint(-0.55),
-    crownPoint(0),
+    new THREE.Vector2(0.338, -0.032),
+    new THREE.Vector2(0.324, -0.014),
+    new THREE.Vector2(0.312, 0),
+    new THREE.Vector2(0.324, 0.014),
+    new THREE.Vector2(0.338, 0.032),
     crownPoint(0.55),
     crownPoint(1),
     new THREE.Vector2(0.29, 0.108),
