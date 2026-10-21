@@ -95,6 +95,7 @@ function Grass() {
     const colors = new Float32Array(pos.count * 3)
     const inside = new THREE.Color(palette.grassInside)
     const outside = new THREE.Color(palette.grassOutside)
+    const fairway = new THREE.Color(palette.grassFairway)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
@@ -103,12 +104,12 @@ function Grass() {
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
+      // Broad fairway in the first-corner infield. One shape, not a tile.
+      const pocket = ((x + 10) / 16) ** 2 + ((z + 4) / 13) ** 2
+      const fair = lat < -1.2 ? 1 - THREE.MathUtils.smoothstep(pocket, 0.72, 1.08) : 0
       c.copy(inside).lerp(outside, edge)
+      c.lerp(fairway, fair)
       c.lerp(far, horizon * horizon)
-      const broad = Math.sin(x * 0.04 + z * 0.015) * 0.03
-      c.r = THREE.MathUtils.clamp(c.r + broad * 0.35, 0.22, 1)
-      c.g = THREE.MathUtils.clamp(c.g + broad, 0.42, 1)
-      c.b = THREE.MathUtils.clamp(c.b + broad * 0.15, 0.12, 1)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
       colors[i * 3 + 2] = c.b
@@ -280,7 +281,7 @@ function Crowd() {
 
 function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture }) {
   return (
-    <group position={[10.4, 0, -9.5]}>
+    <group position={[16.4, 0, -11.2]} rotation={[0, -0.7, 0]}>
       {[
         { x: 0.7, y: 0.28, w: 1.7, h: 0.56, color: palette.cream },
         { x: 1.85, y: 0.82, w: 1.55, h: 0.5, color: '#ff8aa0' },
@@ -306,11 +307,65 @@ function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture 
           <meshStandardMaterial color={palette.archDeep} />
         </mesh>
       ))}
-      <mesh position={[1.2, 2.15, 7.15]} castShadow>
-        <planeGeometry args={[3.6, 1.1]} />
+      <mesh position={[5.15, 1.7, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+        <planeGeometry args={[6.4, 1.15]} />
         <meshStandardMaterial map={sign} roughness={0.5} />
       </mesh>
+      {[-4.6, -1.5, 1.6, 4.6].map((z) => (
+        <mesh key={`fin-${z}`} position={[4.7, 1.55, z]} castShadow>
+          <boxGeometry args={[0.16, 2.2, 0.55]} />
+          <meshStandardMaterial color={palette.archDeep} roughness={0.6} />
+        </mesh>
+      ))}
       <Crowd />
+    </group>
+  )
+}
+
+/** Same azimuth as the gate key, tight on the bank so the start posts stay side-lit. */
+function BankKey() {
+  const light = useRef<THREE.SpotLight>(null)
+  useLayoutEffect(() => {
+    const spot = light.current
+    if (!spot) return
+    spot.target.position.set(14.5, 1.2, -10)
+    spot.parent?.add(spot.target)
+    spot.target.updateMatrixWorld()
+  }, [])
+  return (
+    <spotLight
+      ref={light}
+      position={[36, 13, 6]}
+      color="#fff0c4"
+      intensity={2200}
+      distance={52}
+      angle={0.46}
+      penumbra={0.18}
+      decay={2}
+      castShadow
+      shadow-mapSize-width={1024}
+      shadow-mapSize-height={1024}
+      shadow-bias={-0.00035}
+      shadow-camera-near={6}
+      shadow-camera-far={48}
+    />
+  )
+}
+
+/** Posts on the outside sand so the gate's sun cuts a shadow across the bank. */
+function BankPosts() {
+  const posts = [-0.15, -0.45, -0.75, -1.05].map((theta) => {
+    const radius = 21.4
+    return [-16 + radius * Math.cos(theta), -2 + radius * Math.sin(theta)] as const
+  })
+  return (
+    <group>
+      {posts.map(([x, z]) => (
+        <mesh key={`${x.toFixed(1)}-${z.toFixed(1)}`} position={[x, 0.9, z]} castShadow>
+          <boxGeometry args={[0.28, 1.8, 0.28]} />
+          <meshStandardMaterial color={palette.archDeep} roughness={0.55} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -342,62 +397,62 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
   )
 }
 
-/**
- * Outside the first corner. The name is large enough for the start chase,
- * and the lantern throws a warm pool onto Coral Bank.
- */
+/** Outside the first corner. One board, facing the chase, clear of the lens. */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[-10, 0, -2]}>
-      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.5, 1.8, 0.7, 12]} />
+    <group position={[14.5, 0, -15]}>
+      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.35, 1.6, 0.8, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <cylinderGeometry args={[0.38, 0.62, 3.4, 10]} />
+      <mesh position={[0, 3.3, 0]} castShadow>
+        <cylinderGeometry args={[0.32, 0.5, 5.2, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 4.2, 0]} castShadow>
-        <sphereGeometry args={[0.55, 14, 12]} />
+      <mesh position={[0, 6.3, 0]} castShadow>
+        <sphereGeometry args={[0.62, 14, 12]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
-          emissiveIntensity={1.4}
+          emissiveIntensity={1.2}
           roughness={0.22}
         />
       </mesh>
-      <pointLight position={[6, 3.6, -4]} color={palette.gold} intensity={40} distance={22} decay={2} />
-      <mesh position={[0, 2.7, 0.5]}>
-        <planeGeometry args={[6.4, 1.7]} />
-        <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
+      <pointLight position={[0, 6.1, 0.4]} color={palette.gold} intensity={12} distance={8} decay={2} />
+      <mesh position={[0, 4.55, 0.55]}>
+        <planeGeometry args={[7.4, 2.0]} />
+        <meshStandardMaterial map={sign} roughness={0.4} />
       </mesh>
     </group>
   )
 }
 
-/** Built bell in the infield of the first corner. Not another patch of lawn. */
+/**
+ * Infield buoy. The board is small enough that a close chase still reads the
+ * name instead of filling the lens, and the back is not a mirrored plane.
+ */
 function ReefBell({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[-16, 0, -4]}>
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[2.3, 2.7, 0.8, 12]} />
+    <group position={[-15.2, 0, -7.5]} rotation={[0, 0.4, 0]}>
+      <mesh position={[0, 0.28, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.15, 1.35, 0.56, 12]} />
         <meshStandardMaterial color={palette.coral} roughness={0.55} />
       </mesh>
-      <mesh position={[0, 3.6, 0]} castShadow>
-        <cylinderGeometry args={[0.7, 1.15, 5.6, 10]} />
+      <mesh position={[0, 1.85, 0]} castShadow>
+        <cylinderGeometry args={[0.34, 0.5, 2.7, 10]} />
         <meshStandardMaterial color={palette.cream} roughness={0.48} />
       </mesh>
-      <mesh position={[0, 6.7, 0]} castShadow>
-        <sphereGeometry args={[1.15, 16, 12]} />
+      <mesh position={[0, 3.45, 0]} castShadow>
+        <sphereGeometry args={[0.48, 14, 12]} />
         <meshStandardMaterial color={palette.gold} emissive={palette.gold} emissiveIntensity={0.35} roughness={0.35} />
       </mesh>
-      <mesh position={[0, 6.1, 0]} rotation={[Math.PI, 0, 0]} castShadow>
-        <coneGeometry args={[1.5, 1.6, 12, 1, true]} />
+      <mesh position={[0, 3.15, 0]} rotation={[Math.PI, 0, 0]} castShadow>
+        <coneGeometry args={[0.62, 0.7, 10, 1, true]} />
         <meshStandardMaterial color={palette.coral} side={THREE.DoubleSide} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 4.6, 1.25]}>
-        <planeGeometry args={[9.2, 2.6]} />
-        <meshStandardMaterial map={sign} roughness={0.42} side={THREE.DoubleSide} />
+      <mesh position={[0, 2.25, 0.48]}>
+        <planeGeometry args={[3.15, 0.9]} />
+        <meshStandardMaterial map={sign} roughness={0.42} />
       </mesh>
     </group>
   )
@@ -460,6 +515,8 @@ export function World({ textures }: { textures: TrackTextures }) {
       <Grass />
       <ShellBeach textures={textures} />
       <CoralBank sign={textures.signBank} grain={textures.bank} />
+      <BankKey />
+      <BankPosts />
       <TideCrown sign={textures.signCrown} />
       <ApexLantern sign={textures.signApex} />
       <ReefBell sign={textures.signReef} />

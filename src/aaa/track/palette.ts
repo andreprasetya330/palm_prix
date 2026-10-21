@@ -5,6 +5,7 @@ export const palette = {
   grassFar: '#d4f2a4',
   grassInside: '#3cbf62',
   grassOutside: '#b6e07a',
+  grassFairway: '#e4f06a',
   asphalt: '#4a5164',
   asphaltDark: '#3a4152',
   edge: '#fffaf3',
