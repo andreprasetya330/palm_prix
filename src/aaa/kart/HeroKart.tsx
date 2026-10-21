@@ -312,7 +312,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
 
             <Driver texture={avatar} envMap={env} />
 
-            <group position={[0, 0.64, 0.48]}>
+            <group position={[0, 0.82, 0.66]} rotation={[-0.35, 0, 0]}>
               <mesh geometry={glassGeo}>
                 <meshPhysicalMaterial
                   color="#f4fdff"
@@ -330,9 +330,9 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               </mesh>
               <mesh geometry={glassFrameGeo}>
                 <meshStandardMaterial
-                  color="#ffc83d"
-                  metalness={0.72}
-                  roughness={0.22}
+                  color="#fffaf2"
+                  metalness={0.15}
+                  roughness={0.25}
                   envMap={env ?? undefined}
                 />
               </mesh>
