@@ -97,8 +97,9 @@ function buildRidge(): THREE.BufferGeometry {
     if (onCorner) slice.push(frame)
     else if (slice.length) break
   }
-  const lats = [-4.7, -5.05, -5.45, -5.9, -6.3, -6.7]
-  const lifts = [0, 0.38, 0.92, 1.12, 0.42, 0]
+  // Road-side toe covers the apron edge so the curb does not show a jagged asphalt gap.
+  const lats = [-4.2, -4.65, -5.15, -5.65, -6.15, -6.7]
+  const lifts = [0.06, 0.34, 0.86, 1.08, 0.4, 0.06]
   const straw = new THREE.Color('#f0c48a')
   const lawn = new THREE.Color('#f4fff2')
   const cols = lats.length
@@ -201,12 +202,11 @@ function Grass({
         .replace(
           '#include <map_fragment>',
           `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
-           float blade = smoothstep(0.0, 0.04, lawnPhoto.g - lawnPhoto.r);
-           vec3 gap = vec3(0.05, 0.24, 0.06);
-           vec3 leaf = vec3(0.58, 0.92, 0.26);
+           float blade = smoothstep(-0.004, 0.028, lawnPhoto.g - lawnPhoto.r);
+           vec3 gap = vec3(0.015, 0.11, 0.02);
+           vec3 leaf = vec3(0.78, 1.05, 0.34);
            vec3 fiber = mix(gap, leaf, blade);
-           fiber *= 0.8 + lawnPhoto.g * 0.85;
-           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.25).rgb;
+           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.55).rgb;
            diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
         )
     }
@@ -216,7 +216,7 @@ function Grass({
   return (
     <group>
       <mesh geometry={geo} material={material} position={[-16, -0.05, 2]} receiveShadow />
-      <mesh geometry={ridge} material={material} castShadow receiveShadow />
+      <mesh geometry={ridge} material={material} receiveShadow />
     </group>
   )
 }
