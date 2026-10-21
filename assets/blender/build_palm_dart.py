@@ -596,11 +596,20 @@ def sidewall_mark(name, center, mat):
     obj = bpy.context.active_object
     obj.name = name
     select_only(obj)
-    # Blender text runs toward +X. From behind the kart, +X is the viewer's left,
-    # so the stem of an unmirrored P already sits on the left.
-    # Face up-and-back, about 29 degrees above the rear axis.
-    obj.rotation_euler = (math.radians(-61.0), 0.0, 0.0)
-    obj.location = center + Vector((0.0, 0.34, 0.18))
+    # Text lies in XY with +Z out of the page and +Y up. Point +Z at the chase
+    # camera (up and back) and keep +Y toward world up so the P is not inverted.
+    # +X of the glyph is the bowl side. Viewer's left from behind is world +X,
+    # so the stem (glyph -X) has to point that way.
+    normal = Vector((0.0, 0.875, 0.485)).normalized()
+    up = Vector((0.0, -0.485, 0.875)).normalized()
+    right = Vector((-1.0, 0.0, 0.0))
+    loc = center + Vector((0.0, 0.34, 0.18))
+    obj.matrix_world = Matrix((
+        (right.x, up.x, normal.x, loc.x),
+        (right.y, up.y, normal.y, loc.y),
+        (right.z, up.z, normal.z, loc.z),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
     obj.data.materials.clear()
     obj.data.materials.append(mat)
     return obj
