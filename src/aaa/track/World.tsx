@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { palette } from './palette'
-import { LAGOON } from './spline'
+import { LAGOON, lateralOf } from './spline'
 import type { TrackTextures } from './textures'
 
 const palms: [number, number, number, number, number][] = [
@@ -88,39 +88,39 @@ function Palm({
   )
 }
 
-function Grass({ map }: { map: THREE.Texture }) {
+function Grass() {
   const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(210, 210, 72, 72)
+    const g = new THREE.PlaneGeometry(210, 210, 80, 80)
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const near = new THREE.Color(palette.grassNear)
-    const mid = new THREE.Color(palette.grassMid)
+    const inside = new THREE.Color(palette.grassInside)
+    const outside = new THREE.Color(palette.grassOutside)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i)
-      const z = pos.getZ(i)
-      const ahead = THREE.MathUtils.clamp((6 - z) / 24, 0, 1)
-      const side = THREE.MathUtils.clamp((Math.abs(x + 8) - 6) / 36, 0, 1)
-      const t = Math.max(ahead, side)
-      c.copy(near).lerp(mid, Math.min(1, t * 1.35))
-      if (t > 0.4) c.lerp(far, (t - 0.4) / 0.6)
-      const n = Math.sin(x * 0.33) * Math.cos(z * 0.29) * 0.06
-      c.offsetHSL(0, 0, n)
+      const x = pos.getX(i) - 16
+      const z = pos.getZ(i) + 2
+      const lat = lateralOf(x, z)
+      const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
+      const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
+      c.copy(inside).lerp(outside, edge)
+      c.lerp(far, horizon * horizon)
+      const broad = Math.sin(x * 0.04 + z * 0.015) * 0.03
+      c.r = THREE.MathUtils.clamp(c.r + broad * 0.35, 0.22, 1)
+      c.g = THREE.MathUtils.clamp(c.g + broad, 0.42, 1)
+      c.b = THREE.MathUtils.clamp(c.b + broad * 0.15, 0.12, 1)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
       colors[i * 3 + 2] = c.b
     }
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    const uv = g.attributes.uv
-    for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / 9, pos.getZ(i) / 9)
     return g
   }, [])
 
   return (
     <mesh geometry={geo} position={[-16, -0.05, 2]} receiveShadow>
-      <meshStandardMaterial map={map} vertexColors roughness={1} />
+      <meshStandardMaterial vertexColors roughness={1} />
     </mesh>
   )
 }
@@ -397,7 +397,7 @@ function ShellBeach({
 export function World({ textures }: { textures: TrackTextures }) {
   return (
     <group>
-      <Grass map={textures.grass} />
+      <Grass />
       <ShellBeach textures={textures} />
       <CoralBank sign={textures.signBank} />
       <TideCrown sign={textures.signCrown} />

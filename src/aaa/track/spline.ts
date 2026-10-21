@@ -145,6 +145,24 @@ export function trackLength(): number {
   return frames[frames.length - 1].distance
 }
 
+/** Signed offset from the racing line. Negative is inside the loop. */
+export function lateralOf(x: number, z: number): number {
+  const frames = getTrackFrames()
+  let best = Infinity
+  let lateral = 0
+  for (let i = 0; i < frames.length - 1; i++) {
+    const frame = frames[i]
+    const dx = x - frame.p.x
+    const dz = z - frame.p.z
+    const d2 = dx * dx + dz * dz
+    if (d2 < best) {
+      best = d2
+      lateral = dx * frame.right.x + dz * frame.right.z
+    }
+  }
+  return lateral
+}
+
 export function roadUp(frame: Frame, target = new THREE.Vector3()): THREE.Vector3 {
   const s = Math.sin(frame.bank)
   const c = Math.cos(frame.bank)

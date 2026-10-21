@@ -101,7 +101,6 @@ function fillNoise(
 export type TrackTextures = {
   asphalt: THREE.CanvasTexture
   asphaltNormal: THREE.DataTexture
-  grass: THREE.CanvasTexture
   sand: THREE.CanvasTexture
   wood: THREE.CanvasTexture
   bark: THREE.CanvasTexture
@@ -164,23 +163,6 @@ export function createTrackTextures(): TrackTextures {
       img.data[i * 4] = base + 4
       img.data[i * 4 + 1] = base + 8
       img.data[i * 4 + 2] = base + 18
-      img.data[i * 4 + 3] = 255
-    }
-    ctx.putImageData(img, 0, 0)
-  }, true)
-
-  const grassH = fillNoise(256, 256, 6, [
-    { scale: 1, amp: 0.7 },
-    { scale: 3, amp: 0.3 },
-  ])
-  const grass = canvasTexture(256, 256, (ctx) => {
-    const img = ctx.createImageData(256, 256)
-    for (let i = 0; i < grassH.length; i++) {
-      const n = grassH[i]
-      const blot = n > 0.66 ? 55 : n < 0.34 ? -40 : 0
-      img.data[i * 4] = 36 + n * 70 + blot * 0.4
-      img.data[i * 4 + 1] = 120 + n * 110 + blot
-      img.data[i * 4 + 2] = 42 + n * 30
       img.data[i * 4 + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
@@ -293,7 +275,6 @@ export function createTrackTextures(): TrackTextures {
   return {
     asphalt,
     asphaltNormal: heightToNormal(asphaltH, 256, 256, 3.2),
-    grass,
     sand,
     wood,
     bark,
