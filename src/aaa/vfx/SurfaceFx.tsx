@@ -151,7 +151,7 @@ export function SurfaceFx({
         >
           <sphereGeometry args={[0.26, 12, 10]} />
           <meshBasicMaterial
-            color={i === 0 ? '#1f9e45' : i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
+            color={i % 2 === 0 ? '#ffbf2e' : '#7a46ff'}
             toneMapped={false}
           />
         </mesh>
@@ -451,7 +451,9 @@ function stepBurst(
   }
   const crown = 10
   const radius = 1.05
-  const lift = 3.2
+  const lift = 3.8
+  const ox = at.x + Math.cos(k.yaw) * 2.8
+  const oz = at.z - Math.sin(k.yaw) * 2.8
   pieces.forEach((mesh, i) => {
     if (!mesh) return
     if (i >= crown) {
@@ -459,23 +461,18 @@ function stepBurst(
       return
     }
     mesh.visible = true
-    if (i === 0) {
-      mesh.position.set(at.x + 0.12, at.y + lift + 0.62, at.z)
-      mesh.scale.setScalar(0.55)
-      return
-    }
-    const a = ((i - 1) / (crown - 1)) * Math.PI * 2
+    const a = (i / crown) * Math.PI * 2
     mesh.position.set(
-      at.x + Math.cos(a) * radius,
-      at.y + lift + (i % 2 === 0 ? 0.42 : -0.08),
-      at.z + Math.sin(a) * radius,
+      ox + Math.cos(a) * radius,
+      at.y + lift + (i % 2 === 0 ? 0.38 : -0.05),
+      oz + Math.sin(a) * radius,
     )
     mesh.scale.setScalar(0.9)
   })
   if (flash) {
     flash.visible = true
-    flash.position.set(at.x, at.y + lift, at.z)
-    flash.scale.setScalar(1.2)
+    flash.position.set(ox, at.y + lift, oz)
+    flash.scale.setScalar(1.25)
   }
   if (ring) ring.visible = false
   ageRef.current += dt
