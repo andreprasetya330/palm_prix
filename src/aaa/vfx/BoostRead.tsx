@@ -9,17 +9,18 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, cross-section width, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> = [
-  [0.15, 1.9, 0.82, 0.92, '#ff7a28'],
-  [0.95, 1.72, 0.58, 0.78, '#ff5418'],
+  [0.22, 1.5, 0.9, 0.94, '#ff6e24'],
+  [-0.48, 1.16, 0.56, 0.76, '#ffb25a'],
 ]
 
-const flameTex = loadTongue(new URL('./assets/flame_05.png', import.meta.url).href)
+const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
+const flameGeo = makeFlameGeometry()
 const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
 
 /**
- * The white core stays on the pipe. The tongue runs back along the road
- * for the full length of the ribbon, not a spark on the bumper.
- * The camera stays at the idle chase distance so the kart does not shrink.
+ * The white core stays on the pipe. The tongue is the flame's own outline,
+ * thick at the exhaust and pointed at the tip, and it ends on the road
+ * short of the pace bar. The camera stays at the idle chase distance.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
@@ -60,11 +61,11 @@ export function BoostRead({ kart }: { kart: KartState }) {
           ref={(el) => {
             ribbonRefs.current[i] = el
           }}
+          geometry={flameGeo}
           visible={false}
           renderOrder={6}
           frustumCulled={false}
         >
-          <planeGeometry args={[1, 1]} />
           <meshBasicMaterial
             map={flameTex}
             transparent
@@ -95,14 +96,45 @@ function loadSprite(url: string) {
   return tex
 }
 
-/** Crop to the thick body of the flame so the ribbon stays wide for its whole length. */
-function loadTongue(url: string) {
-  const tex = loadSprite(url)
-  tex.wrapS = THREE.ClampToEdgeWrapping
-  tex.wrapT = THREE.ClampToEdgeWrapping
-  tex.offset.set(214 / 512, 152 / 512)
-  tex.repeat.set(92 / 512, 140 / 512)
-  return tex
+/**
+ * Outline of flame_05.png, base at local y=-0.5 and the lick at y=+0.5.
+ * Each row is left x, right x, y, left u, right u, v. The mesh edge is the
+ * flame, so the tongue is not a rectangle with the thick middle stretched on it.
+ */
+const FLAME_EDGE: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
+  [-0.383, 0.362, -0.5, 0.43555, 0.57227, 0.28125],
+  [-0.404, 0.457, -0.422, 0.43164, 0.58984, 0.31836],
+  [-0.383, 0.5, -0.344, 0.43555, 0.59766, 0.35547],
+  [-0.362, 0.5, -0.271, 0.43945, 0.59766, 0.39062],
+  [-0.362, 0.447, -0.193, 0.43945, 0.58789, 0.42773],
+  [-0.394, 0.372, -0.115, 0.43359, 0.57422, 0.46484],
+  [-0.447, 0.309, -0.037, 0.42383, 0.5625, 0.50195],
+  [-0.5, 0.277, 0.037, 0.41406, 0.55664, 0.53711],
+  [-0.489, 0.245, 0.115, 0.41602, 0.55078, 0.57422],
+  [-0.394, 0.213, 0.193, 0.43359, 0.54492, 0.61133],
+  [-0.298, 0.16, 0.271, 0.45117, 0.53516, 0.64844],
+  [-0.255, 0.085, 0.344, 0.45898, 0.52148, 0.68359],
+  [-0.277, -0.021, 0.422, 0.45508, 0.50195, 0.7207],
+  [-0.319, -0.16, 0.5, 0.44727, 0.47656, 0.75781],
+]
+
+function makeFlameGeometry() {
+  const positions: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+  FLAME_EDGE.forEach(([lx, rx, ly, lu, ru, v], row) => {
+    positions.push(lx, ly, 0, rx, ly, 0)
+    uvs.push(lu, v, ru, v)
+    if (row === 0) return
+    const a = (row - 1) * 2
+    const c = row * 2
+    indices.push(a, a + 1, c + 1, a, c + 1, c)
+  })
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setIndex(indices)
+  return geo
 }
 
 /** The kart mesh draws a green boost cone. The still cannot keep that ball. */
