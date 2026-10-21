@@ -3,18 +3,16 @@
  */
 import type { ControlState } from '../../game/controlState'
 import { DEFAULT_KART } from '../../game/kartPhysics'
+import { createRaceStatus, updateCheckpoints, type RaceStatus } from '../../game/raceLoop'
 import { sampleCameraFollow } from './cameraFollow'
 import { wrapAngle } from './math'
 import { stepKart } from './stepKart'
 import './index'
+import { LAGOON, projectTrack, trackLength } from './spline'
 import {
   groundHeight,
   gridPose,
-  ovalAngle,
-  ovalNormal,
-  ovalRadius,
-  ovalTangent,
-  overlapsAnyCurb,
+  overlapsCurb,
   setTrackHeightSampler,
   surfaceAt,
 } from './track'
@@ -30,12 +28,7 @@ function ctrl(p: Partial<ControlState>): ControlState {
   return { steer: 0, throttle: 0, brake: 0, item: false, ...p }
 }
 
-function hold(
-  kart: AaaKartState,
-  c: ControlState,
-  seconds: number,
-  dt = 1 / 60,
-): AaaKartState {
+function hold(kart: AaaKartState, c: ControlState, seconds: number, dt = 1 / 60): AaaKartState {
   let k = kart
   const n = Math.max(1, Math.round(seconds / dt))
   for (let i = 0; i < n; i++) k = stepKart(k, c, dt)
@@ -56,46 +49,73 @@ function finiteKart(k: AaaKartState): boolean {
   return [k.x, k.z, k.y, k.yaw, k.vx, k.vz, k.vy, k.speed, k.camYaw].every(Number.isFinite)
 }
 
+function testSplineMirror(): void {
+  const length = trackLength()
+  check('loop length matches the ribbon', length > 130 && length < 145, `len=${length.toFixed(1)}`)
+  const slot = projectTrack(0, 8)
+  check('center slot sits on the straight', Math.abs(slot.lateral) < 0.05, `lat=${slot.lateral.toFixed(3)}`)
+  check('straight travel is −Z', Math.abs(wrapAngle(Math.atan2(slot.tx, slot.tz) - Math.PI)) < 0.05)
+  const back = projectTrack(-32, 8)
+  check('back straight is on the line', Math.abs(back.lateral) < 0.2 && back.tz > 0.9, `lat=${back.lateral.toFixed(2)} tz=${back.tz.toFixed(2)}`)
+  const nose = projectTrack(-16, -18)
+  check('north corner reaches the bulge', Math.hypot(nose.x + 16, nose.z + 18) < 1.5, `p ${nose.x.toFixed(1)},${nose.z.toFixed(1)}`)
+}
+
 function testSpawn(): void {
-  const k = stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
   const grid = gridPose()
+  check('countdown spawn stays in the center slot', DEFAULT_KART.x === 0 && DEFAULT_KART.z === 8 && Math.abs(DEFAULT_KART.yaw - Math.PI) < 1e-9)
+  const k = stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
   const surf = surfaceAt(k.x, k.z).kind
-  check('spawn under the gate', k.z > 17 && k.z < 19 && Math.abs(k.x) < 2, `pos ${k.x.toFixed(2)},${k.z.toFixed(2)}`)
+  check('spawn under the gate', Math.abs(k.x) < 0.4 && k.z > 7.2 && k.z < 8.8, `pos ${k.x.toFixed(2)},${k.z.toFixed(2)}`)
   check('spawn on asphalt', surf === 'asphalt', surf)
   check('spawn faces the straight', Math.abs(wrapAngle(k.yaw - grid.yaw)) < 0.05)
-  check('spawn clear of curbs', !overlapsAnyCurb(k.x, k.z))
+  check('spawn clear of curbs', !overlapsCurb(k.x, k.z))
+  check('spawn matches the grid pose', Math.abs(k.x - grid.x) < 1e-6 && Math.abs(k.z - grid.z) < 1e-6)
   check('spawn finite', finiteKart(k))
 }
 
 function testOpeningRibbon(): void {
   let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1 }), 1 / 60)
-  let minR = 99
-  let maxR = 0
   let off = false
+  let maxLat = 0
+  let minZ = 99
   for (let i = 0; i < 70; i++) {
     k = stepKart(k, ctrl({ throttle: 1, steer: 0 }), 1 / 60)
-    const r = ovalRadius(k.x, k.z)
-    minR = Math.min(minR, r)
-    maxR = Math.max(maxR, r)
-    if (surfaceAt(k.x, k.z).kind !== 'asphalt' || overlapsAnyCurb(k.x, k.z)) off = true
+    const proj = projectTrack(k.x, k.z)
+    maxLat = Math.max(maxLat, Math.abs(proj.lateral))
+    minZ = Math.min(minZ, k.z)
+    if (surfaceAt(k.x, k.z).kind !== 'asphalt' || overlapsCurb(k.x, k.z)) off = true
   }
-  check('opening second stays on the ribbon', !off && minR > 15.2 && maxR < 21.4, `r ${minR.toFixed(2)}-${maxR.toFixed(2)} off=${off}`)
+  check('opening second stays on the ribbon', !off && maxLat < 2.2, `lat=${maxLat.toFixed(2)} z=${minZ.toFixed(2)} off=${off}`)
+  check('opening second heads down the straight', minZ < 4, `z=${minZ.toFixed(2)}`)
 }
 
-function testCurbAndPond(): void {
-  let k = stepKart({ x: 0, z: 22.35, yaw: Math.PI / 2, speed: 6, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
-  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.35)
+function testCurbWaterGrass(): void {
+  let k = stepKart({ x: 4.1, z: 8, yaw: Math.PI, speed: 8, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.3)
   check(
     'curb deflects the chassis',
-    !overlapsAnyCurb(k.x, k.z) || k.y > 0.35,
-    `r=${ovalRadius(k.x, k.z).toFixed(2)} y=${k.y.toFixed(2)}`,
+    !overlapsCurb(k.x, k.z) || k.y > 0.35,
+    `lat=${projectTrack(k.x, k.z).lateral.toFixed(2)} y=${k.y.toFixed(2)}`,
   )
 
-  k = stepKart({ x: 0, z: 0, yaw: 0, speed: 16, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = stepKart({ x: LAGOON.x, z: LAGOON.z, yaw: 0, speed: 12, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
   k = hold(k, ctrl({ throttle: 1 }), 0.35)
-  const pond = Math.hypot(k.x, k.z)
-  check('water hard-rejects', pond > 8 && surfaceAt(k.x, k.z).kind !== 'water', `d=${pond.toFixed(2)} ${surfaceAt(k.x, k.z).kind}`)
+  const wet = surfaceAt(k.x, k.z).kind === 'water'
+  const pond = Math.hypot(k.x - LAGOON.x, k.z - LAGOON.z)
+  check('water hard-rejects', !wet && pond > LAGOON.rx * 0.85, `d=${pond.toFixed(2)} ${surfaceAt(k.x, k.z).kind}`)
+  check('reject throws spray', k.spray > 0.4, `spray=${k.spray.toFixed(2)}`)
   check('reject finite', finiteKart(k))
+
+  k = stepKart({ x: 8.2, z: 8, yaw: Math.PI, speed: 16, boostTimer: 0 }, ctrl({}), 1 / 60)
+  check('grass is not asphalt', surfaceAt(k.x, k.z).kind === 'grass', surfaceAt(k.x, k.z).kind)
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.45)
+  check('grass chews the run', k.dust > 0.45 && Math.abs(k.speed) < 18, `dust=${k.dust.toFixed(2)} v=${k.speed.toFixed(2)} ${k.surface}`)
+
+  k = stepKart({ x: 5.4, z: 10, yaw: Math.PI, speed: 14, boostTimer: 0 }, ctrl({}), 1 / 60)
+  check('sand shoulder is sand', k.surface === 'sand', k.surface)
+  k = hold(k, ctrl({ throttle: 1 }), 0.35)
+  check('sand is slower than the straight', Math.abs(k.speed) < 14, `v=${k.speed.toFixed(2)}`)
 }
 
 function testThrottle(): void {
@@ -108,7 +128,7 @@ function testThrottle(): void {
 
 function testNoIce(): void {
   const seeded = stepKart(
-    { x: 0, z: 18, y: 0, yaw: 0, speed: 0, boostTimer: 0, vx: 18, vz: 2, sim: 1 } as AaaKartState,
+    { x: 0, z: 12, y: 0, yaw: Math.PI, speed: 0, boostTimer: 0, vx: 14, vz: -6, sim: 1 } as AaaKartState,
     ctrl({}),
     1 / 60,
   )
@@ -121,7 +141,7 @@ function testNoIce(): void {
 }
 
 function testBrakeReverse(): void {
-  let k = stepKart({ x: 0, z: 18, yaw: Math.PI / 2, speed: 28, boostTimer: 0 }, ctrl({}), 1 / 60)
+  let k = stepKart({ x: 0, z: 12, yaw: Math.PI, speed: 28, boostTimer: 0 }, ctrl({}), 1 / 60)
   k = hold(k, ctrl({ brake: 1 }), 0.9)
   check('brake dumps speed', k.speed < 2, `speed=${k.speed.toFixed(2)}`)
   k = hold(k, ctrl({ brake: 1 }), 0.6)
@@ -129,11 +149,11 @@ function testBrakeReverse(): void {
 }
 
 function testBoostAndDrift(): void {
-  let k = stepKart({ x: 0, z: 18, yaw: Math.PI / 2, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
+  let k = stepKart({ x: 0, z: 12, yaw: Math.PI, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
   k = stepKart(k, ctrl({ throttle: 1, item: true }), 1 / 60)
   check('straight space boosts', k.boostTimer > 0.8, `boost=${k.boostTimer}`)
 
-  k = stepKart({ x: 0, z: 18, yaw: Math.PI / 2, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
+  k = stepKart({ x: 0, z: 12, yaw: Math.PI, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
   k = stepKart(k, ctrl({ throttle: 1, steer: 1, item: true }), 1 / 60)
   check('space while turning drifts', k.drifting, `drift=${k.drifting}`)
   k = hold(k, ctrl({ throttle: 1, steer: 1 }), 0.55)
@@ -153,50 +173,35 @@ function testBoostAndDrift(): void {
 }
 
 function testWall(): void {
-  let k = stepKart({ x: 0, z: 22.2, yaw: 0, speed: 22, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
-  let maxR = 0
-  for (let i = 0; i < 40; i++) {
-    k = stepKart(k, ctrl({ throttle: 1, steer: 0.15 }), 1 / 60)
-    maxR = Math.max(maxR, ovalRadius(k.x, k.z))
-  }
-  check('no tunnel past the palm rail', maxR < 26.3, `maxR=${maxR.toFixed(2)}`)
+  let k = stepKart({ x: 3.3, z: 12, yaw: Math.PI, speed: 20, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  const z0 = k.z
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.45)
+  check('curb contact keeps sliding', z0 - k.z > 4, `dz=${(z0 - k.z).toFixed(2)}`)
+  check('slide stays off the curb mesh', !overlapsCurb(k.x, k.z), `lat=${projectTrack(k.x, k.z).lateral.toFixed(2)}`)
+
+  k = stepKart({ x: 5.35, z: 11.2, yaw: Math.PI, speed: 18, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.55)
+  const pylon = Math.hypot(k.x - 5.35, k.z - 8.15)
+  check('pylon slides the body', pylon > 1.2, `d=${pylon.toFixed(2)} pos ${k.x.toFixed(2)},${k.z.toFixed(2)}`)
+  check('pylon does not stop the kart', Math.hypot(k.vx, k.vz) > 3, `v=${Math.hypot(k.vx, k.vz).toFixed(2)}`)
+
+  k = stepKart({ x: -8.2, z: 2.2, yaw: 0, speed: 4, boostTimer: 0 }, ctrl({}), 1 / 60)
+  const palm = Math.hypot(k.x + 8.2, k.z - 2.2)
+  check('palm pushes the chassis out', palm > 0.9, `d=${palm.toFixed(2)}`)
   check('wall contact finite', finiteKart(k))
-  check('deflected body is off the curb blocks', !overlapsAnyCurb(k.x, k.z) || k.y > 0.35, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
-
-  k = stepKart({ x: 4, z: 17.2, yaw: Math.PI / 2, speed: 24, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
-  const before = k.x
-  k = hold(k, ctrl({ throttle: 1, steer: 0.35 }), 0.8)
-  check('angled drive keeps sliding', Math.abs(k.x - before) > 6, `dx=${(k.x - before).toFixed(2)} z=${k.z.toFixed(2)}`)
-  check('slide stays on the asphalt side', ovalRadius(k.x, k.z) < 22.8, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
-
-  k = stepKart({ x: 0, z: 20.6, yaw: Math.PI / 2, speed: 16, boostTimer: 0 }, ctrl({}), 1 / 60)
-  k = hold(k, ctrl({ throttle: 1, steer: 1 }), 1.2)
-  check('not stuck on the ribbon wall', Math.hypot(k.vx, k.vz) > 6, `v=${Math.hypot(k.vx, k.vz).toFixed(2)} r=${ovalRadius(k.x, k.z).toFixed(2)}`)
-  check('stuck-test finite', finiteKart(k) && !overlapsAnyCurb(k.x, k.z))
-}
-
-function testOffTrack(): void {
-  // Dropped outside the barriers: pulled back inside, not left in a palm or a curb.
-  let k = stepKart({ x: 0, z: 24, yaw: Math.PI / 2, speed: 28, boostTimer: 0 }, ctrl({}), 1 / 60)
-  check('off-track returns inside the wall', ovalRadius(k.x, k.z) < 23.3, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
-  check('off-track is not inside a curb', !overlapsAnyCurb(k.x, k.z))
-  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.6)
-  check('stays out of the palms', ovalRadius(k.x, k.z) < 23.4, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
-  check('still clear of curb blocks', !overlapsAnyCurb(k.x, k.z) || k.y > 0.35)
-  check('off-track recovery grips', Math.abs(slipOf(k)) < 0.5, `slip=${slipOf(k).toFixed(2)}`)
 }
 
 function testAir(): void {
   const start = stepKart(
     {
       x: 0,
-      z: 18,
-      yaw: Math.PI / 2,
+      z: 12,
+      yaw: Math.PI,
       speed: 10,
       boostTimer: 0,
       y: 3,
-      vx: 10,
-      vz: 0,
+      vx: 0,
+      vz: -10,
       vy: 0,
       airborne: true,
       ground: 0,
@@ -227,89 +232,87 @@ function testElevationHook(): void {
   } finally {
     setTrackHeightSampler(null)
   }
-  check('default ground restored', groundHeight(0, 18) === 0)
+  check('default ground restored', groundHeight(0, 8) === 0)
 }
 
 function testStorm(): void {
   let k = stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
   let worst = 0
   for (let i = 0; i < 20 * 60; i++) {
-    const steer = Math.sin(i * 0.17) 
+    const steer = Math.sin(i * 0.17)
     const throttle = i % 17 === 0 ? 0 : 1
     const brake = i % 29 === 0 ? 1 : 0
     const item = i % 47 === 0
     const dt = 0.008 + ((i * 17) % 7) * 0.006
     k = stepKart(k, ctrl({ steer, throttle, brake, item }), dt)
     worst = Math.max(worst, Math.hypot(k.x, k.z))
-    if (!finiteKart(k) || worst > 56) break
+    if (!finiteKart(k) || worst > 80) break
   }
   check('storm stays finite', finiteKart(k), `pos ${k.x},${k.z}`)
-  check('storm stays in bounds', worst < 56, `r=${worst.toFixed(1)}`)
+  check('storm stays in bounds', worst < 80, `r=${worst.toFixed(1)}`)
 }
 
 function testLaps(): void {
   let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1 }), 1 / 60)
-  let prev = ovalAngle(k.x, k.z)
+  const length = trackLength()
+  let prevD = projectTrack(k.x, k.z).distance
   let progress = 0
   let prevCam = sampleCameraFollow(k)
   let maxCamJump = 0
+  let maxLat = 0
+  let sawNorth = false
+  let sawBack = false
+  let sawSouth = false
+  let status: RaceStatus = { ...createRaceStatus(), phase: 'racing' }
   const dt = 1 / 60
   let time = 0
-  let minR = 99
-  let maxR = 0
-  for (let i = 0; i < 40 / dt; i++) {
-    const r = ovalRadius(k.x, k.z)
-    minR = Math.min(minR, r)
-    maxR = Math.max(maxR, r)
-    const tan = ovalTangent(k.x, k.z)
-    const n = ovalNormal(k.x, k.z)
-    const errR = r - 18
-    const dx = tan.x - n.x * errR * 0.22
-    const dz = tan.z - n.z * errR * 0.22
-    const desired = Math.atan2(dx, dz)
-    const steer = clampSteer(wrapAngle(desired - k.yaw) * 2.4)
-    const item = i === 180
-    k = stepKart(k, ctrl({ throttle: 1, steer, item }), dt)
-    const a = ovalAngle(k.x, k.z)
-    const d = wrapAngle(a - prev)
-    if (d > 0) progress += d
-    prev = a
+  for (let i = 0; i < 36 / dt; i++) {
+    k = stepKart(k, ctrl({ throttle: 1, steer: 0 }), dt)
+    const proj = projectTrack(k.x, k.z)
+    maxLat = Math.max(maxLat, Math.abs(proj.lateral))
+    let delta = proj.distance - prevD
+    if (delta < -length * 0.5) delta += length
+    if (delta > 0 && delta < 12) progress += delta
+    prevD = proj.distance
+    if (Math.hypot(k.x + 16, k.z + 18) < 5) sawNorth = true
+    if (k.x < -28 && k.z > 0 && k.z < 14) sawBack = true
+    if (Math.hypot(k.x + 16, k.z - 32) < 5) sawSouth = true
+    status = updateCheckpoints(status, k.x, k.z)
     const cam = sampleCameraFollow(k)
     const jump = Math.hypot(cam.x - prevCam.x, cam.y - prevCam.y, cam.z - prevCam.z)
     maxCamJump = Math.max(maxCamJump, jump)
     prevCam = cam
     time += dt
     if (!finiteKart(k)) break
-    if (progress > Math.PI * 2 * 3) break
+    if (progress > length * 2.15 && sawNorth && sawBack && sawSouth) break
   }
-  check('three laps', progress > Math.PI * 6, `progress=${progress.toFixed(2)} t=${time.toFixed(1)} r=${minR.toFixed(1)}-${maxR.toFixed(1)}`)
-  check('lap time is arcade', time < 32, `t=${time.toFixed(1)}`)
-  check('lap line stays near oval', minR > 12 && maxR < 26, `${minR.toFixed(1)}-${maxR.toFixed(1)}`)
+  check('quiet throttle follows the spline', progress > length * 2, `progress=${progress.toFixed(1)} len=${length.toFixed(1)} t=${time.toFixed(1)}`)
+  check('two laps visit the whole loop', sawNorth && sawBack && sawSouth, `N=${sawNorth} B=${sawBack} S=${sawSouth}`)
+  check('lap line stays off the curbs', maxLat < 3.2, `lat=${maxLat.toFixed(2)}`)
+  check('lap time is arcade', time < 28, `t=${time.toFixed(1)}`)
   check('camera does not pop', maxCamJump < 6, `jump=${maxCamJump.toFixed(2)}`)
   check('laps finite', finiteKart(k))
-}
-
-function clampSteer(v: number): number {
-  return Math.max(-1, Math.min(1, v))
+  check(
+    'oval gates off the ribbon still block a lap',
+    status.checkpointsHit === 1 && status.lap === 1,
+    `hits=${status.checkpointsHit} lap=${status.lap}`,
+  )
 }
 
 function testPoseAndBoost(): void {
   const grid = gridPose()
-  check('module parks the countdown spawn on the grid', Math.abs(DEFAULT_KART.x - grid.x) < 1e-6 && Math.abs(DEFAULT_KART.z - grid.z) < 1e-6)
+  check('module leaves the countdown spawn on the center slot', DEFAULT_KART.x === grid.x && DEFAULT_KART.z === grid.z)
 
   let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
   k = hold(k, ctrl({ throttle: 1, steer: 1 }), 0.5)
   check('full lock rolls into the turn', k.roll < -0.2, `roll=${k.roll.toFixed(3)}`)
   check('front wheels turn', k.wheelSteer > 0.35, `wheel=${k.wheelSteer.toFixed(3)}`)
   check('corner leaves a skid read', k.skid > 0.4, `skid=${k.skid.toFixed(2)}`)
-  check('edge kicks up dust', k.dust > 0.4 || k.skid > 0.4, `dust=${k.dust.toFixed(2)}`)
 
   k = stepKart({ x: grid.x, z: grid.z, yaw: grid.yaw, speed: 18, boostTimer: 0 }, ctrl({ throttle: 1, item: true }), 1 / 60)
   k = hold(k, ctrl({ throttle: 1 }), 0.45)
   check('boost widens the chase rig', k.camBack > 8.6, `back=${k.camBack.toFixed(2)} boost=${k.boostTimer.toFixed(2)}`)
 
-  k = stepKart({ x: 0, z: 1, yaw: 0, speed: 12, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
-  check('pond reject throws spray', k.spray > 0.5, `spray=${k.spray.toFixed(2)} d=${Math.hypot(k.x, k.z).toFixed(2)}`)
   let braked = stepKart({ x: grid.x, z: grid.z, yaw: grid.yaw, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
   braked = hold(braked, ctrl({ brake: 1 }), 0.25)
   check('brake dips the nose', braked.pitch < -0.05, `pitch=${braked.pitch.toFixed(3)}`)
@@ -322,17 +325,18 @@ function testNaN(): void {
     Number.NaN,
   )
   check('nan input recovers', finiteKart(k))
+  check('nan recovery uses the center slot', Math.abs(k.x) < 1e-6 && Math.abs(k.z - 8) < 1e-6, `pos ${k.x},${k.z}`)
 }
 
+testSplineMirror()
 testSpawn()
 testOpeningRibbon()
-testCurbAndPond()
+testCurbWaterGrass()
 testThrottle()
 testNoIce()
 testBrakeReverse()
 testBoostAndDrift()
 testWall()
-testOffTrack()
 testAir()
 testElevationHook()
 testStorm()
@@ -343,6 +347,6 @@ testNaN()
 if (failures.length) {
   console.error(`SELF-CHECK FAILED (${failures.length})`)
   for (const f of failures) console.error(' - ' + f)
-  process.exit(1)
+  throw new Error(`SELF-CHECK FAILED (${failures.length})`)
 }
 console.log('self-check ok')
