@@ -43,7 +43,7 @@ export function buildStrip(
         const b = row + k + 1
         const c = next + k
         const d = next + k + 1
-        indices.push(a, c, b, b, c, d)
+        indices.push(a, b, c, b, d, c)
       }
     }
   }
@@ -114,11 +114,11 @@ export function buildCurb(
       const c = ring[(i + 1) * cols + k]
       const d = ring[(i + 1) * cols + k + 1]
       if (side > 0) {
-        face(a, c, b, color)
-        face(b, c, d, color)
-      } else {
         face(a, b, c, color)
         face(b, d, c, color)
+      } else {
+        face(a, c, b, color)
+        face(b, c, d, color)
       }
     }
   }

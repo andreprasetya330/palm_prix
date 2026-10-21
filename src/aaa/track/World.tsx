@@ -102,8 +102,8 @@ function Grass({ map }: { map: THREE.Texture }) {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
-      const ahead = THREE.MathUtils.clamp((12 - z) / 40, 0, 1)
-      const side = THREE.MathUtils.clamp((Math.abs(x + 10) - 8) / 55, 0, 1)
+      const ahead = THREE.MathUtils.clamp((6 - z) / 24, 0, 1)
+      const side = THREE.MathUtils.clamp((Math.abs(x + 8) - 6) / 36, 0, 1)
       const t = Math.max(ahead, side)
       c.copy(near).lerp(mid, Math.min(1, t * 1.35))
       if (t > 0.4) c.lerp(far, (t - 0.4) / 0.6)

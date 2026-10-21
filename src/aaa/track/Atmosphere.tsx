@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { palette } from './palette'
 import type { TrackTextures } from './textures'
 
-const SUN = new THREE.Vector3(-8, 17, -6)
+const SUN = new THREE.Vector3(10, 14, -16)
 
 function SkyDome() {
   const geo = useMemo(() => {
@@ -131,14 +131,13 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
   return (
     <group>
       <SkyDome />
-      <sprite position={[SUN.x, SUN.y, SUN.z]} scale={[9, 9, 1]} renderOrder={-1}>
+      <sprite position={[7.5, 5.6, -10]} scale={[5.5, 5.5, 1]}>
         <spriteMaterial map={textures.sun} transparent depthWrite={false} fog={false} />
       </sprite>
-      <CloudPuff position={[-5, 8.5, 2]} scale={1.15} phase={0.2} />
-      <CloudPuff position={[8, 7.2, -4]} scale={0.95} phase={1.1} />
-      <CloudPuff position={[-14, 9.5, -12]} scale={1.35} phase={2.2} />
-      <CloudPuff position={[3, 10.5, -22]} scale={1.2} phase={0.6} />
-      <CloudPuff position={[18, 8, 6]} scale={0.8} phase={1.7} />
+      <CloudPuff position={[-6, 4.8, -6]} scale={0.85} phase={0.2} />
+      <CloudPuff position={[4, 5.4, -14]} scale={1.05} phase={1.1} />
+      <CloudPuff position={[-12, 5.1, -18]} scale={0.9} phase={2.2} />
+      <CloudPuff position={[14, 4.6, -2]} scale={0.7} phase={0.6} />
     </group>
   )
 }

@@ -177,9 +177,10 @@ export function createTrackTextures(): TrackTextures {
     const img = ctx.createImageData(256, 256)
     for (let i = 0; i < grassH.length; i++) {
       const n = grassH[i]
-      img.data[i * 4] = 48 + n * 50
-      img.data[i * 4 + 1] = 150 + n * 70
-      img.data[i * 4 + 2] = 60 + n * 24
+      const blot = n > 0.66 ? 55 : n < 0.34 ? -40 : 0
+      img.data[i * 4] = 36 + n * 70 + blot * 0.4
+      img.data[i * 4 + 1] = 120 + n * 110 + blot
+      img.data[i * 4 + 2] = 42 + n * 30
       img.data[i * 4 + 3] = 255
     }
     ctx.putImageData(img, 0, 0)

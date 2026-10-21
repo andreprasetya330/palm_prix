@@ -45,15 +45,15 @@ function Pylon({ x }: { x: number }) {
         <cylinderGeometry args={[0.55, 0.62, 0.36, 12]} />
         <meshStandardMaterial color={palette.gold} roughness={0.4} />
       </mesh>
-      <mesh castShadow receiveShadow position={[0, 1.85, 0]}>
-        <cylinderGeometry args={[0.28, 0.4, 3.3, 12]} />
+      <mesh castShadow receiveShadow position={[0, 1.45, 0]}>
+        <cylinderGeometry args={[0.28, 0.4, 2.5, 12]} />
         <meshStandardMaterial color={palette.arch} roughness={0.45} />
       </mesh>
-      <mesh castShadow position={[0, 2.55, 0]}>
+      <mesh castShadow position={[0, 2.15, 0]}>
         <torusGeometry args={[0.42, 0.07, 8, 18]} />
         <meshStandardMaterial color={palette.gold} roughness={0.35} metalness={0.15} />
       </mesh>
-      <mesh position={[0, 3.55, 0]} castShadow>
+      <mesh position={[0, 2.85, 0]} castShadow>
         <sphereGeometry args={[0.22, 12, 10]} />
         <meshStandardMaterial
           color={palette.gold}
@@ -99,21 +99,21 @@ export function Ceremony({ textures }: { textures: TrackTextures }) {
       <Pylon x={-5.35} />
       <Pylon x={5.35} />
 
-      <mesh position={[0, 3.22, GRID.gateZ - 0.08]} castShadow>
-        <boxGeometry args={[11.2, 1.38, 0.12]} />
+      <mesh position={[0, 2.35, GRID.gateZ - 0.08]} castShadow>
+        <boxGeometry args={[11.2, 1.05, 0.12]} />
         <meshStandardMaterial color={palette.gold} roughness={0.35} metalness={0.12} />
       </mesh>
-      <mesh position={[0, 3.22, GRID.gateZ]} castShadow>
-        <boxGeometry args={[10.85, 1.12, 0.16]} />
+      <mesh position={[0, 2.35, GRID.gateZ]} castShadow>
+        <boxGeometry args={[10.85, 0.86, 0.16]} />
         <meshStandardMaterial map={textures.banner} roughness={0.42} />
       </mesh>
 
-      <mesh position={[0, 2.48, GRID.gateZ]} castShadow>
-        <boxGeometry args={[7.4, 0.16, 0.28]} />
+      <mesh position={[0, 1.78, GRID.gateZ]} castShadow>
+        <boxGeometry args={[7.4, 0.14, 0.28]} />
         <meshStandardMaterial color={palette.ink} roughness={0.4} />
       </mesh>
       {lights.map((light) => (
-        <mesh key={light.x} position={[light.x, 2.48, GRID.gateZ + 0.2]} castShadow>
+        <mesh key={light.x} position={[light.x, 1.78, GRID.gateZ + 0.2]} castShadow>
           <sphereGeometry args={[0.2, 14, 12]} />
           <meshStandardMaterial
             color={light.color}
