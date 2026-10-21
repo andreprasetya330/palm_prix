@@ -305,7 +305,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               {[0, 1, 2].map((i) => (
                 <mesh key={i} rotation={[0, 0, (i * Math.PI * 2) / 3]}>
                   <cylinderGeometry args={[0.01, 0.01, 0.28, 8]} />
-                  <meshStandardMaterial color="#ffc83d" metalness={0.65} roughness={0.28} />
+                  <meshStandardMaterial color="#1a1024" metalness={0.35} roughness={0.4} />
                 </mesh>
               ))}
             </group>
