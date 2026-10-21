@@ -158,10 +158,24 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 .pp-count.is-2 { align-items: center; }
 .pp-count.is-1,
 .pp-count.is-go {
-  align-items: flex-start;
-  height: 12vh;
-  min-height: 78px;
-  max-height: 104px;
+  align-items: center;
+  height: 118px;
+  min-height: 118px;
+  max-height: 118px;
+}
+
+.pp-count.is-go .pp-count-burst {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.pp-count.is-go .pp-count-burst b {
+  color: #fff6cf;
+  font-size: 4.8rem;
+  letter-spacing: 0.08em;
+  -webkit-text-stroke: 8px #10241c;
+  text-shadow: 0 6px 0 #ff4b32;
 }
 
 .pp-count-burst {
@@ -182,18 +196,6 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
   color: #ff4b32;
   -webkit-text-stroke: 7px #10241c;
   paint-order: stroke fill;
-}
-
-.pp-count.is-go .pp-count-burst {
-  width: 92px;
-  height: 92px;
-  background: radial-gradient(circle, #fffdf8 0 18%, #7dffc3 46%, rgba(125, 255, 195, 0) 68%);
-}
-
-.pp-count.is-go .pp-count-burst b {
-  color: #0d8f6e;
-  font-size: 2.8rem;
-  letter-spacing: 0.04em;
 }
 
 .pp-skyword {
