@@ -104,9 +104,9 @@ function Grass() {
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      // Broad fairway in the first-corner infield. One shape, not a tile.
-      const pocket = ((x + 10) / 16) ** 2 + ((z + 4) / 13) ** 2
-      const fair = lat < -1.2 ? 1 - THREE.MathUtils.smoothstep(pocket, 0.72, 1.08) : 0
+      // Yellow fairway in the middle of the first-corner lawn, emerald around it.
+      const pocket = ((x + 8.5) / 8) ** 2 + ((z + 2.5) / 7) ** 2
+      const fair = lat < -3.2 ? 1 - THREE.MathUtils.smoothstep(pocket, 0.62, 0.92) : 0
       c.copy(inside).lerp(outside, edge)
       c.lerp(fairway, fair)
       c.lerp(far, horizon * horizon)
@@ -281,7 +281,7 @@ function Crowd() {
 
 function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture }) {
   return (
-    <group position={[16.4, 0, -11.2]} rotation={[0, -0.7, 0]}>
+    <group position={[12.4, 0, -8.4]} rotation={[0, -0.48, 0]}>
       {[
         { x: 0.7, y: 0.28, w: 1.7, h: 0.56, color: palette.cream },
         { x: 1.85, y: 0.82, w: 1.55, h: 0.5, color: '#ff8aa0' },
@@ -293,8 +293,8 @@ function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture 
           <meshStandardMaterial map={grain} color={tier.color} roughness={0.72} />
         </mesh>
       ))}
-      <mesh position={[2.3, 2.85, 0]} castShadow>
-        <boxGeometry args={[5.4, 0.16, 14.6]} />
+      <mesh position={[3.15, 2.95, 0]} castShadow>
+        <boxGeometry args={[6.6, 0.18, 14.8]} />
         <meshStandardMaterial map={grain} color={palette.roof} roughness={0.55} />
       </mesh>
       <mesh position={[2.3, 2.7, 0]}>
@@ -324,46 +324,44 @@ function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture 
 
 /** Same azimuth as the gate key, tight on the bank so the start posts stay side-lit. */
 function BankKey() {
-  const light = useRef<THREE.SpotLight>(null)
-  useLayoutEffect(() => {
-    const spot = light.current
-    if (!spot) return
-    spot.target.position.set(14.5, 1.2, -10)
-    spot.parent?.add(spot.target)
-    spot.target.updateMatrixWorld()
-  }, [])
+  const target = useMemo(() => new THREE.Object3D(), [])
   return (
-    <spotLight
-      ref={light}
-      position={[36, 13, 6]}
-      color="#fff0c4"
-      intensity={2200}
-      distance={52}
-      angle={0.46}
-      penumbra={0.18}
-      decay={2}
-      castShadow
-      shadow-mapSize-width={1024}
-      shadow-mapSize-height={1024}
-      shadow-bias={-0.00035}
-      shadow-camera-near={6}
-      shadow-camera-far={48}
-    />
+    <group>
+      <primitive object={target} position={[8.2, 1.3, -7.2]} />
+      <spotLight
+        target={target}
+        position={[34, 12, 8]}
+        color="#fff0c4"
+        intensity={1600}
+        distance={48}
+        angle={0.4}
+        penumbra={0.15}
+        decay={2}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-bias={-0.0003}
+        shadow-camera-near={8}
+        shadow-camera-far={46}
+      />
+    </group>
   )
 }
 
-/** Posts on the outside sand so the gate's sun cuts a shadow across the bank. */
+/** Slabs on the outside sand so the gate's sun cuts a shadow across the bank. */
 function BankPosts() {
-  const posts = [-0.15, -0.45, -0.75, -1.05].map((theta) => {
-    const radius = 21.4
-    return [-16 + radius * Math.cos(theta), -2 + radius * Math.sin(theta)] as const
+  const slabs = [-4, -7.2, -10.2, -13].map((z) => {
+    const radius = 21.6
+    const dz = z + 2
+    const x = -16 + Math.sqrt(Math.max(0, radius * radius - dz * dz))
+    return [x, z] as const
   })
   return (
     <group>
-      {posts.map(([x, z]) => (
-        <mesh key={`${x.toFixed(1)}-${z.toFixed(1)}`} position={[x, 0.9, z]} castShadow>
-          <boxGeometry args={[0.28, 1.8, 0.28]} />
-          <meshStandardMaterial color={palette.archDeep} roughness={0.55} />
+      {slabs.map(([x, z]) => (
+        <mesh key={z} position={[x, 1.7, z]} rotation={[0, 0.62, 0]} castShadow>
+          <boxGeometry args={[0.42, 3.4, 1.35]} />
+          <meshStandardMaterial color={palette.archDeep} roughness={0.5} />
         </mesh>
       ))}
     </group>
@@ -400,7 +398,7 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
 /** Outside the first corner. One board, facing the chase, clear of the lens. */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[14.5, 0, -15]}>
+    <group position={[6.4, 0, -13.6]}>
       <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[1.35, 1.6, 0.8, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
@@ -419,8 +417,8 @@ function ApexLantern({ sign }: { sign: THREE.Texture }) {
         />
       </mesh>
       <pointLight position={[0, 6.1, 0.4]} color={palette.gold} intensity={12} distance={8} decay={2} />
-      <mesh position={[0, 4.55, 0.55]}>
-        <planeGeometry args={[7.4, 2.0]} />
+      <mesh position={[0, 5.5, 0.55]}>
+        <planeGeometry args={[8.2, 2.15]} />
         <meshStandardMaterial map={sign} roughness={0.4} />
       </mesh>
     </group>
