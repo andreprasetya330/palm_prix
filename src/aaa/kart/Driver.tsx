@@ -228,8 +228,8 @@ function Glove({ x }: { x: number }) {
         <sphereGeometry args={[0.04, 12, 10]} />
         <meshStandardMaterial color="#d8c4ae" roughness={0.95} />
       </mesh>
-      <mesh position={[side * 0.07, 0.07, 0.02]} rotation={[0.15, 0, side * 1.05]} castShadow>
-        <capsuleGeometry args={[0.026, 0.055, 8, 12]} />
+      <mesh position={[side * 0.085, 0.095, 0.03]} rotation={[-0.4, 0, side * 0.55]} castShadow>
+        <capsuleGeometry args={[0.034, 0.09, 8, 12]} />
         <meshStandardMaterial color="#fff6ea" roughness={0.86} />
       </mesh>
     </group>
