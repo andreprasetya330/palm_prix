@@ -315,16 +315,17 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <group position={[0, 0.64, 0.48]}>
               <mesh geometry={glassGeo}>
                 <meshPhysicalMaterial
-                  color="#e5fbff"
+                  color="#f4fdff"
                   transparent
-                  opacity={0.38}
-                  roughness={0.04}
-                  metalness={0.08}
+                  opacity={0.28}
+                  roughness={0.02}
+                  metalness={0}
                   clearcoat={1}
-                  clearcoatRoughness={0.04}
+                  clearcoatRoughness={0.02}
                   envMap={env ?? undefined}
-                  envMapIntensity={1.5}
+                  envMapIntensity={0.22}
                   side={THREE.DoubleSide}
+                  depthWrite={false}
                 />
               </mesh>
               <mesh geometry={glassFrameGeo}>
@@ -354,10 +355,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                   envMapIntensity={0.8}
                 />
               </mesh>
-              <mesh geometry={endplateGeo} position={[0.8, -0.02, -0.02]} castShadow>
+              <mesh geometry={endplateGeo} position={[0.8, -0.02, -0.02]} scale={0.72} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
-              <mesh geometry={endplateGeo} position={[-0.8, -0.02, -0.02]} castShadow>
+              <mesh geometry={endplateGeo} position={[-0.8, -0.02, -0.02]} scale={0.72} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
             </group>
@@ -372,7 +373,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <TailLight x={-0.24} />
             <TailLight x={0.24} />
 
-            <group position={[0, 0.34, -1.0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <group position={[0, 0.32, -1.18]} rotation={[-Math.PI / 2, 0, 0]}>
               <mesh geometry={exhaustGeo} castShadow>
                 <meshStandardMaterial
                   color="#d5dee8"
@@ -394,7 +395,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <group
               name="boost-flame"
               ref={flame}
-              position={[0, 0.34, -1.22]}
+              position={[0, 0.32, -1.42]}
               visible={boosting}
             >
               <group rotation={[-Math.PI / 2, 0, 0]} scale={[1.35, -1.7, 1.35]}>
@@ -522,25 +523,25 @@ function PalmMark({
 }) {
   return (
     <group position={position} scale={scale}>
-      <mesh>
-        <cylinderGeometry args={[0.16, 0.16, 0.04, 24]} />
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.03, 20]} />
         <meshStandardMaterial color="#ffc83d" metalness={0.45} roughness={0.32} />
       </mesh>
       {[
-        [-0.95, 0.85],
+        [-0.9, 0.85],
         [-0.45, 1],
-        [0, 1.2],
+        [0, 1.15],
         [0.45, 1],
-        [0.95, 0.85],
+        [0.9, 0.85],
       ].map(([yaw, sc], i) => (
         <mesh
           key={i}
           geometry={leafGeo}
-          position={[0, 0.03, 0]}
-          rotation={[0.15, yaw, 0]}
-          scale={[sc, sc, sc]}
+          position={[0, 0.02, 0]}
+          rotation={[0, 0, yaw]}
+          scale={[sc * 0.7, sc, sc]}
         >
-          <meshStandardMaterial color={i % 2 === 0 ? '#14a35a' : '#0c7a40'} roughness={0.5} />
+          <meshStandardMaterial color={i % 2 === 0 ? '#14a35a' : '#0c7a40'} roughness={0.5} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>

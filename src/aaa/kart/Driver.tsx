@@ -114,7 +114,11 @@ export function Driver({ texture, envMap }: Props) {
           </group>
         )}
 
-        <mesh position={[0, -0.01, 0.1]} scale={[1.05, 0.72, 0.55]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 0.02, -0.02]}>
+          <torusGeometry args={[0.25, 0.04, 8, 18, Math.PI]} />
+          <meshPhysicalMaterial color="#ff3d66" roughness={0.32} clearcoat={0.6} />
+        </mesh>
+        <mesh position={[0, -0.01, 0.12]} scale={[1.25, 0.78, 0.62]}>
           <sphereGeometry args={[0.2, 24, 16]} />
           <meshPhysicalMaterial
             color={paint.visor}

@@ -669,8 +669,8 @@ function kartPlan(nose: number, tail: number, waist: number): THREE.Shape {
   // Nose is -Y here. rotX(-90) maps that to +Z.
   s.moveTo(0, -nose)
   s.bezierCurveTo(waist * 0.85, -nose * 0.82, waist, -nose * 0.28, waist * 0.96, 0.02)
-  s.bezierCurveTo(waist * 0.92, tail * 0.35, waist * 0.78, tail * 0.72, waist * 0.62, tail)
-  s.lineTo(-waist * 0.62, tail)
+  s.bezierCurveTo(waist * 0.9, tail * 0.35, waist * 0.62, tail * 0.72, waist * 0.42, tail)
+  s.lineTo(-waist * 0.42, tail)
   s.bezierCurveTo(-waist * 0.78, tail * 0.72, -waist * 0.92, tail * 0.35, -waist * 0.96, 0.02)
   s.bezierCurveTo(-waist, -nose * 0.28, -waist * 0.85, -nose * 0.82, 0, -nose)
   return s
@@ -680,9 +680,9 @@ function extrudePlan(shape: THREE.Shape, depth: number, y: number): THREE.Buffer
   const g = new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
-    bevelThickness: 0.055,
-    bevelSize: 0.06,
-    bevelSegments: 3,
+    bevelThickness: 0.09,
+    bevelSize: 0.11,
+    bevelSegments: 4,
     curveSegments: 18,
   })
   g.rotateX(-Math.PI / 2)
