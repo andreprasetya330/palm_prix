@@ -1,5 +1,5 @@
 /** Sunny Palm Prix grade. Neutral tonemap happens later in OutputPass.
- *  Boost adds a warm shift and edge streaks without crushing the kart. */
+ *  Boost adds a warm shift. Speed lines belong on the exhaust, not in the sky. */
 export const PalmGradeShader = {
   name: 'PalmGrade',
   uniforms: {
@@ -20,16 +20,6 @@ export const PalmGradeShader = {
 
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
-      vec2 d = vUv - vec2(0.5);
-      float dist = length(d);
-      float edge = smoothstep(0.5, 0.74, dist) * uBoost;
-
-      if (edge > 0.001) {
-        float ang = atan(d.y, d.x);
-        float lines = pow(abs(sin(ang * 36.0)), 48.0);
-        c += vec3(0.9, 0.52, 0.16) * lines * edge * 0.28;
-      }
-
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
       float sat = mix(1.08, 1.16, uBoost);
       c = mix(vec3(luma), c, sat);
