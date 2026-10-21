@@ -341,8 +341,6 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <Headlight x={-0.2} z={noseZ - 0.02} />
             <Headlight x={0.2} z={noseZ - 0.02} />
 
-            <PalmMark position={[0, 0.72, noseZ - 0.22]} scale={0.7} />
-
             <group position={[0, 1.18, -1.02]} rotation={[-0.32, 0, 0]}>
               <mesh geometry={wing} castShadow>
                 <meshPhysicalMaterial
