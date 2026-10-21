@@ -26,6 +26,7 @@ import {
   undertrayGeo,
   wingGeo,
 } from './geom'
+import { findPalmDartWheels, PalmDartModel } from './PalmDartModel'
 import { LAYOUT } from './palette'
 
 export type HeroKartProps = {
@@ -33,10 +34,11 @@ export type HeroKartProps = {
   driverTextureUrl: string | null
 }
 
-const SHOT =
-  typeof window === 'undefined'
-    ? null
-    : new URLSearchParams(window.location.search).get('shot')
+const SEARCH =
+  typeof window === 'undefined' ? null : new URLSearchParams(window.location.search)
+const SHOT = SEARCH?.get('shot') ?? null
+/** Default visual is the Blender glTF. `?mesh=code` keeps the procedural meshes. */
+const USE_GLTF = SEARCH?.get('mesh') !== 'code'
 
 /** This branch's oval: x = sin(t) * r * 1.15, z = cos(t) * r. Asphalt is about r 14–22. */
 function poseOnOval(x: number, z: number, yaw: number) {
@@ -136,8 +138,9 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const root = useRef<THREE.Group>(null)
   const roll = useRef<THREE.Group>(null)
   const squat = useRef<THREE.Group>(null)
-  const spins = useRef<Array<THREE.Group | null>>([null, null, null, null])
-  const steers = useRef<Array<THREE.Group | null>>([null, null])
+  const gltfRoot = useRef<THREE.Group | null>(null)
+  const spins = useRef<Array<THREE.Object3D | null>>([null, null, null, null])
+  const steers = useRef<Array<THREE.Object3D | null>>([null, null])
   const flame = useRef<THREE.Group>(null)
   const steerAngle = useRef(0)
   const rollAngle = useRef(0)
@@ -200,6 +203,11 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
     const spin = kart.speed * 2.3 * step
     for (const w of spins.current) if (w) w.rotation.x += spin
     for (const s of steers.current) if (s) s.rotation.y = steerAngle.current
+    if (USE_GLTF && gltfRoot.current && !spins.current[0]) {
+      const wheels = findPalmDartWheels(gltfRoot.current)
+      spins.current = [wheels.WheelFL, wheels.WheelFR, wheels.WheelRL, wheels.WheelRR]
+      steers.current = [wheels.WheelFL, wheels.WheelFR]
+    }
     if (roll.current) {
       roll.current.rotation.z = rollAngle.current
       roll.current.rotation.x = THREE.MathUtils.clamp(-kart.speed * 0.0035, -0.07, 0.05)
@@ -264,6 +272,33 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const boosting = kart.boostTimer > 0
   const noseZ = anchors.nose.z
 
+  const boostFlame = (
+    <group name="boost-flame" position={[0, 0.32, -1.36]} visible={boosting}>
+      <group ref={flame} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh geometry={flameGeo}>
+          <meshBasicMaterial
+            color="#ff4a16"
+            transparent
+            opacity={0.95}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh geometry={flameGeo} scale={[0.48, 0.62, 0.48]}>
+          <meshBasicMaterial
+            color="#fff6b0"
+            transparent
+            opacity={1}
+            blending={THREE.AdditiveBlending}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
+      {boosting && <pointLight color="#ffb15a" intensity={6} distance={4.5} decay={2} />}
+    </group>
+  )
+
   return (
     <group ref={root} name="palm-dart">
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} renderOrder={-1}>
@@ -273,6 +308,27 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
 
       <group ref={roll} position={[0, LAYOUT.wheelY, 0]}>
         <group position={[0, -LAYOUT.wheelY, 0]}>
+          {USE_GLTF ? (
+            <group ref={squat}>
+              <PalmDartModel
+                ref={(el) => {
+                  gltfRoot.current = el
+                  if (el) {
+                    const wheels = findPalmDartWheels(el)
+                    spins.current = [
+                      wheels.WheelFL,
+                      wheels.WheelFR,
+                      wheels.WheelRL,
+                      wheels.WheelRR,
+                    ]
+                    steers.current = [wheels.WheelFL, wheels.WheelFR]
+                  }
+                }}
+              />
+              {boostFlame}
+            </group>
+          ) : (
+            <>
           {WHEELS.map((w, i) => (
             <group
               key={i}
@@ -458,33 +514,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               <meshStandardMaterial color="#ff2d55" emissive="#ff2d55" emissiveIntensity={1.4} />
             </mesh>
 
-            <group name="boost-flame" position={[0, 0.32, -1.36]} visible={boosting}>
-              <group ref={flame} rotation={[-Math.PI / 2, 0, 0]}>
-                <mesh geometry={flameGeo}>
-                  <meshBasicMaterial
-                    color="#ff4a16"
-                    transparent
-                    opacity={0.95}
-                    side={THREE.DoubleSide}
-                    depthWrite={false}
-                  />
-                </mesh>
-                <mesh geometry={flameGeo} scale={[0.48, 0.62, 0.48]}>
-                  <meshBasicMaterial
-                    color="#fff6b0"
-                    transparent
-                    opacity={1}
-                    blending={THREE.AdditiveBlending}
-                    side={THREE.DoubleSide}
-                    depthWrite={false}
-                  />
-                </mesh>
-              </group>
-              {boosting && (
-                <pointLight color="#ffb15a" intensity={6} distance={4.5} decay={2} />
-              )}
-            </group>
+            {boostFlame}
           </group>
+            </>
+          )}
         </group>
       </group>
     </group>
