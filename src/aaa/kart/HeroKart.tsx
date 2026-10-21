@@ -396,6 +396,26 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               <mesh geometry={endplateGeo} position={[-0.82, 0.02, 0]} scale={0.62} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
+              <mesh position={[0.98, 0.14, 0.05]}>
+                <planeGeometry args={[0.32, 0.28]} />
+                <meshBasicMaterial
+                  map={palmTex}
+                  transparent
+                  depthWrite={false}
+                  polygonOffset
+                  polygonOffsetFactor={-3}
+                />
+              </mesh>
+              <mesh position={[-0.98, 0.14, 0.05]} rotation={[0, Math.PI, 0]}>
+                <planeGeometry args={[0.32, 0.28]} />
+                <meshBasicMaterial
+                  map={palmTex}
+                  transparent
+                  depthWrite={false}
+                  polygonOffset
+                  polygonOffsetFactor={-3}
+                />
+              </mesh>
             </group>
             {struts.map((g, i) => (
               <mesh key={i} geometry={g} castShadow>
