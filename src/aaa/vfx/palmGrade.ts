@@ -22,17 +22,12 @@ export const PalmGradeShader = {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
       vec2 d = vUv - vec2(0.5);
       float dist = length(d);
-      vec2 dir = dist > 0.0001 ? d / dist : vec2(0.0);
-      float edge = smoothstep(0.36, 0.62, dist) * uBoost;
+      float edge = smoothstep(0.5, 0.74, dist) * uBoost;
 
       if (edge > 0.001) {
-        vec3 acc = c;
-        acc += texture2D(tDiffuse, vUv - dir * 0.012).rgb;
-        acc += texture2D(tDiffuse, vUv - dir * 0.026).rgb;
-        c = mix(c, acc * 0.333, edge * 0.65);
         float ang = atan(d.y, d.x);
-        float lines = pow(abs(sin(ang * 18.0)), 18.0);
-        c += vec3(0.95, 0.62, 0.22) * lines * edge * 0.22;
+        float lines = pow(abs(sin(ang * 36.0)), 48.0);
+        c += vec3(0.9, 0.52, 0.16) * lines * edge * 0.28;
       }
 
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));

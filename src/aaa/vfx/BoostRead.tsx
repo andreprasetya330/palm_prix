@@ -11,7 +11,7 @@ import {
   type Rgba,
 } from './quads'
 
-const STREAKS = 28
+const STREAKS = 36
 const RIBBON = 18
 
 type Streak = {
@@ -25,15 +25,14 @@ type Streak = {
 }
 
 /**
- * Full-frame boost: camera widens, world streaks hug the view edges,
- * and a hot coral/gold ribbon leaves the exhaust.
+ * Boost streaks stay hairlines at the frame edge.
+ * The chase camera is not pulled back, so the kart stays chase-sized.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
   const kartRef = useRef(kart)
   kartRef.current = kart
   const kick = useRef(0)
-  const applied = useRef(new THREE.Vector3())
   const streakGeom = useMemo(() => makePaintedGeometry(STREAKS * 6), [])
   const ribbonGeom = useMemo(() => makePaintedGeometry(RIBBON * 2 * 6 + 8 * 6), [])
   const streaks = useRef<Streak[]>(
@@ -48,30 +47,13 @@ export function BoostRead({ kart }: { kart: KartState }) {
   const rPos = ribbonGeom.getAttribute('position').array as Float32Array
   const rCol = ribbonGeom.getAttribute('color').array as Float32Array
 
-  useFrame(() => {
-    camera.position.sub(applied.current)
-  }, -1)
-
   useFrame((_, dt) => {
     const k = kartRef.current
     const boosting = k.boostTimer > 0
     kick.current = THREE.MathUtils.damp(kick.current, boosting ? 1 : 0, 7, dt)
     const punch = kick.current
-    applied.current.set(
-      -Math.sin(k.yaw) * 0.85 * punch,
-      0.18 * punch,
-      -Math.cos(k.yaw) * 0.85 * punch,
-    )
 
-    if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = 52 + punch * 5
-      camera.updateProjectionMatrix()
-    }
-    camera.position.add(applied.current)
-
-    const speed = Math.abs(k.speed)
-    const energy = Math.max(punch, THREE.MathUtils.smoothstep(speed, 10, 26) * 0.45)
-    writeStreaks(streakGeom, positions, colors, streaks.current, camera, energy, punch, dt)
+    writeStreaks(streakGeom, positions, colors, streaks.current, camera, punch, dt)
     writeRibbons(ribbonGeom, rPos, rCol, histL.current, histR.current, fade, k, dt, punch)
   })
 
@@ -99,13 +81,13 @@ export function BoostRead({ kart }: { kart: KartState }) {
 }
 
 function spawnStreak(fresh: boolean): Streak {
-  const edge = 1.25 + Math.random() * 1.15
+  const edge = 1.65 + Math.random() * 1.35
   return {
     side: (Math.random() < 0.5 ? -1 : 1) * edge,
-    lift: (Math.random() - 0.35) * 1.5,
-    depth: fresh ? 1.2 + Math.random() * 6 : 2.5 + Math.random() * 5,
-    len: 0.7 + Math.random() * 1.6,
-    width: 0.035 + Math.random() * 0.05,
+    lift: (Math.random() - 0.45) * 1.8,
+    depth: fresh ? 2.2 + Math.random() * 7 : 3 + Math.random() * 6,
+    len: 1.8 + Math.random() * 2.4,
+    width: 0.004 + Math.random() * 0.007,
     life: Math.random(),
     hot: Math.random(),
   }
@@ -117,7 +99,6 @@ const _up = new THREE.Vector3()
 const _center = new THREE.Vector3()
 const _axisA = new THREE.Vector3()
 const _axisB = new THREE.Vector3()
-const _bin = new THREE.Vector3()
 const _p = new THREE.Vector3()
 
 function writeStreaks(
@@ -126,7 +107,6 @@ function writeStreaks(
   colors: Float32Array,
   pool: Streak[],
   camera: THREE.Camera,
-  energy: number,
   punch: number,
   dt: number,
 ) {
@@ -136,34 +116,30 @@ function writeStreaks(
   _fwd.set(-e[8], -e[9], -e[10])
   const origin = camera.position
   let v = 0
-  const step = (18 + punch * 30) * dt
+  const step = 26 * dt
   for (const s of pool) {
-    s.depth -= step * (0.35 + s.life)
-    s.life -= dt * (0.35 + (1 - punch) * 0.4)
-    if (s.life <= 0 || s.depth < 0.4) {
-      if (energy < 0.08) continue
+    s.depth -= step * (0.45 + s.life)
+    s.life -= dt * 0.55
+    if (s.life <= 0 || s.depth < 0.8) {
+      if (punch < 0.35) continue
       Object.assign(s, spawnStreak(false))
     }
-    if (energy < 0.04) continue
+    if (punch < 0.35) continue
     _center
       .copy(origin)
       .addScaledVector(_fwd, s.depth)
       .addScaledVector(_right, s.side)
       .addScaledVector(_up, s.lift)
-    _axisA.copy(_fwd).multiplyScalar(s.len * (0.6 + punch))
-    _bin.crossVectors(_fwd, _right).normalize()
-    _axisB.copy(Math.abs(s.side) > Math.abs(s.lift) ? _up : _right).multiplyScalar(s.width * (1 + punch))
-    const alpha = Math.min(1, s.life) * energy * (0.22 + punch * 0.4)
+    _axisA.copy(_fwd).multiplyScalar(s.len)
+    _axisB.copy(_up).multiplyScalar(s.width)
+    const alpha = Math.min(1, s.life) * punch * 0.55
     const hot = s.hot
-    const color: Rgba =
-      punch > 0.35
-        ? {
-            r: 1.05 + hot * 0.12,
-            g: 0.55 + hot * 0.12,
-            b: 0.16,
-            a: alpha,
-          }
-        : { r: 0.9, g: 0.9, b: 0.86, a: alpha * 0.2 }
+    const color: Rgba = {
+      r: 1.02 + hot * 0.08,
+      g: 0.48 + hot * 0.1,
+      b: 0.14,
+      a: alpha,
+    }
     v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
   }
   paint(geom, v)
