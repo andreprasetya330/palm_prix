@@ -10,7 +10,6 @@ import {
 import { RaceScene } from './scene/RaceScene'
 import { AvatarStudio } from './ui/AvatarStudio'
 import { CalibrateScreen } from './ui/CalibrateScreen'
-import { Hud } from './ui/Hud'
 import { WebcamPip } from './ui/WebcamPip'
 import { loadCalibration, type Calibration } from './vision/calibration'
 import { GestureMapper, mergeControls } from './vision/gestureMapper'
@@ -130,16 +129,12 @@ export default function App() {
       <main className={`stage ${inRace ? 'racing' : ''}`}>
         {(inRace || race.phase === 'calibrate' || race.phase === 'avatar') && (
           <div className="scene-wrap">
-            <RaceScene kart={kart} driverTextureUrl={avatarUrl} />
-            {inRace && (
-              <Hud
-                race={race}
-                kart={kart}
-                control={control}
-                debug={mapper.debug}
-                showPipHint={mapper.debug.mode !== 'two-fist'}
-              />
-            )}
+            <RaceScene
+              kart={kart}
+              driverTextureUrl={avatarUrl}
+              race={race}
+              control={control}
+            />
           </div>
         )}
 

@@ -1,0 +1,393 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@500;700;800&display=swap');
+
+/* Race frame is the whole viewport. Scaffold chrome stays off the still. */
+body:has(.pp-race) .topbar,
+body:has(.pp-race) .hud,
+body:has(.pp-race) .cam-error {
+  display: none !important;
+}
+
+body:has(.pp-race) .stage.racing {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 40 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
+  position: fixed !important;
+  left: -480px !important;
+  top: 0 !important;
+  width: 320px !important;
+  height: 240px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.pp-race {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  font-family: 'Outfit', 'Fredoka', 'Nunito', 'Trebuchet MS', sans-serif;
+  color: #10241c;
+}
+
+.pp-race.is-boost::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 55%, transparent 42%, rgba(255, 140, 40, 0.16) 100%);
+  box-shadow: inset 0 0 70px rgba(255, 170, 48, 0.18);
+}
+
+.pp-place,
+.pp-ticket,
+.pp-pace,
+.pp-slot,
+.pp-keys,
+.pp-map {
+  position: absolute;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff1cc 100%);
+  border: 3px solid #10241c;
+  box-shadow: 0 5px 0 #10241c;
+}
+
+.pp-place {
+  top: 14px;
+  left: 14px;
+  z-index: 6;
+  min-width: 92px;
+  padding: 8px 12px 10px;
+  border-radius: 18px;
+  background: #ff4b32;
+  color: #fffaf0;
+  text-align: center;
+}
+
+.pp-place span,
+.pp-ticket span,
+.pp-pace span,
+.pp-slot span,
+.pp-clear span {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pp-place strong {
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-size: 3rem;
+  line-height: 0.85;
+  font-weight: 700;
+}
+
+.pp-place sup {
+  font-size: 1.1rem;
+  margin-left: 1px;
+}
+
+.pp-ticket {
+  top: 14px;
+  right: 14px;
+  z-index: 6;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 14px 10px;
+  border-radius: 18px;
+}
+
+.pp-laps span,
+.pp-time span {
+  margin-bottom: 4px;
+}
+
+.pp-pips {
+  display: flex;
+  gap: 8px;
+}
+
+.pp-pip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #10241c;
+  background: #fff;
+  display: block;
+}
+
+.pp-pip.is-done {
+  background: #14b89a;
+}
+
+.pp-pip.is-now {
+  background: #ff4b32;
+  box-shadow: 0 0 0 3px #ffd15a;
+}
+
+.pp-time strong,
+.pp-pace-top strong {
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.7rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.pp-count {
+  position: absolute;
+  top: 0;
+  left: 24%;
+  right: 24%;
+  height: 15vh;
+  min-height: 96px;
+  max-height: 132px;
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pp-count.is-2 { align-items: center; }
+.pp-count.is-1,
+.pp-count.is-go {
+  align-items: center;
+  height: 118px;
+  min-height: 118px;
+  max-height: 118px;
+}
+
+.pp-count.is-go .pp-count-burst {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.pp-count.is-go .pp-count-burst b {
+  color: #fff6cf;
+  font-size: 4.8rem;
+  letter-spacing: 0.08em;
+  -webkit-text-stroke: 8px #10241c;
+  text-shadow: 0 6px 0 #ff4b32;
+}
+
+.pp-count-burst {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, #fffdf8 0 22%, #ffd15a 46%, rgba(255, 209, 90, 0) 68%);
+  animation: pp-pop 0.34s cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+.pp-count-burst b {
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-size: 4.4rem;
+  line-height: 0.8;
+  font-weight: 700;
+  color: #ff4b32;
+  -webkit-text-stroke: 7px #10241c;
+  paint-order: stroke fill;
+}
+
+.pp-skyword {
+  position: absolute;
+  top: 2px;
+  left: 18%;
+  right: 18%;
+  z-index: 4;
+  text-align: center;
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-size: clamp(4.2rem, 12vh, 7.4rem);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: 0.04em;
+  color: #fff6cf;
+  -webkit-text-stroke: 10px #10241c;
+  paint-order: stroke fill;
+  text-shadow: 0 8px 0 #ff4b32;
+  animation: pp-pop 0.22s cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+.pp-clear {
+  position: absolute;
+  top: 18vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  text-align: center;
+  padding: 12px 28px 16px;
+  border-radius: 20px;
+  background: #fffdf8;
+  border: 3px solid #10241c;
+  box-shadow: 0 6px 0 #10241c;
+}
+
+.pp-clear strong {
+  display: block;
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-size: clamp(2.4rem, 6vh, 4rem);
+  line-height: 0.95;
+}
+
+.pp-clear em {
+  font-style: normal;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.4rem;
+}
+
+.pp-map {
+  left: 14px;
+  bottom: 14px;
+  width: 460px;
+  height: 168px;
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.pp-map svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pp-map-grass { fill: #3ecf5a; }
+.pp-map-asphalt { fill: #2c3142; }
+.pp-map-infield { fill: #67d86a; }
+.pp-map-pond { fill: #3db8ff; stroke: #e8f7ff; stroke-width: 1.2; }
+.pp-map-sand { fill: #e6c36a; }
+.pp-map-start { fill: #fffdf8; }
+.pp-map-curb-red { fill: #ff4b32; }
+.pp-map-curb-white { fill: #fffdf8; }
+.pp-map-box { fill: #ffc83d; stroke: #10241c; stroke-width: 0.8; }
+.pp-map-kart { fill: #ff4b32; stroke: #fffdf8; stroke-width: 1.6; }
+.pp-map-heading { fill: none; stroke: #10241c; stroke-width: 2.4; stroke-linecap: round; }
+
+.pp-pace {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(440px, 46vw);
+  padding: 8px 12px 10px;
+  border-radius: 18px;
+  z-index: 6;
+}
+
+.pp-pace-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.pp-pace-track {
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid #10241c;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pp-pace.is-hot .pp-pace-track {
+  height: 34px;
+}
+
+.pp-pace-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #14b89a, #ffc83d 70%, #ff4b32);
+}
+
+.pp-pace.is-hot .pp-pace-fill {
+  background: linear-gradient(90deg, #ff8a3d, #fff1a8);
+}
+
+.pp-slot {
+  right: 14px;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 22px;
+}
+
+.pp-slot-frame {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  background:
+    linear-gradient(#fffdf8, #fffdf8) padding-box,
+    linear-gradient(145deg, #ffe08a, #ff7a3c 45%, #14b89a) border-box;
+  border: 4px solid transparent;
+  box-shadow: inset 0 0 0 2px #10241c;
+  display: grid;
+  place-items: center;
+}
+
+.pp-slot-frame svg {
+  width: 62px;
+  height: 62px;
+}
+
+.pp-slot.is-burst .pp-slot-frame {
+  animation: pp-pop 0.35s ease-in-out infinite alternate;
+  background:
+    linear-gradient(#fff6d4, #fff6d4) padding-box,
+    linear-gradient(145deg, #fff1a8, #ff4b32) border-box;
+}
+
+.pp-slot-meta strong {
+  display: block;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.pp-slot-meta em {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.pp-keys {
+  top: 118px;
+  left: 14px;
+  z-index: 6;
+  padding: 4px 10px 5px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@keyframes pp-pop {
+  from { transform: scale(0.72); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 800px) {
+  .pp-map { width: min(460px, 58vw); height: auto; aspect-ratio: 460 / 156; }
+  .pp-slot-frame { width: 64px; height: 64px; }
+  .pp-slot-frame svg { width: 46px; height: 46px; }
+  .pp-place strong { font-size: 2.2rem; }
+  .pp-pace { width: min(240px, 52vw); }
+  .pp-pace-track,
+  .pp-pace.is-hot .pp-pace-track { height: 22px; }
+}

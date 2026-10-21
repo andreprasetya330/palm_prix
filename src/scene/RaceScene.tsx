@@ -1,6 +1,9 @@
 import { Canvas } from '@react-three/fiber'
 import { Sky } from '@react-three/drei'
+import { AaaPresentation } from '../aaa/vfx/AaaPresentation'
+import type { ControlState } from '../game/controlState'
 import type { KartState } from '../game/kartPhysics'
+import type { RaceStatus } from '../game/raceLoop'
 import { FollowCamera } from './FollowCamera'
 import { Kart } from './Kart'
 import { Track } from './Track'
@@ -8,9 +11,11 @@ import { Track } from './Track'
 type Props = {
   kart: KartState
   driverTextureUrl: string | null
+  race: RaceStatus
+  control: ControlState
 }
 
-export function RaceScene({ kart, driverTextureUrl }: Props) {
+export function RaceScene({ kart, driverTextureUrl, race, control }: Props) {
   return (
     <Canvas
       shadows
@@ -47,6 +52,7 @@ export function RaceScene({ kart, driverTextureUrl }: Props) {
       <Track />
       <Kart kart={kart} driverTextureUrl={driverTextureUrl} />
       <FollowCamera kart={kart} />
+      <AaaPresentation kart={kart} race={race} control={control} />
     </Canvas>
   )
 }
