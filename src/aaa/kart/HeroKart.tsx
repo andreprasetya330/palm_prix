@@ -38,6 +38,23 @@ const SHOT =
     ? null
     : new URLSearchParams(window.location.search).get('shot')
 
+/** This branch's oval: x = sin(t) * r * 1.15, z = cos(t) * r. Asphalt is about r 14–22. */
+function poseOnOval(x: number, z: number, yaw: number) {
+  const radius = Math.hypot(x / 1.15, z)
+  if (radius >= 13.8 && radius <= 22.4) return { x, z, yaw, planted: false }
+  const t = Math.atan2(x / 1.15, z || 1e-4)
+  const tx = Math.cos(t) * 1.15
+  const tz = -Math.sin(t)
+  const len = Math.hypot(tx, tz) || 1
+  const along = 8
+  return {
+    x: Math.sin(t) * 18 * 1.15 + (tx / len) * along,
+    z: Math.cos(t) * 18 + (tz / len) * along,
+    yaw: Math.atan2(tx / len, tz / len),
+    planted: true,
+  }
+}
+
 const WHEELS = [
   { x: -LAYOUT.wheelX, z: LAYOUT.frontZ, front: true },
   { x: LAYOUT.wheelX, z: LAYOUT.frontZ, front: true },
@@ -131,6 +148,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const camFwd = useRef(new THREE.Vector3())
   const camLook = useRef(new THREE.Vector3())
   const origin = useRef(new THREE.Vector3())
+  const visual = useRef({ x: kart.x, z: kart.z, yaw: kart.yaw, planted: false })
 
   const shadowTex = useMemo(() => createShadowTexture(), [])
   const palmTex = useMemo(() => createPalmTexture(), [])
@@ -188,10 +206,15 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       roll.current.rotation.x = THREE.MathUtils.clamp(-kart.speed * 0.0035, -0.07, 0.05)
     }
     if (squat.current) squat.current.position.y = -squatAmt.current
+    const place = poseOnOval(kart.x, kart.z, kart.yaw)
+    visual.current.x = place.x
+    visual.current.z = place.z
+    visual.current.yaw = place.yaw
+    visual.current.planted = place.planted
     if (root.current) {
       const hop = Math.sin(performance.now() * 0.012) * Math.min(0.012, Math.abs(kart.speed) * 0.0004)
-      root.current.position.set(kart.x, hop, kart.z)
-      root.current.rotation.set(0, kart.yaw, 0)
+      root.current.position.set(place.x, hop, place.z)
+      root.current.rotation.set(0, place.yaw, 0)
     }
     if (flame.current) {
       const flick = 0.82 + Math.sin(performance.now() * 0.04) * 0.18
@@ -202,11 +225,12 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   // Priority above 0 disables R3F's automatic render, so this hook paints the frame.
   // It runs after the chase camera and can pull in for ?shot=close.
   useFrame(({ gl, scene, camera }) => {
+    const seen = visual.current
     if (SHOT === 'close' && camera instanceof THREE.PerspectiveCamera) {
-      const yaw = kart.yaw
+      const yaw = seen.yaw
       camFwd.current.set(Math.sin(yaw), 0, Math.cos(yaw))
       camRight.current.set(Math.cos(yaw), 0, -Math.sin(yaw))
-      origin.current.set(kart.x, 0, kart.z)
+      origin.current.set(seen.x, 0, seen.z)
       camera.position
         .copy(origin.current)
         .addScaledVector(camRight.current, 1.55)
@@ -218,6 +242,20 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       if (camera.fov !== 40 || camera.near !== 0.08) {
         camera.fov = 40
         camera.near = 0.08
+        camera.updateProjectionMatrix()
+      }
+    } else if (seen.planted && camera instanceof THREE.PerspectiveCamera) {
+      const speedFactor = Math.min(1, Math.abs(kart.speed) / 28)
+      const back = 6.5 + speedFactor * 1.4
+      const yaw = seen.yaw
+      camera.position.set(
+        seen.x - Math.sin(yaw) * back,
+        3.6 + speedFactor * 0.6,
+        seen.z - Math.cos(yaw) * back,
+      )
+      camera.lookAt(seen.x, 1, seen.z)
+      if (camera.fov !== 52) {
+        camera.fov = 52
         camera.updateProjectionMatrix()
       }
     }
