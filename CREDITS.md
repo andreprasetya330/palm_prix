@@ -10,6 +10,11 @@ Openly licensed parts may be downloaded while modeling (CC0 or CC-BY only). Cred
   Hinge pin and bolt geometry, rescaled and finished in Palm Prix gold, used as the visor hinge pins (`VisorHinge0`–`3`) and the wheel lug nuts (`Lug*`).
   Source files: `assets/blender/kitbash/gate-latch/`.
 
+## Surface maps (procedural / materials path)
+
+- Rubber 004, 1K JPG, OpenGL normal and roughness. ambientCG, CC0 1.0. https://ambientcg.com/a/Rubber004
+- Fabric 030, 1K JPG, OpenGL normal and roughness. ambientCG, CC0 1.0. https://ambientcg.com/a/Fabric030
+
 ## Reference only (not in the glTF)
 
 - **Old Tyre**, by MP, via [Poly Haven](https://polyhaven.com/a/old_tyre). CC0.
