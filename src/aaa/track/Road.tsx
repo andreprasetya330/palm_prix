@@ -109,7 +109,7 @@ export function Road({ textures }: { textures: TrackTextures }) {
           <meshStandardMaterial
             map={textures.sand}
             normalMap={textures.sandNormal}
-            normalScale={new THREE.Vector2(1.15, 1.15)}
+            normalScale={new THREE.Vector2(0.55, 0.55)}
             color="#fff6ea"
             roughness={0.9}
             vertexColors

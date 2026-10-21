@@ -94,24 +94,22 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
     const inside = new THREE.Color('#146b34')
-    const strawTone = new THREE.Color('#c4923a')
+    const strawTone = new THREE.Color('#a67c32')
     const outside = new THREE.Color(palette.grassOutside)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Gate key comes from +X +Z. The ridge crosses the infield the corner sees.
-    const sunX = 0.86
-    const sunZ = 0.51
+    // Straight line down the infield. The sunward side of the ridge faces +X, same as the sand key.
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      const along = (x + 8) * sunX + (z - 3) * sunZ
+      const along = x + 9
       const infield = lat < -1.2
       if (infield) {
         c.copy(along >= 0 ? strawTone : inside)
-        const rise = Math.max(0, 0.95 - Math.min(Math.abs(along), 8) * 0.12)
+        const rise = Math.max(0, 0.72 - Math.min(Math.abs(along), 7) * 0.11)
         pos.setY(i, pos.getY(i) + rise)
       } else {
         c.copy(inside).lerp(outside, edge)
