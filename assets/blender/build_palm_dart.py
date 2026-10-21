@@ -566,9 +566,9 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    label = add_text("P", 0.2, 0.02, f"SidewallMark{name}")
+    label = add_text("P", 0.34, 0.03, f"SidewallMark{name}")
     if label is not None:
-        label.location = center + Vector((outer * 0.145, 0.0, 0.02))
+        label.location = center + Vector((outer * 0.16, 0.0, 0.0))
         label.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0)
         if label.data.materials:
             label.data.materials[0] = mats["plum"]
@@ -785,13 +785,13 @@ def build_body(mats):
         ring.name = f"EndplateRing{side}"
         ring.data.materials.append(mats["blue"])
         made.append(ring)
-        mark = leaf(f"EndplatePalm{side}", 0.09, 0.07, mats["palm"])
+        mark = leaf(f"EndplatePalm{side}", 0.18, 0.14, mats["palm"])
         mark.location = Vector((x_pos + (0.012 if x_pos > 0 else -0.012), 0.96, 0.93))
         mark.rotation_euler = (0.2, math.pi / 2 if x_pos > 0 else -math.pi / 2, 0)
         made.append(mark)
 
     for index, angle in enumerate((-0.7, -0.35, 0.0, 0.35, 0.7)):
-        frond = leaf(f"WingPalm{index}", 0.22, 0.11, mats["palm"] if index % 2 == 0 else mats["palm_deep"])
+        frond = leaf(f"WingPalm{index}", 0.42, 0.22, mats["palm"] if index % 2 == 0 else mats["palm_deep"])
         frond.location = Vector((0, 0.90, 1.045))
         frond.rotation_euler = (0.5, 0, angle)
         made.append(frond)
