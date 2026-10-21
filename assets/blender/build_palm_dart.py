@@ -205,8 +205,8 @@ def make_materials():
         "plum": material("Plum", (0.141, 0.094, 0.184), rough=0.55),
         "palm": material("Palm", (0.078, 0.639, 0.353), rough=0.4, coat=0.35),
         "palm_deep": material("PalmDeep", (0.047, 0.478, 0.251), rough=0.45),
-        "tire": material("TireRubber", (0.071, 0.078, 0.094), rough=0.92),
-        "groove": material("TreadGroove", (0.012, 0.012, 0.014), rough=0.96),
+        "tire": material("TireRubber", (0.22, 0.235, 0.26), rough=0.92),
+        "groove": material("TreadGroove", (0.015, 0.015, 0.018), rough=0.96),
         "sidewall": material("Sidewall", (0.541, 0.557, 0.596), rough=0.78),
         "letter": material("SidewallLetter", (0.965, 0.945, 0.902), rough=0.55),
         "glove": material("Glove", (0.957, 0.918, 0.847), rough=0.9),
@@ -435,30 +435,28 @@ def spawn(src, name, location, rotation, scale):
     return obj
 
 
-def build_tire(name: str, mats):
-    profile = [
-        (-0.050, 0.198),
-        (-0.074, 0.216),
-        (-0.122, 0.252),
-        (-0.134, 0.292),
-        (-0.108, 0.322),
-        (-0.082, 0.338),
-        (-0.066, 0.350),
-        (-0.040, 0.356),
-        (-0.022, 0.348),
-        (-0.012, 0.326),
-        (0.000, 0.308),
-        (0.012, 0.326),
-        (0.022, 0.348),
-        (0.040, 0.356),
-        (0.066, 0.350),
-        (0.082, 0.338),
-        (0.108, 0.322),
-        (0.134, 0.292),
-        (0.122, 0.252),
-        (0.074, 0.216),
-        (0.050, 0.198),
+def build_tire(name: str, mats, outer: float):
+    # u > 0 is the outer shoulder. The crown groove is a wide valley there,
+    # so the close camera sees a dark cut instead of a hairline in the tread.
+    s = 1.0 if outer > 0 else -1.0
+    outward = [
+        (-0.148, 0.190),
+        (-0.128, 0.240),
+        (-0.100, 0.300),
+        (-0.070, 0.338),
+        (-0.040, 0.352),
+        (-0.010, 0.360),
+        (0.018, 0.358),
+        (0.040, 0.330),
+        (0.055, 0.286),
+        (0.080, 0.286),
+        (0.098, 0.340),
+        (0.116, 0.352),
+        (0.132, 0.300),
+        (0.146, 0.230),
+        (0.156, 0.190),
     ]
+    profile = sorted(((u * s, radius) for u, radius in outward), key=lambda point: point[0])
     steps = 144
     bm = bmesh.new()
     rings = []
@@ -474,10 +472,11 @@ def build_tire(name: str, mats):
             face = bm.faces.new((rings[index][step], rings[index][nxt], rings[index + 1][nxt], rings[index + 1][step]))
             mid = (rings[index][step].co + rings[index + 1][step].co) * 0.5
             radial = math.hypot(mid.y, mid.z)
-            # 0 tread, 1 sidewall, 2 the dark floor of the center groove.
-            if radial < 0.334 and abs(mid.x) < 0.016:
+            outward_u = mid.x * s
+            # 0 tread, 1 sidewall, 2 the dark floor of the outer-shoulder groove.
+            if 0.042 < outward_u < 0.094 and radial < 0.338:
                 face.material_index = 2
-            elif radial > 0.324 and abs(mid.x) < 0.09:
+            elif radial > 0.318:
                 face.material_index = 0
             else:
                 face.material_index = 1
@@ -513,7 +512,7 @@ def build_rim(name, mats):
 def build_wheel(name, center, mats, nut):
     outer = 1 if center.x > 0 else -1
     made = []
-    tire = build_tire(f"Tire{name}", mats)
+    tire = build_tire(f"Tire{name}", mats, outer)
     tire.location = center
     made.append(tire)
 
@@ -566,37 +565,30 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    label = add_text("P", 0.34, 0.03, f"SidewallMark{name}")
-    if label is not None:
-        label.location = center + Vector((outer * 0.16, 0.0, 0.0))
-        label.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0)
-        if label.data.materials:
-            label.data.materials[0] = mats["plum"]
-        else:
-            label.data.materials.append(mats["plum"])
-        made.append(label)
+    # One mark, on the rubber the chase camera sees: a block P above the hub,
+    # team blue, proud of the sidewall. The old glyph sat in the hub in dark plum.
+    made.append(sidewall_mark(f"SidewallMark{name}", center, outer, mats["blue"]))
     return made
 
 
-def add_text(body, size, extrude, name):
-    try:
-        bpy.ops.object.select_all(action="DESELECT")
-        bpy.ops.object.text_add()
-        obj = bpy.context.active_object
-        obj.data.body = body
-        obj.data.size = size
-        obj.data.extrude = extrude
-        obj.data.align_x = "CENTER"
-        obj.data.align_y = "CENTER"
-        obj.data.resolution_u = 6
-        select_only(obj)
-        bpy.ops.object.convert(target="MESH")
-        obj = bpy.context.active_object
-        obj.name = name
-        return obj
-    except Exception:
-        traceback.print_exc()
-        return None
+def sidewall_mark(name, center, outer, mat):
+    """One mesh. The bowl is the top of the P and the stem runs below it."""
+    depth = 0.045
+    x = outer * 0.175
+    parts = [
+        box(f"{name}Stem", center + Vector((x, -0.07, 0.10)), (depth, 0.07, 0.32), mat, bevel=0.004),
+        box(f"{name}Top", center + Vector((x, 0.015, 0.235)), (depth, 0.18, 0.07), mat, bevel=0.004),
+        box(f"{name}Bar", center + Vector((x, 0.01, 0.095)), (depth, 0.15, 0.065), mat, bevel=0.004),
+        box(f"{name}Bowl", center + Vector((x, 0.075, 0.165)), (depth, 0.07, 0.20), mat, bevel=0.004),
+    ]
+    select_only(parts[0])
+    for part in parts[1:]:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    mark = bpy.context.active_object
+    mark.name = name
+    return mark
 
 
 def cut_helmet_opening(obj):
