@@ -204,11 +204,13 @@ def make_materials():
         "palm": material("Palm", (0.078, 0.639, 0.353), rough=0.4, coat=0.35),
         "palm_deep": material("PalmDeep", (0.047, 0.478, 0.251), rough=0.45),
         "tire": material("TireRubber", (0.071, 0.078, 0.094), rough=0.92),
+        "groove": material("TreadGroove", (0.012, 0.012, 0.014), rough=0.96),
         "sidewall": material("Sidewall", (0.541, 0.557, 0.596), rough=0.78),
         "letter": material("SidewallLetter", (0.965, 0.945, 0.902), rough=0.55),
         "metal": material("Metal", (0.835, 0.871, 0.910), rough=0.25, metal=1.0),
         "skin": material("Skin", (0.953, 0.761, 0.643), rough=0.58),
         "brow": material("Brow", (0.227, 0.165, 0.133), rough=0.5),
+        "shadow": material("FaceShadow", (0.10, 0.06, 0.05), rough=1.0),
         "lip": material("Lip", (0.769, 0.357, 0.345), rough=0.42),
         "mouth": material("Mouth", (0.25, 0.05, 0.06), rough=0.7),
         "teeth": material("Teeth", (0.96, 0.95, 0.90), rough=0.35, coat=0.2),
@@ -439,15 +441,13 @@ def build_tire(name: str, mats):
         (-0.108, 0.322),
         (-0.082, 0.338),
         (-0.066, 0.350),
-        (-0.052, 0.332),
-        (-0.038, 0.354),
-        (-0.024, 0.330),
-        (-0.012, 0.356),
-        (0.000, 0.334),
-        (0.012, 0.356),
-        (0.024, 0.330),
-        (0.038, 0.354),
-        (0.052, 0.332),
+        (-0.040, 0.356),
+        (-0.022, 0.348),
+        (-0.012, 0.326),
+        (0.000, 0.308),
+        (0.012, 0.326),
+        (0.022, 0.348),
+        (0.040, 0.356),
         (0.066, 0.350),
         (0.082, 0.338),
         (0.108, 0.322),
@@ -457,19 +457,13 @@ def build_tire(name: str, mats):
         (0.050, 0.198),
     ]
     steps = 144
-    lobes = 20
     bm = bmesh.new()
     rings = []
     for x_pos, radius0 in profile:
         ring = []
         for step in range(steps):
             angle = 2 * math.pi * step / steps
-            radius = radius0
-            if radius0 > 0.328 and abs(x_pos) < 0.10:
-                phase = (abs(x_pos) * 48.0) + (0.0 if x_pos >= 0 else math.pi / lobes)
-                lobe = math.cos(angle * lobes + phase)
-                radius = radius0 + lobe * 0.008
-            ring.append(bm.verts.new((x_pos, radius * math.cos(angle), radius * math.sin(angle))))
+            ring.append(bm.verts.new((x_pos, radius0 * math.cos(angle), radius0 * math.sin(angle))))
         rings.append(ring)
     for index in range(len(rings) - 1):
         for step in range(steps):
@@ -477,8 +471,14 @@ def build_tire(name: str, mats):
             face = bm.faces.new((rings[index][step], rings[index][nxt], rings[index + 1][nxt], rings[index + 1][step]))
             mid = (rings[index][step].co + rings[index + 1][step].co) * 0.5
             radial = math.hypot(mid.y, mid.z)
-            face.material_index = 0 if radial > 0.324 and abs(mid.x) < 0.09 else 1
-    return link_mesh(name, bm, [mats["tire"], mats["sidewall"]])
+            # 0 tread, 1 sidewall, 2 the dark floor of the center groove.
+            if radial < 0.334 and abs(mid.x) < 0.016:
+                face.material_index = 2
+            elif radial > 0.324 and abs(mid.x) < 0.09:
+                face.material_index = 0
+            else:
+                face.material_index = 1
+    return link_mesh(name, bm, [mats["tire"], mats["sidewall"], mats["groove"]])
 
 
 def build_rim(name, mats):
@@ -683,6 +683,13 @@ def build_driver(mats):
             0.055 + hump + twin,
         )))
     made.append(tube("Brow", brow_pts, 0.007, mats["brow"], sides=8))
+    brow_shadow = box(
+        "BrowShadow",
+        DRIVER + Vector((0.0, -0.108, 0.040)),
+        (0.086, 0.006, 0.014),
+        mats["shadow"],
+    )
+    made.append(brow_shadow)
 
     made.append(sphere("NoseBridge", DRIVER + Vector((0, -0.105, 0.0)), 0.016, mats["skin"], scale=(0.7, 1.8, 0.7), segments=20))
     made.append(sphere("NoseTip", DRIVER + Vector((0, -0.132, -0.012)), 0.018, mats["skin"], segments=24))
@@ -691,7 +698,12 @@ def build_driver(mats):
     made.append(sphere("CheekL", DRIVER + Vector((-0.055, -0.085, -0.02)), 0.028, mats["skin"], segments=16))
     made.append(sphere("CheekR", DRIVER + Vector((0.055, -0.085, -0.02)), 0.028, mats["skin"], segments=16))
     made.append(sphere("Chin", DRIVER + Vector((0, -0.08, -0.075)), 0.04, mats["skin"], scale=(1.15, 0.75, 0.7), segments=24))
-    made.append(sphere("MouthCavity", DRIVER + Vector((0, -0.095, -0.048)), 0.028, mats["mouth"], scale=(1.5, 0.45, 0.55), segments=20))
+    made.append(box(
+        "MouthShadow",
+        DRIVER + Vector((0.0, -0.102, -0.048)),
+        (0.048, 0.005, 0.016),
+        mats["shadow"],
+    ))
     made.append(tube(
         "UpperLip",
         smile_pts(DRIVER + Vector((0, -0.112, -0.036)), 0.04, 0.012),
