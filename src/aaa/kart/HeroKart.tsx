@@ -27,6 +27,9 @@ import {
   wingGeo,
 } from './geom'
 import { LAYOUT } from './palette'
+import rubberNormalUrl from './assets/Rubber004_1K-JPG_NormalGL.jpg'
+import rubberRoughUrl from './assets/Rubber004_1K-JPG_Roughness.jpg'
+import { rubberNormalScale, useLinearMap } from './textures'
 
 export type HeroKartProps = {
   kart: KartState
@@ -151,6 +154,8 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const origin = useRef(new THREE.Vector3())
   const visual = useRef({ x: kart.x, z: kart.z, yaw: kart.yaw, planted: false })
 
+  const rubberNormal = useLinearMap(rubberNormalUrl, 5, 2)
+  const rubberRough = useLinearMap(rubberRoughUrl, 5, 2)
   const shadowTex = useMemo(() => createShadowTexture(), [])
   const palmTex = useMemo(() => createPalmTexture(), [])
   const noseTex = useMemo(() => createNoseBadge(), [])
@@ -292,7 +297,12 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                   spins.current[i] = el
                 }}
               >
-                <WheelMesh side={w.x > 0 ? 1 : -1} env={env} />
+                <WheelMesh
+                  side={w.x > 0 ? 1 : -1}
+                  env={env}
+                  rubberNormal={rubberNormal}
+                  rubberRough={rubberRough}
+                />
               </group>
             </group>
           ))}
@@ -493,11 +503,28 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   )
 }
 
-function WheelMesh({ side, env }: { side: 1 | -1; env: THREE.Texture | null }) {
+function WheelMesh({
+  side,
+  env,
+  rubberNormal,
+  rubberRough,
+}: {
+  side: 1 | -1
+  env: THREE.Texture | null
+  rubberNormal: THREE.Texture
+  rubberRough: THREE.Texture
+}) {
   return (
     <group rotation={[0, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2]}>
       <mesh geometry={tireGeo} castShadow>
-        <meshStandardMaterial vertexColors roughness={1} metalness={0} />
+        <meshStandardMaterial
+          vertexColors
+          roughness={1}
+          metalness={0}
+          normalMap={rubberNormal}
+          normalScale={rubberNormalScale}
+          roughnessMap={rubberRough}
+        />
       </mesh>
       <mesh>
         <cylinderGeometry args={[0.12, 0.12, 0.16, 32]} />

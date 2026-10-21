@@ -291,25 +291,15 @@ function displaceTread(geo: THREE.BufferGeometry) {
     let y = pos.getY(i)
     let z = pos.getZ(i)
     const radial = Math.hypot(x, z) || 1
-    const ang = Math.atan2(z, x)
-    const blocks = 22
     let r = paint.sidewall.r
     let g = paint.sidewall.g
     let b = paint.sidewall.b
 
-    if (radial > 0.318 && Math.abs(y) < 0.07) {
-      const row = y >= 0 ? 0 : Math.PI / blocks
-      const wave = Math.sin(ang * blocks + row)
-      const bump = wave * 0.004
-      const k = (radial + bump) / radial
-      x *= k
-      z *= k
-      r = paint.tire.r
-      g = paint.tire.g
-      b = paint.tire.b
-    } else if (radial > 0.292 && Math.abs(y) >= 0.078 && Math.abs(y) < 0.112) {
-      const wave = Math.sin(ang * blocks + 0.4)
-      const bump = wave * 0.003
+    // Rounded ribs run around the crown. The profile is a cosine, so each
+    // groove is a smooth channel instead of a zigzag cut into the circle.
+    if (radial > 0.3 && Math.abs(y) < 0.068) {
+      const ribs = Math.cos((y / 0.068) * Math.PI * 3)
+      const bump = ribs * 0.008
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -318,7 +308,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
       b = paint.tire.b
     }
 
-    const band = Math.abs(Math.abs(y) - 0.1) < 0.02 && radial > 0.22 && radial < 0.31
+    const band = Math.abs(Math.abs(y) - 0.1) < 0.018 && radial > 0.22 && radial < 0.32
     if (band) {
       r = paint.letter.r
       g = paint.letter.g
@@ -334,19 +324,24 @@ function displaceTread(geo: THREE.BufferGeometry) {
   geo.computeVertexNormals()
 }
 
+function crownPoint(a: number) {
+  const bow = a * 1.15
+  return new THREE.Vector2(0.308 + Math.cos(bow) * 0.036, Math.sin(bow) * 0.082)
+}
+
 export function createTire(): THREE.BufferGeometry {
   const bead = 0.2
-  const tread = LAYOUT.wheelR
   const half = 0.132
   const pts = [
     new THREE.Vector2(bead, -0.055),
     new THREE.Vector2(bead + 0.012, -0.078),
     new THREE.Vector2(0.25, -half),
     new THREE.Vector2(0.29, -0.108),
-    new THREE.Vector2(tread - 0.008, -0.078),
-    new THREE.Vector2(tread, -0.04),
-    new THREE.Vector2(tread, 0.04),
-    new THREE.Vector2(tread - 0.008, 0.078),
+    crownPoint(-1),
+    crownPoint(-0.55),
+    crownPoint(0),
+    crownPoint(0.55),
+    crownPoint(1),
     new THREE.Vector2(0.29, 0.108),
     new THREE.Vector2(0.25, half),
     new THREE.Vector2(bead + 0.012, 0.078),
