@@ -29,11 +29,12 @@ GLB_PATH = os.path.join(ROOT, "src/aaa/kart/models/palm-dart.glb")
 
 # Blender is Z-up, nose toward -Y. glTF export maps that to three.js Y-up, nose +Z.
 DRIVER = Vector((0.0, 0.02, 0.78))
+# Track is narrow enough that the sidepods meet the inner sidewall.
 WHEELS = {
-    "FL": Vector((-0.76, -0.72, 0.36)),
-    "FR": Vector((0.76, -0.72, 0.36)),
-    "RL": Vector((-0.76, 0.76, 0.36)),
-    "RR": Vector((0.76, 0.76, 0.36)),
+    "FL": Vector((-0.64, -0.70, 0.36)),
+    "FR": Vector((0.64, -0.70, 0.36)),
+    "RL": Vector((-0.64, 0.74, 0.36)),
+    "RR": Vector((0.64, 0.74, 0.36)),
 }
 
 
@@ -60,8 +61,8 @@ def main() -> None:
         for obj in build_wheel(name, center, mats, nut):
             adopt(obj, hub)
             wheel_objects.append(obj)
-        # Yaw the wheel so the grooved crown faces the front three-quarter camera.
-        hub.rotation_euler = (0.0, 0.0, 0.95)
+        # Straight axle. A cocked wheel reads as a separate ring from the chase.
+        hub.rotation_euler = (0.0, 0.0, 0.0)
         wheel_objects.append(hub)
 
     place_hinges(pin, driver)
@@ -565,23 +566,29 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    # One mark, on the rubber the chase camera sees: a block P above the hub,
-    # team blue, proud of the sidewall. The old glyph sat in the hub in dark plum.
+    # One mark on the outer sidewall, turned to face the chase.
     made.append(sidewall_mark(f"SidewallMark{name}", center, outer, mats["blue"]))
     return made
 
 
 def sidewall_mark(name, center, outer, mat):
-    """One mesh. The bowl is the top of the P and the stem runs below it."""
+    """One block P on the outer sidewall, faced at the chase camera.
+
+    The wheel axle stays straight so the tire sits in the fender. The letter
+    is turned to face the tail on the rear wheels (and the nose on the front)
+    so the chase still reads it. Stem is toward +X, which is the viewer's
+    left from behind the kart.
+    """
+    facing = 1.0 if center.y > 0 else -1.0
     depth = 0.045
-    x = outer * 0.175
-    # Y is mirrored so the stem sits on the left when the chase camera
-    # looks at the outer sidewall of the yawed rear wheel.
+    y = facing * 0.42
+    x0 = outer * 0.10
+    z0 = 0.16
     parts = [
-        box(f"{name}Stem", center + Vector((x, 0.07, 0.10)), (depth, 0.07, 0.32), mat, bevel=0.004),
-        box(f"{name}Top", center + Vector((x, -0.015, 0.235)), (depth, 0.18, 0.07), mat, bevel=0.004),
-        box(f"{name}Bar", center + Vector((x, -0.01, 0.095)), (depth, 0.15, 0.065), mat, bevel=0.004),
-        box(f"{name}Bowl", center + Vector((x, -0.075, 0.165)), (depth, 0.07, 0.20), mat, bevel=0.004),
+        box(f"{name}Stem", center + Vector((x0 + 0.07, y, z0)), (0.075, depth, 0.34), mat, bevel=0.004),
+        box(f"{name}Top", center + Vector((x0 - 0.01, y, z0 + 0.135)), (0.22, depth, 0.075), mat, bevel=0.004),
+        box(f"{name}Bar", center + Vector((x0, y, z0)), (0.18, depth, 0.07), mat, bevel=0.004),
+        box(f"{name}Bowl", center + Vector((x0 - 0.08, y, z0 + 0.065)), (0.075, depth, 0.21), mat, bevel=0.004),
     ]
     select_only(parts[0])
     for part in parts[1:]:
@@ -754,13 +761,21 @@ def smile_pts(origin, rx, lift):
 
 def build_body(mats):
     made = []
-    made.append(box("Undertray", (0, 0.02, 0.22), (0.72, 1.55, 0.10), mats["plum"], bevel=0.03))
-    made.append(box("Tub", (0, 0.0, 0.36), (0.70, 1.15, 0.22), mats["cream"], bevel=0.05))
-    made.append(sphere("Nose", (0, -0.78, 0.40), 0.34, mats["coral"], scale=(1.15, 1.7, 0.62), segments=40))
-    made.append(sphere("Tail", (0, 0.72, 0.40), 0.30, mats["coral"], scale=(1.2, 1.25, 0.62), segments=32))
-    made.append(box("Splitter", (0, -1.05, 0.18), (0.62, 0.22, 0.03), mats["cream"], bevel=0.008))
-    made.append(box("SidepodL", (-0.42, -0.05, 0.30), (0.16, 0.62, 0.14), mats["blue"], bevel=0.02))
-    made.append(box("SidepodR", (0.42, -0.05, 0.30), (0.16, 0.62, 0.14), mats["blue"], bevel=0.02))
+    made.append(box("Undertray", (0, 0.02, 0.22), (1.05, 1.70, 0.10), mats["plum"], bevel=0.03))
+    made.append(box("Tub", (0, 0.0, 0.36), (0.86, 1.35, 0.22), mats["cream"], bevel=0.05))
+    made.append(sphere("Nose", (0, -0.78, 0.40), 0.34, mats["coral"], scale=(1.82, 1.7, 0.62), segments=40))
+    made.append(sphere("Tail", (0, 0.72, 0.40), 0.30, mats["coral"], scale=(1.93, 1.25, 0.62), segments=32))
+    made.append(box("Splitter", (0, -1.05, 0.18), (0.90, 0.22, 0.03), mats["cream"], bevel=0.008))
+    made.append(box("SidepodL", (-0.50, 0.02, 0.34), (0.24, 1.48, 0.18), mats["blue"], bevel=0.02))
+    made.append(box("SidepodR", (0.50, 0.02, 0.34), (0.24, 1.48, 0.18), mats["blue"], bevel=0.02))
+    for name, center in WHEELS.items():
+        made.append(box(
+            f"Fender{name}",
+            (center.x * 0.82, center.y, 0.60),
+            (0.28, 0.52, 0.10),
+            mats["coral"],
+            bevel=0.015,
+        ))
     made.append(box("Seat", (0, 0.16, 0.46), (0.36, 0.34, 0.08), mats["plum"], bevel=0.015))
     made.append(box("SeatBack", (0, 0.32, 0.60), (0.34, 0.08, 0.28), mats["plum"], bevel=0.012))
     made.append(box("Wing", (0, 0.98, 1.02), (0.96, 0.30, 0.028), mats["coral"], bevel=0.008))
