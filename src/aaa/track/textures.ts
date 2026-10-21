@@ -101,7 +101,8 @@ function fillNoise(
 export type TrackTextures = {
   asphalt: THREE.CanvasTexture
   asphaltNormal: THREE.DataTexture
-  grass: THREE.CanvasTexture
+  grass: THREE.Texture
+  grassNormal: THREE.Texture
   fairway: THREE.Texture
   sand: THREE.Texture
   sandNormal: THREE.Texture
@@ -153,15 +154,6 @@ function makeSign(title: string, bg: string, fg: string, fontSize = 64): THREE.C
   }, false)
 }
 
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error(`image failed: ${url}`))
-    image.src = url
-  })
-}
-
 function loadRepeat(url: string, color: boolean, repeat: [number, number]): Promise<THREE.Texture> {
   return new THREE.TextureLoader().loadAsync(url).then((tex) => {
     tex.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace
@@ -172,45 +164,19 @@ function loadRepeat(url: string, color: boolean, repeat: [number, number]): Prom
   })
 }
 
-/** Grass Ground luminance, compressed so the dirt specks stay fiber and not blotches. */
-function grassFiber(image: HTMLImageElement): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  canvas.width = image.width
-  canvas.height = image.height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('2d context unavailable')
-  ctx.drawImage(image, 0, 0)
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = img.data
-  for (let i = 0; i < data.length; i += 4) {
-    const l = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255
-    const fiber = THREE.MathUtils.clamp(0.84 + (l - 0.45) * 0.5, 0.62, 1)
-    const byte = fiber * 255
-    data[i] = byte
-    data[i + 1] = byte
-    data[i + 2] = byte
-  }
-  ctx.putImageData(img, 0, 0)
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(22, 22)
-  tex.anisotropy = 8
-  tex.needsUpdate = true
-  return tex
-}
-
 export async function createTrackTextures(): Promise<TrackTextures> {
   const asset = (file: string) => new URL(`./assets/${file}`, import.meta.url).href
-  const [grassImage, fairway, sand, sandNormal, bank, bankNormal] = await Promise.all([
-    loadImage(asset('grass_ground_diff_1k.jpg')),
+  // Sparse Grass is a 2m photo. The lawn plane is 210m, so the repeat matches that scale.
+  const bladeRepeat: [number, number] = [105, 105]
+  const [grass, grassNormal, fairway, sand, sandNormal, bank, bankNormal] = await Promise.all([
+    loadRepeat(asset('sparse_grass_diff_1k.jpg'), true, bladeRepeat),
+    loadRepeat(asset('sparse_grass_nor_gl_1k.jpg'), false, bladeRepeat),
     loadRepeat(asset('withered_grass_diff_1k.jpg'), true, [5, 4]),
     loadRepeat(asset('coast_sand_01_diff_1k.jpg'), true, [3, 2]),
     loadRepeat(asset('coast_sand_01_nor_gl_1k.jpg'), false, [3, 2]),
     loadRepeat(asset('painted_plaster_wall_diff_1k.jpg'), true, [3, 2]),
     loadRepeat(asset('painted_plaster_wall_nor_gl_1k.jpg'), false, [3, 2]),
   ])
-  const grass = grassFiber(grassImage)
   const asphaltH = fillNoise(256, 256, 8, [
     { scale: 1, amp: 0.55 },
     { scale: 2, amp: 0.3 },
@@ -324,6 +290,7 @@ export async function createTrackTextures(): Promise<TrackTextures> {
     asphalt,
     asphaltNormal: heightToNormal(asphaltH, 256, 256, 3.2),
     grass,
+    grassNormal,
     fairway,
     sand,
     sandNormal,

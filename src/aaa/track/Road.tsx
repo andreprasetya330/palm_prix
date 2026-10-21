@@ -6,11 +6,52 @@ import {
   TRACK,
   frameMatrix,
   getTrackFrames,
+  lateralOf,
   pointOn,
   trackLength,
   type Frame,
 } from './spline'
 import type { TrackTextures } from './textures'
+
+/** Flat asphalt inside the cut, so the chase camera and the kart stand on the road. */
+function buildApron(): THREE.BufferGeometry {
+  const x0 = -34
+  const x1 = 4
+  const z0 = -26
+  const z1 = 30
+  const nx = 76
+  const nz = 84
+  const stride = nx + 1
+  const positions: number[] = []
+  const uvs: number[] = []
+  const keep = new Uint8Array(stride * (nz + 1))
+  for (let j = 0; j <= nz; j++) {
+    for (let i = 0; i <= nx; i++) {
+      const x = x0 + ((x1 - x0) * i) / nx
+      const z = z0 + ((z1 - z0) * j) / nz
+      const pond = Math.hypot((x + 12.2) / 7.8, (z - 4.6) / 6.6)
+      keep[j * stride + i] = lateralOf(x, z) < -8.45 && pond > 1 ? 1 : 0
+      positions.push(x, 0.045, z)
+      uvs.push(x / 3.5, z / 3.5)
+    }
+  }
+  const indices: number[] = []
+  for (let j = 0; j < nz; j++) {
+    for (let i = 0; i < nx; i++) {
+      const a = j * stride + i
+      const b = a + 1
+      const c = a + stride
+      const d = c + 1
+      if (keep[a] && keep[b] && keep[c] && keep[d]) indices.push(a, c, b, b, c, d)
+    }
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setIndex(indices)
+  geo.computeVertexNormals()
+  return geo
+}
 
 const asphaltColumns = [
   { lat: -TRACK.halfWidth, lift: 0.0 },
@@ -50,6 +91,7 @@ export function Road({ textures }: { textures: TrackTextures }) {
     const cream = new THREE.Color(palette.curbCream)
     const halfEdge = TRACK.edgeWidth * 0.5
     return {
+      apron: buildApron(),
       asphalt: buildStrip(frames, asphaltColumns),
       edgeOut: buildStrip(frames, [
         { lat: TRACK.edgeLat - halfEdge, lift: 0.03 },
@@ -81,6 +123,19 @@ export function Road({ textures }: { textures: TrackTextures }) {
 
   return (
     <group>
+      <mesh geometry={geos.apron} receiveShadow>
+        <meshStandardMaterial
+          map={textures.asphalt}
+          normalMap={textures.asphaltNormal}
+          normalScale={new THREE.Vector2(0.65, 0.65)}
+          color={'#8d97ab'}
+          roughness={0.84}
+          metalness={0.04}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
       <mesh geometry={geos.asphalt} receiveShadow>
         <meshStandardMaterial
           map={textures.asphalt}

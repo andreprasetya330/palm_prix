@@ -87,39 +87,44 @@ function Palm({
   )
 }
 
-function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture }) {
+function Grass({
+  fiber,
+  fiberNormal,
+  straw,
+}: {
+  fiber: THREE.Texture
+  fiberNormal: THREE.Texture
+  straw: THREE.Texture
+}) {
   const geo = useMemo(() => {
     const g = new THREE.PlaneGeometry(210, 210, 160, 160)
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const shade = new THREE.Color('#126b32')
-    const strawTone = new THREE.Color('#e7b45a')
-    const outside = new THREE.Color(palette.grassOutside)
+    const lawn = new THREE.Color('#f4fff2')
+    const strawTone = new THREE.Color('#f0c48a')
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Crest through the middle of the infield. The sunward face points +X, same key as the sand.
-    const crest = -14
-    const half = 6
+    // Berm just inside the sand, so the cut stands on the apron and the ridge stays beside the road.
+    const crestLat = -7.35
+    const half = 1.05
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
-      const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      const along = x - crest
+      const along = lat - crestLat
       const infield = lat < -1.2
-      if (infield) {
-        c.copy(along >= 0 ? strawTone : shade)
-        let rise = 1.8 * Math.max(0, 1 - Math.abs(along) / half)
+      c.copy(lawn)
+      if (infield && Math.abs(along) < half) {
+        c.copy(along >= 0 ? strawTone : lawn)
+        let rise = 1.15 * Math.max(0, 1 - Math.abs(along) / half)
         const pond = Math.hypot((x + 12.2) / 7.4, (z - 4.6) / 6.4)
         if (pond < 1) rise *= pond * pond
-        if (lat > -7.4) rise *= 1 - THREE.MathUtils.smoothstep(lat, -7.4, -6.6)
+        if (lat < -8.35) rise = 0
         pos.setY(i, pos.getY(i) + rise)
-      } else {
-        c.copy(shade).lerp(outside, edge)
-        c.lerp(far, horizon * horizon)
       }
+      c.lerp(far, horizon * horizon)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
       colors[i * 3 + 2] = c.b
@@ -138,8 +143,10 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
   const material = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
       map: fiber,
+      normalMap: fiberNormal,
+      normalScale: new THREE.Vector2(0.85, 0.85),
       vertexColors: true,
-      roughness: 0.82,
+      roughness: 0.78,
     })
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uStraw = { value: straw }
@@ -153,13 +160,15 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
         .replace('#include <common>', '#include <common>\nuniform sampler2D uStraw;\nvarying float vStraw;')
         .replace(
           '#include <map_fragment>',
-          `#include <map_fragment>
-           vec4 strawSample = texture2D(uStraw, vMapUv);
-           diffuseColor.rgb *= mix(vec3(1.0), strawSample.rgb, vStraw);`,
+          `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
+           float blade = smoothstep(0.02, 0.28, lawnPhoto.g - lawnPhoto.r * 0.35);
+           vec3 fiber = mix(vec3(0.12, 0.36, 0.13), vec3(0.58, 0.9, 0.34), blade);
+           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.18).rgb;
+           diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
         )
     }
     return mat
-  }, [fiber, straw])
+  }, [fiber, fiberNormal, straw])
 
   return (
     <mesh
@@ -578,7 +587,7 @@ function ShellBeach({
 export function World({ textures }: { textures: TrackTextures }) {
   return (
     <group>
-      <Grass fiber={textures.grass} straw={textures.fairway} />
+      <Grass fiber={textures.grass} fiberNormal={textures.grassNormal} straw={textures.fairway} />
       <ShellBeach textures={textures} />
       <CoralBank sign={textures.signBank} grain={textures.bank} grainNormal={textures.bankNormal} />
       <BankFace grain={textures.bank} grainNormal={textures.bankNormal} />
