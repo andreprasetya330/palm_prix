@@ -361,7 +361,7 @@ function sane(kart: AaaKartState, backup: AaaKartState): AaaKartState {
   kart.z = clamp(kart.z, -54, 54)
   kart.yaw = wrapAngle(kart.yaw)
   kart.camYaw = wrapAngle(finite(kart.camYaw, kart.yaw))
-  kart.roll = clamp(finite(kart.roll), -0.32, 0.32)
+  kart.roll = clamp(finite(kart.roll), -0.44, 0.44)
   kart.pitch = clamp(finite(kart.pitch), -0.25, 0.25)
   kart.wheelSteer = clamp(finite(kart.wheelSteer), -1.05, 1.05)
   kart.boostTimer = clamp(kart.boostTimer, 0, 4)
@@ -382,9 +382,9 @@ function updatePose(
   const targetWheel = clamp(steer * 1.05 - kart.driftSide * 0.06, -1.05, 1.05)
   kart.wheelSteer = damp(finite(kart.wheelSteer), targetWheel, 14, dt)
   // +Z roll leans the roof left, so a right turn (positive steer) is negative roll.
-  // About sixteen degrees from behind: the roof tilts, both tires stay on the asphalt.
+  // About twenty-two degrees: the roof tilts in a chase still, and both tires stay down.
   let lean = -kart.wheelSteer * 0.38 - kart.driftSide * 0.04
-  kart.roll = damp(finite(kart.roll), clamp(lean, -0.28, 0.28), 12, dt)
+  kart.roll = damp(finite(kart.roll), clamp(lean, -0.38, 0.38), 12, dt)
   const targetPitch = clamp(-brake * 0.16 + throttle * 0.04 + (kart.airborne ? 0.05 : 0), -0.2, 0.16)
   kart.pitch = damp(finite(kart.pitch), targetPitch, 8, dt)
   kart.squat = damp(finite(kart.squat), brake * -0.08 + throttle * 0.02, 8, dt)

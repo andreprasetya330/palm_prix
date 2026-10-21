@@ -191,17 +191,37 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     plume.name = 'plume'
     const flameLen = 2.7
     const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.32, flameLen, 12),
-      new THREE.MeshBasicMaterial({ color: '#ff3d0a' }),
+      new THREE.ConeGeometry(0.34, flameLen, 12),
+      new THREE.MeshBasicMaterial({
+        color: '#ff3d0a',
+        transparent: true,
+        opacity: 0.5,
+        depthWrite: false,
+      }),
     )
     flame.position.y = flameLen / 2
+    flame.name = 'shell'
+    flame.renderOrder = 1
+    // A hot streak the length of the cone, so the plume reads as fire and not a solid carrot.
+    const coreLen = 2.45
     const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.14, 1.6, 10),
-      new THREE.MeshBasicMaterial({ color: '#ff7a18' }),
+      new THREE.ConeGeometry(0.15, coreLen, 10),
+      new THREE.MeshBasicMaterial({ color: '#ffe14a' }),
     )
-    core.position.y = 0.85
+    core.position.y = coreLen / 2
+    core.name = 'core'
+    core.renderOrder = 2
+    const hotLen = 2.05
+    const hot = new THREE.Mesh(
+      new THREE.ConeGeometry(0.06, hotLen, 8),
+      new THREE.MeshBasicMaterial({ color: '#fff6c8' }),
+    )
+    hot.position.y = hotLen / 2
+    hot.name = 'hot'
+    hot.renderOrder = 3
     plume.add(flame)
     plume.add(core)
+    plume.add(hot)
     group.add(plume)
     root.add(group)
   }
@@ -221,7 +241,7 @@ function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => vo
   kartRoot = root
   root.position.y = 0.05 + picture.y + picture.squat
   origUpdate.call(root)
-  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.32, 0.32), picture.pitch)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.44, 0.44), picture.pitch)
   tameStockFlame(root)
   ensureSurfaceBits(root)
   hideSkyBalls(root)

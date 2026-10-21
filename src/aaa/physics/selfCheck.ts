@@ -301,7 +301,7 @@ function testPoseAndBoost(): void {
 
   let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
   k = hold(k, ctrl({ throttle: 1, steer: 1 }), 0.5)
-  check('full lock rolls a few degrees', k.roll < -0.2 && k.roll > -0.32, `roll=${k.roll.toFixed(3)}`)
+  check('full lock rolls a few degrees', k.roll < -0.32 && k.roll > -0.44, `roll=${k.roll.toFixed(3)}`)
   check('front wheels turn', k.wheelSteer > 0.45, `wheel=${k.wheelSteer.toFixed(3)}`)
   check('corner leaves a skid read', k.skid > 0.4, `skid=${k.skid.toFixed(2)}`)
   check('edge kicks up dust', k.dust > 0.4 || k.skid > 0.4, `dust=${k.dust.toFixed(2)}`)
@@ -351,7 +351,7 @@ function testChaseAndPlume(): void {
   }
   root.updateMatrixWorld(true)
   const up = new THREE.Vector3().setFromMatrixColumn(root.matrix, 1)
-  check('drawn roll is only a few degrees', up.y > 0.94 && up.y < 0.985, `up=${up.y.toFixed(3)} roll=${posed.roll.toFixed(3)}`)
+  check('drawn roll is only a few degrees', up.y > 0.90 && up.y < 0.96, `up=${up.y.toFixed(3)} roll=${posed.roll.toFixed(3)}`)
   const stock = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, Math.PI / 2))
   const drawn = new THREE.Quaternion().setFromRotationMatrix(root.children[0].matrix)
   check('front wheel is steered', drawn.angleTo(stock) > 0.35, `ang=${drawn.angleTo(stock).toFixed(3)}`)
@@ -379,7 +379,7 @@ function testChaseAndPlume(): void {
       surfaceAt(corner.x, corner.z).kind === 'asphalt',
     `r=${ovalRadius(corner.x, corner.z).toFixed(2)} ${surfaceAt(corner.x, corner.z).kind}`,
   )
-  check('corner leans a few degrees', corner.roll < -0.2 && corner.roll > -0.32, `roll=${corner.roll.toFixed(3)}`)
+  check('corner leans a few degrees', corner.roll < -0.32 && corner.roll > -0.44, `roll=${corner.roll.toFixed(3)}`)
   let noseClear = 99
   let sample = { ...DEFAULT_KART }
   for (let i = 0; i < 180; i++) {
@@ -416,6 +416,14 @@ function testChaseAndPlume(): void {
       plumeColor.g < 0.55 &&
       plumeColor.b < 0.2,
     `y=${plume?.position.y.toFixed(2)} z=${plume?.position.z.toFixed(2)} ${plumeMesh?.geometry?.type}`,
+  )
+  const coreMesh = plume?.getObjectByName('core') as THREE.Mesh | undefined
+  const coreColor = (coreMesh?.material as THREE.MeshBasicMaterial | undefined)?.color
+  const coreLen = (coreMesh?.geometry as THREE.ConeGeometry | undefined)?.parameters?.height ?? 0
+  check(
+    'flame has a bright core along its length',
+    !!coreMesh && coreLen > 2 && !!coreColor && coreColor.r > 0.95 && coreColor.g > 0.75 && coreColor.b < 0.55,
+    `len=${coreLen.toFixed(2)}`,
   )
   const ropeLeft = !!bits && bits.children.some((child) => child.name === 'dust')
   check('boost frame has no rope', !ropeLeft)
