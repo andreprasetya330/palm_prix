@@ -7,16 +7,15 @@ import { kartAxes, kartToWorld } from './quads'
 const CHASE_BACK = 6.5
 const CHASE_HEIGHT = 3.6
 
-/** roll, length along the road, cross-section width, opacity, color */
-const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> = [
-  [0.18, 1.26, 0.94, 0.96, '#ffffff'],
-  [-0.42, 1.02, 0.6, 0.82, '#fff6ea'],
+/** roll, length along the road, width, height of the crown, opacity, color */
+const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
+  [0, 1.26, 0.94, 0.62, 0.98, '#ffffff'],
 ]
 
 /**
- * The white core stays on the pipe. The tongue is the flame's own outline,
- * thick at the exhaust and pointed at the tip, and it ends on the road
- * short of the pace bar. The camera stays at the idle chase distance.
+ * The white core stays on the pipe. The lick stays short and aimed down the
+ * road, with a yellow crown and a red lip so the edge has thickness.
+ * The camera stays at the idle chase distance.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
@@ -63,7 +62,6 @@ export function BoostRead({ kart }: { kart: KartState }) {
           frustumCulled={false}
         >
           <meshBasicMaterial
-            map={flameTex}
             vertexColors
             transparent
             depthWrite={false}
@@ -115,10 +113,12 @@ const FLAME_EDGE: ReadonlyArray<readonly [number, number, number, number, number
   [-0.319, -0.16, 0.5, 0.44727, 0.47656, 0.75781],
 ]
 
-/** Hot center, darker rim. t is 0 at the exhaust and 1 at the lick. */
+const ARCH = 9
+
+/** Hot crown, darker lip. t is 0 at the exhaust and 1 at the lick. */
 function flameRgb(t: number, rim: boolean): [number, number, number] {
-  if (rim) return [0.72 + (1 - t) * 0.22, 0.08 + (1 - t) * 0.22, 0.02]
-  return [1, 0.9 * (1 - t) + 0.16 * t, 0.55 * (1 - t) * (1 - t) + 0.03]
+  if (rim) return [0.55 + (1 - t) * 0.28, 0.05 + (1 - t) * 0.1, 0.015]
+  return [1, 0.92 * (1 - t) + 0.18 * t, 0.58 * (1 - t) * (1 - t) + 0.03]
 }
 
 function makeFlameGeometry() {
@@ -128,15 +128,29 @@ function makeFlameGeometry() {
   const indices: number[] = []
   FLAME_EDGE.forEach(([lx, rx, ly, lu, ru, v], row) => {
     const t = ly + 0.5
-    const rim = flameRgb(t, true)
+    const env = Math.pow(1 - t, 0.8)
     const hot = flameRgb(t, false)
-    positions.push(lx, ly, 0, (lx + rx) * 0.5, ly, 0, rx, ly, 0)
-    uvs.push(lu, v, (lu + ru) * 0.5, v, ru, v)
-    colors.push(...rim, ...hot, ...rim)
+    const rim = flameRgb(t, true)
+    for (let s = 0; s < ARCH; s++) {
+      const u = s / (ARCH - 1)
+      const dome = Math.pow(Math.sin(u * Math.PI), 0.42)
+      positions.push(lx + (rx - lx) * u, ly, dome * env)
+      uvs.push(lu + (ru - lu) * u, v)
+      const k = Math.pow(dome, 0.55)
+      colors.push(
+        rim[0] + (hot[0] - rim[0]) * k,
+        rim[1] + (hot[1] - rim[1]) * k,
+        rim[2] + (hot[2] - rim[2]) * k,
+      )
+    }
     if (row === 0) return
-    const a = (row - 1) * 3
-    const c = row * 3
-    indices.push(a, a + 1, c + 1, a, c + 1, c, a + 1, a + 2, c + 2, a + 1, c + 2, c + 1)
+    const prev = (row - 1) * ARCH
+    const curr = row * ARCH
+    for (let s = 0; s < ARCH - 1; s++) {
+      const a = prev + s
+      const c = curr + s
+      indices.push(a, a + 1, c + 1, a, c + 1, c)
+    }
   })
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -146,7 +160,6 @@ function makeFlameGeometry() {
   return geo
 }
 
-const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
 const flameGeo = makeFlameGeometry()
 const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
 
@@ -190,14 +203,14 @@ function placePlume(
   ribbons.forEach((mesh, i) => {
     const spec = RIBBONS[i]
     if (!mesh || !spec) return
-    const [roll, length, width, opacity, color] = spec
+    const [roll, length, width, height, opacity, color] = spec
     _side.crossVectors(_up, _aft)
     if (_side.lengthSq() < 1e-4) _side.copy(_right)
     _side.normalize().applyAxisAngle(_aft, roll)
     _normal.crossVectors(_side, _aft).normalize()
     _basis.makeBasis(_side, _aft, _normal)
     mesh.quaternion.setFromRotationMatrix(_basis)
-    mesh.scale.set(width, length, 1)
+    mesh.scale.set(width, length, height)
     mesh.position.copy(_mouth).addScaledVector(_aft, length * 0.5)
     mesh.visible = true
     const mat = mesh.material as THREE.MeshBasicMaterial
