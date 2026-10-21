@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { palette } from './palette'
-import { LAGOON, lateralOf } from './spline'
+import { LAGOON, getTrackFrames } from './spline'
 import type { TrackTextures } from './textures'
 
 /** West bank of the lagoon only. The east shore sat on the chase line. */
@@ -87,6 +87,59 @@ function Palm({
   )
 }
 
+/** Narrow berm on the inside of the first corner. The cut past lat -6.7 stays flat. */
+function buildRidge(): THREE.BufferGeometry {
+  const frames = getTrackFrames()
+  const slice = []
+  for (const frame of frames) {
+    const { x, z } = frame.p
+    const onCorner = z < -0.4 && z > -19.2 && x > -30.5
+    if (onCorner) slice.push(frame)
+    else if (slice.length) break
+  }
+  const lats = [-4.7, -5.05, -5.45, -5.9, -6.3, -6.7]
+  const lifts = [0, 0.38, 0.92, 1.12, 0.42, 0]
+  const straw = new THREE.Color('#f0c48a')
+  const lawn = new THREE.Color('#f4fff2')
+  const cols = lats.length
+  const positions: number[] = []
+  const colors: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+  for (let i = 0; i < slice.length; i++) {
+    const frame = slice[i]
+    for (let k = 0; k < cols; k++) {
+      const x = frame.p.x + frame.right.x * lats[k]
+      const z = frame.p.z + frame.right.z * lats[k]
+      positions.push(x, lifts[k], z)
+      const tone = k <= 2 ? straw : lawn
+      colors.push(tone.r, tone.g, tone.b)
+      uvs.push(x / 210, z / 210)
+    }
+    if (i < slice.length - 1) {
+      const row = i * cols
+      const next = row + cols
+      for (let k = 0; k < cols - 1; k++) {
+        const a = row + k
+        const b = row + k + 1
+        const c = next + k
+        indices.push(a, c, b, b, c, next + k + 1)
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setIndex(indices)
+  geo.computeVertexNormals()
+  const normals = geo.attributes.normal
+  for (let i = 0; i < normals.count; i++) {
+    if (normals.getY(i) < 0) normals.setXYZ(i, -normals.getX(i), -normals.getY(i), -normals.getZ(i))
+  }
+  return geo
+}
+
 function Grass({
   fiber,
   fiberNormal,
@@ -102,25 +155,13 @@ function Grass({
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
     const lawn = new THREE.Color('#f4fff2')
-    const strawTone = new THREE.Color('#f0c48a')
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Berm on the inside of the first corner only. The lagoon shore stays flat asphalt.
-    const crestLat = -6.4
-    const half = 2.4
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
-      const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
-      const along = lat - crestLat
-      const besideRoad = z < -1 && z > -20 && Math.abs(along) < half
       c.copy(lawn)
-      if (besideRoad) {
-        c.copy(along >= 0 ? strawTone : lawn)
-        const rise = 1.45 * Math.max(0, 1 - Math.abs(along) / half)
-        pos.setY(i, pos.getY(i) + rise)
-      }
       c.lerp(far, horizon * horizon)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
@@ -137,11 +178,13 @@ function Grass({
     return g
   }, [])
 
+  const ridge = useMemo(() => buildRidge(), [])
+
   const material = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
       map: fiber,
       normalMap: fiberNormal,
-      normalScale: new THREE.Vector2(0.85, 0.85),
+      normalScale: new THREE.Vector2(0.7, 0.7),
       vertexColors: true,
       roughness: 0.78,
     })
@@ -158,9 +201,12 @@ function Grass({
         .replace(
           '#include <map_fragment>',
           `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
-           float blade = smoothstep(0.02, 0.28, lawnPhoto.g - lawnPhoto.r * 0.35);
-           vec3 fiber = mix(vec3(0.07, 0.26, 0.08), vec3(0.78, 1.0, 0.46), blade);
-           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.45).rgb;
+           float blade = smoothstep(0.0, 0.04, lawnPhoto.g - lawnPhoto.r);
+           vec3 gap = vec3(0.05, 0.24, 0.06);
+           vec3 leaf = vec3(0.58, 0.92, 0.26);
+           vec3 fiber = mix(gap, leaf, blade);
+           fiber *= 0.8 + lawnPhoto.g * 0.85;
+           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.25).rgb;
            diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
         )
     }
@@ -168,12 +214,10 @@ function Grass({
   }, [fiber, fiberNormal, straw])
 
   return (
-    <mesh
-      geometry={geo}
-      material={material}
-      position={[-16, -0.05, 2]}
-      receiveShadow
-    />
+    <group>
+      <mesh geometry={geo} material={material} position={[-16, -0.05, 2]} receiveShadow />
+      <mesh geometry={ridge} material={material} castShadow receiveShadow />
+    </group>
   )
 }
 
