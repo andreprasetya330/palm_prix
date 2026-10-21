@@ -42,9 +42,9 @@ export function createGlassShade() {
     g.addColorStop(1, 'rgba(255, 255, 255, 0.72)')
     ctx.fillStyle = g
     ctx.fillRect(0, 0, s, s)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-    ctx.lineWidth = s * 0.035
-    ctx.strokeRect(s * 0.02, s * 0.02, s * 0.96, s * 0.96)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.lineWidth = s * 0.018
+    ctx.strokeRect(s * 0.03, s * 0.03, s * 0.94, s * 0.94)
   }, 256)
 }
 

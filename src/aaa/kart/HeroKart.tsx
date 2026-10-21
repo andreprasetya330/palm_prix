@@ -210,14 +210,14 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       origin.current.set(kart.x, 0, kart.z)
       camera.position
         .copy(origin.current)
-        .addScaledVector(camRight.current, 1.72)
-        .addScaledVector(camFwd.current, 1.85)
-      camera.position.y += 1.02
-      camLook.current.copy(origin.current).addScaledVector(camFwd.current, 0.05)
-      camLook.current.y += 0.74
+        .addScaledVector(camRight.current, 2.05)
+        .addScaledVector(camFwd.current, 1.45)
+      camera.position.y += 1.72
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.2)
+      camLook.current.y += 0.82
       camera.lookAt(camLook.current)
-      if (camera.fov !== 30 || camera.near !== 0.06) {
-        camera.fov = 30
+      if (camera.fov !== 34 || camera.near !== 0.06) {
+        camera.fov = 34
         camera.near = 0.06
         camera.updateProjectionMatrix()
       }
@@ -378,10 +378,10 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                 />
               </mesh>
               <mesh
-                position={[0, 0.07, 0.02]}
+                position={[0, 0.08, 0]}
                 rotation={[-Math.PI / 2, 0, 0]}
               >
-                <planeGeometry args={[0.7, 0.42]} />
+                <planeGeometry args={[0.92, 0.5]} />
                 <meshBasicMaterial
                   map={palmTex}
                   transparent
