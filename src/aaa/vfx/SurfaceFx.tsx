@@ -427,6 +427,12 @@ function stepBurst(
   dt: number,
   speed: number,
 ) {
+  if (k.boostTimer > 0) {
+    drawCrown(pieces, flash, k.yaw, k.x, 0.55, k.z)
+    if (ring) ring.visible = false
+    return
+  }
+
   ITEM_BOXES.forEach((box, i) => {
     ready[i] -= dt
     const dx = k.x - box.x
@@ -449,11 +455,24 @@ function stepBurst(
     hideBurst(pieces, flash, ring)
     return
   }
+  drawCrown(pieces, flash, k.yaw, at.x, at.y, at.z)
+  if (ring) ring.visible = false
+  ageRef.current += dt
+}
+
+function drawCrown(
+  pieces: (THREE.Mesh | null)[],
+  flash: THREE.Mesh | null,
+  yaw: number,
+  x: number,
+  y: number,
+  z: number,
+) {
   const crown = 10
-  const radius = 1.05
-  const lift = 2.15
-  const ox = at.x + Math.cos(k.yaw) * 3.1
-  const oz = at.z - Math.sin(k.yaw) * 3.1
+  const radius = 0.85
+  const lift = 1.35
+  const ox = x + Math.cos(yaw) * 2.15
+  const oz = z - Math.sin(yaw) * 2.15
   pieces.forEach((mesh, i) => {
     if (!mesh) return
     if (i >= crown) {
@@ -464,18 +483,16 @@ function stepBurst(
     const a = (i / crown) * Math.PI * 2
     mesh.position.set(
       ox + Math.cos(a) * radius,
-      at.y + lift + (i % 2 === 0 ? 0.38 : -0.05),
+      y + lift + (i % 2 === 0 ? 0.28 : -0.02),
       oz + Math.sin(a) * radius,
     )
-    mesh.scale.setScalar(0.9)
+    mesh.scale.setScalar(0.85)
   })
   if (flash) {
     flash.visible = true
-    flash.position.set(ox, at.y + lift, oz)
-    flash.scale.setScalar(1.25)
+    flash.position.set(ox, y + lift, oz)
+    flash.scale.setScalar(1.05)
   }
-  if (ring) ring.visible = false
-  ageRef.current += dt
 }
 
 function stepSkid(
