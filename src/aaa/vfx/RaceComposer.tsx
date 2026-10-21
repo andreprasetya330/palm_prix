@@ -61,10 +61,10 @@ export function RaceComposer({ kart }: { kart: KartState }) {
     const target = kartRef.current.boostTimer > 0 ? 1 : 0
     boost.current = THREE.MathUtils.damp(boost.current, target, 6.5, dt)
     const k = boost.current
-    gl.toneMappingExposure = 1.08 + k * 0.16
-    passes.bloom.strength = 0.18 + k * 0.62
-    passes.bloom.radius = 0.32 + k * 0.28
-    passes.bloom.threshold = 1.18 - k * 0.48
+    gl.toneMappingExposure = 1.06 + k * 0.08
+    passes.bloom.strength = 0.16 + k * 0.36
+    passes.bloom.radius = 0.28 + k * 0.18
+    passes.bloom.threshold = 1.05 - k * 0.28
     const uniforms = passes.grade.uniforms as unknown as GradeUniforms
     uniforms.uBoost.value = k
     passes.composer.render()

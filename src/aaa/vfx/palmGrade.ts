@@ -34,7 +34,7 @@ export const PalmGradeShader = {
         c = mix(c, acc * 0.2, edge);
         float ang = atan(d.y, d.x);
         float lines = pow(abs(sin(ang * 22.0)), 18.0);
-        c += vec3(1.35, 0.95, 0.42) * lines * edge * 0.72;
+        c += vec3(1.15, 0.82, 0.35) * lines * edge * 0.48;
       }
 
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));

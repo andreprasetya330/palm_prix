@@ -158,9 +158,9 @@ function writeStreaks(
     const color: Rgba =
       punch > 0.2
         ? {
-            r: 1.8 + hot * 0.6,
-            g: 0.85 + hot * 0.5,
-            b: 0.28,
+            r: 1.45 + hot * 0.35,
+            g: 0.72 + hot * 0.35,
+            b: 0.22,
             a: alpha,
           }
         : { r: 1.15, g: 1.12, b: 1.02, a: alpha * 0.55 }
@@ -210,9 +210,9 @@ function writeRibbons(
       _axisB.copy(up).multiplyScalar(0.22 + punch * 0.12)
       const a = (1 - i / 6) * punch
       v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
-        r: 2.3,
-        g: 0.62 + i * 0.08,
-        b: 0.18,
+        r: 1.55,
+        g: 0.48 + i * 0.06,
+        b: 0.12,
         a,
       })
     }
@@ -259,8 +259,8 @@ function ribbonStrip(
     _axisA.set(dx * 0.5, (b.y - a.y) * 0.5, dz * 0.5)
     _axisB.set(sx, 0.04, sz)
     const color: Rgba = core
-      ? { r: 2.4, g: 1.85, b: 0.55, a: fade }
-      : { r: 1.9 * (1 - t) + 0.4, g: 0.28 + t * 0.2, b: 0.12, a: fade * 0.9 }
+      ? { r: 1.7, g: 1.25, b: 0.4, a: fade }
+      : { r: 1.35 * (1 - t) + 0.35, g: 0.22 + t * 0.15, b: 0.08, a: fade * 0.92 }
     vertex = writeQuad(positions, colors, vertex, _center, _axisA, _axisB, color)
   }
   return vertex
