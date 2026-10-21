@@ -14,3 +14,4 @@ export function useLinearMap(url: string, repeatX: number, repeatY: number) {
 }
 
 export const rubberNormalScale = new THREE.Vector2(0.55, 0.55)
+export const clothNormalScale = new THREE.Vector2(0.7, 0.7)

@@ -1,4 +1,7 @@
 import * as THREE from 'three'
+import fabricNormalUrl from './assets/Fabric030_1K-JPG_NormalGL.jpg'
+import fabricRoughUrl from './assets/Fabric030_1K-JPG_Roughness.jpg'
+import { clothNormalScale, useLinearMap } from './textures'
 type Props = {
   texture: THREE.Texture | null
   envMap: THREE.Texture | null
@@ -22,16 +25,37 @@ const cloth = {
  * Original Palm Prix driver. Open-face cream helmet, eyes, coral team suit.
  * Not a Nintendo character — no cap, no mustache, no borrowed marks.
  */
+function SuitMaterial({
+  normal,
+  rough,
+}: {
+  normal: THREE.Texture
+  rough: THREE.Texture
+}) {
+  return (
+    <meshStandardMaterial
+      color={cloth.color}
+      roughness={0.94}
+      metalness={0}
+      normalMap={normal}
+      normalScale={clothNormalScale}
+      roughnessMap={rough}
+    />
+  )
+}
+
 export function Driver({ texture, envMap }: Props) {
+  const clothNormal = useLinearMap(fabricNormalUrl, 3, 3)
+  const clothRough = useLinearMap(fabricRoughUrl, 3, 3)
   return (
     <group position={[0, 0.5, -0.06]}>
       <mesh position={[0, 0.08, 0.02]} scale={[0.34, 0.16, 0.26]} castShadow>
         <sphereGeometry args={[1, 24, 16]} />
-        <meshStandardMaterial {...cloth} />
+        <SuitMaterial normal={clothNormal} rough={clothRough} />
       </mesh>
       <mesh position={[0, 0.28, 0.02]} scale={[0.32, 0.26, 0.22]} castShadow>
         <sphereGeometry args={[1, 28, 20]} />
-        <meshStandardMaterial {...cloth} />
+        <SuitMaterial normal={clothNormal} rough={clothRough} />
       </mesh>
       <mesh position={[0, 0.3, 0.16]} rotation={[0.15, 0, 0]}>
         <sphereGeometry args={[0.1, 16, 12]} />
