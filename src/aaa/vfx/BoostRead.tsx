@@ -7,14 +7,14 @@ import { kartAxes, kartToWorld } from './quads'
 const CHASE_BACK = 6.5
 const CHASE_HEIGHT = 3.6
 
-/** roll, length along the road, width, height of the crown, opacity, color */
+/** roll, length along the road, width, height of the rim, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
-  [0, 1.22, 0.9, 0.48, 1, '#ffffff'],
+  [0, 1.22, 0.92, 0.42, 1, '#ffffff'],
 ]
 
 /**
- * The white core stays on the pipe. The lick stays short and aimed down the
- * road, with a yellow crown and a red lip so the edge has thickness.
+ * The white core stays on the pipe. The wide crown stays seated, the point
+ * stays short of the pace bar, and a raised rim gives the edge thickness.
  * The camera stays at the idle chase distance.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
@@ -92,57 +92,62 @@ function loadSprite(url: string) {
   return tex
 }
 
-const FLAME_ROWS = 36
-const FLAME_SEGS = 14
+const FLAME_STEPS = 24
 
-/** Hot crown, darker lip. t is 0 at the exhaust and 1 at the lick. */
-function flameRgb(t: number, rim: boolean): [number, number, number] {
-  if (rim) return [0.62 + (1 - t) * 0.22, 0.06 + (1 - t) * 0.08, 0.015]
-  return [1, 0.94 * (1 - t) + 0.2 * t, 0.62 * (1 - t) * (1 - t) + 0.04]
+/** t is 0 at the pipe and 1 at the point. */
+function flameProfile(t: number): number {
+  return Math.pow(1 - t, 0.55) * (0.84 + 0.16 * Math.sin(t * Math.PI))
+}
+
+function pushVert(
+  positions: number[],
+  colors: number[],
+  x: number,
+  y: number,
+  z: number,
+  rgb: readonly [number, number, number],
+): number {
+  const index = positions.length / 3
+  positions.push(x, y, z)
+  colors.push(rgb[0], rgb[1], rgb[2])
+  return index
 }
 
 /**
- * Solid half-rounds along the road. Each round faces the chase camera,
- * so the lick has a filled body and a lip instead of an empty tube.
+ * A teardrop face plus a rim that stands up off it. The rim is the thickness
+ * the chase camera can see around the edge.
  */
 function makeFlameGeometry() {
   const positions: number[] = []
   const colors: number[] = []
   const indices: number[] = []
-  const cols = FLAME_SEGS + 1
-  const stride = cols + 1
-  for (let row = 0; row < FLAME_ROWS; row++) {
-    const t = row / (FLAME_ROWS - 1)
-    const ly = -0.5 + t
-    const profile = Math.pow(1 - t, 0.58) * (0.8 + 0.2 * Math.sin(t * Math.PI))
-    const radX = 0.5 * profile
-    const radZ = profile
-    const hot = flameRgb(t, false)
-    const rim = flameRgb(t, true)
-    const arch = row * stride
-    for (let s = 0; s < cols; s++) {
-      const ang = (s / FLAME_SEGS) * Math.PI
-      const lift = Math.sin(ang)
-      positions.push(Math.cos(ang) * radX, ly, lift * radZ)
-      const k = 0.62 + 0.38 * lift
-      colors.push(
-        rim[0] + (hot[0] - rim[0]) * k,
-        rim[1] + (hot[1] - rim[1]) * k,
-        rim[2] + (hot[2] - rim[2]) * k,
-      )
-    }
-    const spine = arch + cols
-    positions.push(0, ly, radZ * 0.42)
-    colors.push(hot[0], hot[1], hot[2])
-    for (let s = 0; s < FLAME_SEGS; s++) indices.push(spine, arch + s, arch + s + 1)
-    if (row === 0) continue
-    const prev = (row - 1) * stride
-    for (let s = 0; s < FLAME_SEGS; s++) {
-      const a = prev + s
-      const c = arch + s
-      indices.push(a, a + 1, c + 1, a, c + 1, c)
-    }
+  const back: number[] = []
+  const front: number[] = []
+  const ring: Array<readonly [number, number]> = []
+  for (let i = FLAME_STEPS; i >= 0; i--) ring.push([i / FLAME_STEPS, 1])
+  for (let i = 1; i < FLAME_STEPS; i++) ring.push([i / FLAME_STEPS, -1])
+
+  for (const [t, sign] of ring) {
+    const y = -0.5 + t
+    const width = flameProfile(t)
+    const lick = 1 + 0.11 * Math.sin(t * Math.PI * 6)
+    const rise = Math.pow(1 - t, 0.72)
+    const lip: [number, number, number] = [1, 0.72 + 0.2 * (1 - t), 0.16]
+    const face: [number, number, number] = [1, 0.42 + 0.28 * (1 - t), 0.05]
+    back.push(pushVert(positions, colors, sign * 0.5 * width * lick, y, 0, lip))
+    front.push(pushVert(positions, colors, sign * 0.5 * width * 0.62, y, rise, face))
   }
+
+  const n = back.length
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n
+    indices.push(back[i], back[j], front[j], back[i], front[j], front[i])
+  }
+
+  const faceHot: [number, number, number] = [1, 0.96, 0.62]
+  const hub = pushVert(positions, colors, 0, -0.18, 0.55, faceHot)
+  for (let i = 0; i < n; i++) indices.push(hub, front[i], front[(i + 1) % n])
+
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
