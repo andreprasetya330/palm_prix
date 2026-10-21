@@ -40,7 +40,8 @@ export function BoostRead({ kart }: { kart: KartState }) {
       }
     }
     if (boosting) hideKartBoostFlame(scene)
-    writePlume(streakGeom, positions, colors, k, punch)
+    if (punch > 0.12) camera.updateMatrixWorld()
+    writePlume(streakGeom, positions, colors, k, camera, punch)
   })
 
   return (
@@ -71,46 +72,64 @@ const _mouth = new THREE.Vector3()
 const _center = new THREE.Vector3()
 const _axisA = new THREE.Vector3()
 const _axisB = new THREE.Vector3()
+const _view = new THREE.Vector3()
+const _camRight = new THREE.Vector3()
+const _camUp = new THREE.Vector3()
+const _dir = new THREE.Vector3()
 
 function writePlume(
   geom: THREE.BufferGeometry,
   positions: Float32Array,
   colors: Float32Array,
   kart: KartState,
+  camera: THREE.Camera,
   punch: number,
 ) {
   let v = 0
   if (punch > 0.2) {
     kartAxes(kart.yaw, _fwd, _right)
-    kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.46, -0.98, _mouth)
-    for (let i = 0; i < 8; i++) {
-      const t = i / 7
-      const along = 0.06 + t * 1.15
-      const width = 0.055 * (1 - t * 0.55)
-      _center.copy(_mouth).addScaledVector(_fwd, -along)
-      _center.y += t * 0.16
-      _axisA.copy(_fwd).multiplyScalar(0.12)
-      _axisB.copy(_right).multiplyScalar(width).addScaledVector(_up, width * 0.65)
-      const color: Rgba = {
-        r: 1.1 - t * 0.28,
-        g: 0.48 - t * 0.22,
-        b: 0.1,
-        a: (1 - t * 0.75) * punch,
-      }
+    kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.4, -1.12, _mouth)
+    _view.copy(camera.position).sub(_mouth)
+    if (_view.lengthSq() < 1e-4) _view.set(0, 0.2, 1)
+    _view.normalize()
+    _camRight.crossVectors(_up, _view)
+    if (_camRight.lengthSq() < 1e-4) _camRight.copy(_right)
+    _camRight.normalize()
+    _camUp.crossVectors(_view, _camRight).normalize()
+
+    for (let i = 0; i < 7; i++) {
+      const t = i / 6
+      _center.copy(_mouth).addScaledVector(_fwd, -(t * 0.72))
+      _center.y += t * 0.08
+      _axisA.copy(_camRight).multiplyScalar(0.1 + t * 0.16)
+      _axisB.copy(_camUp).multiplyScalar(0.07 + t * 0.09)
+      const hot = t < 0.34
+      const color: Rgba = hot
+        ? { r: 1.15, g: 0.9, b: 0.32, a: 0.92 * punch }
+        : { r: 1.05, g: 0.4 - t * 0.12, b: 0.1, a: (0.88 - t * 0.4) * punch }
       v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
     }
-    for (let i = 0; i < 8; i++) {
-      const side = (i - 3.5) * 0.07
-      const along = 0.85 + (i % 4) * 0.28
-      _center.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, side)
-      _center.y += 0.12 + (i % 3) * 0.08
-      _axisA.copy(_fwd).multiplyScalar(0.34)
-      _axisB.copy(_up).multiplyScalar(0.012)
+
+    for (let i = 0; i < 12; i++) {
+      const side = (i - 5.5) / 5.5
+      const lift = ((i % 4) - 1.5) * 0.05
+      _center.copy(_mouth).addScaledVector(_right, side * 0.16)
+      _center.y += 0.05 + lift
+      _dir.copy(_fwd).multiplyScalar(-1)
+      _dir.addScaledVector(_right, side * 0.9)
+      _dir.addScaledVector(_up, 0.16 + Math.abs(side) * 0.18)
+      _dir.normalize()
+      const len = 1.25 + Math.abs(side) * 0.95
+      _center.addScaledVector(_dir, len * 0.5)
+      _axisA.copy(_dir).multiplyScalar(len * 0.5)
+      _axisB.crossVectors(_dir, _view)
+      if (_axisB.lengthSq() < 1e-4) _axisB.copy(_camUp)
+      _axisB.normalize().multiplyScalar(0.018)
       v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
         r: 1.02,
-        g: 0.42,
-        b: 0.12,
-        a: 0.55 * punch,
+        g: 0.46,
+        b: 0.14,
+        a: 0.72 * punch,
       })
     }
   }
