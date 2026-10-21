@@ -140,21 +140,55 @@ function Face() {
       </mesh>
       <Eye x={-0.055} />
       <Eye x={0.055} />
-      <mesh position={[0, -0.015, 0.075]} scale={[0.7, 0.85, 1]}>
-        <sphereGeometry args={[0.016, 10, 8]} />
+      <mesh position={[0, -0.012, 0.078]} scale={[0.75, 0.9, 1.1]}>
+        <sphereGeometry args={[0.02, 12, 10]} />
         <meshStandardMaterial color="#e0a184" roughness={0.6} />
       </mesh>
-      <mesh position={[0, -0.05, 0.078]} rotation={[0.15, 0, Math.PI]}>
-        <torusGeometry args={[0.042, 0.009, 8, 16, Math.PI]} />
-        <meshStandardMaterial color="#c45b58" roughness={0.45} />
+      <Brow x={-0.058} />
+      <Brow x={0.058} />
+      <Mouth />
+    </group>
+  )
+}
+
+function Brow({ x }: { x: number }) {
+  const side = Math.sign(x) || 1
+  return (
+    <group position={[x, 0.055, 0.055]} rotation={[0.35, 0, side * -0.35]}>
+      <mesh castShadow scale={[1, 0.55, 0.7]}>
+        <sphereGeometry args={[0.038, 16, 12]} />
+        <meshStandardMaterial color="#3a2a22" roughness={0.55} />
       </mesh>
-      <mesh position={[-0.055, 0.055, 0.06]} rotation={[0, 0, 0.35]}>
-        <capsuleGeometry args={[0.008, 0.04, 4, 8]} />
-        <meshStandardMaterial color="#3a2a22" roughness={0.5} />
+      <mesh position={[side * 0.012, -0.012, 0.02]} rotation={[0.4, 0, side * 0.2]} scale={[0.7, 0.45, 0.55]}>
+        <sphereGeometry args={[0.028, 12, 10]} />
+        <meshStandardMaterial color="#2a1c16" roughness={0.6} />
       </mesh>
-      <mesh position={[0.055, 0.055, 0.06]} rotation={[0, 0, -0.35]}>
-        <capsuleGeometry args={[0.008, 0.04, 4, 8]} />
-        <meshStandardMaterial color="#3a2a22" roughness={0.5} />
+    </group>
+  )
+}
+
+function Mouth() {
+  return (
+    <group position={[0, -0.05, 0.075]} rotation={[0.25, 0, 0]}>
+      <mesh position={[0, 0.012, 0.012]} scale={[1.15, 0.55, 0.75]} castShadow>
+        <sphereGeometry args={[0.042, 18, 14]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.48} />
+      </mesh>
+      <mesh position={[0, -0.016, 0.016]} scale={[1.05, 0.62, 0.8]} castShadow>
+        <sphereGeometry args={[0.038, 18, 14]} />
+        <meshStandardMaterial color="#d4706c" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, -0.002, 0.004]} scale={[0.85, 0.28, 0.4]}>
+        <sphereGeometry args={[0.036, 14, 10]} />
+        <meshStandardMaterial color="#6a2430" roughness={0.7} />
+      </mesh>
+      <mesh position={[-0.04, 0.008, 0.01]} scale={[0.45, 0.4, 0.45]}>
+        <sphereGeometry args={[0.02, 10, 8]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.5} />
+      </mesh>
+      <mesh position={[0.04, 0.008, 0.01]} scale={[0.45, 0.4, 0.45]}>
+        <sphereGeometry args={[0.02, 10, 8]} />
+        <meshStandardMaterial color="#c45b58" roughness={0.5} />
       </mesh>
     </group>
   )
