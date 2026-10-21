@@ -105,23 +105,20 @@ function Grass({
     const strawTone = new THREE.Color('#f0c48a')
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Berm just inside the sand, so the cut stands on the apron and the ridge stays beside the road.
-    const crestLat = -7.35
-    const half = 1.05
+    // Berm on the inside of the first corner only. The lagoon shore stays flat asphalt.
+    const crestLat = -5.6
+    const half = 1.35
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const along = lat - crestLat
-      const infield = lat < -1.2
+      const besideRoad = z < -2 && Math.abs(along) < half
       c.copy(lawn)
-      if (infield && Math.abs(along) < half) {
+      if (besideRoad) {
         c.copy(along >= 0 ? strawTone : lawn)
-        let rise = 1.15 * Math.max(0, 1 - Math.abs(along) / half)
-        const shore = Math.hypot((x + 12.2) / 10, (z - 4.6) / 8.5)
-        if (shore < 1) rise = 0
-        if (lat < -8.35) rise = 0
+        const rise = 1.25 * Math.max(0, 1 - Math.abs(along) / half)
         pos.setY(i, pos.getY(i) + rise)
       }
       c.lerp(far, horizon * horizon)
