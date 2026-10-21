@@ -87,36 +87,78 @@ function Palm({
   )
 }
 
-function Grass({ fiber }: { fiber: THREE.Texture }) {
+function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture }) {
   const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(210, 210, 80, 80)
+    const g = new THREE.PlaneGeometry(210, 210, 160, 160)
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const inside = new THREE.Color(palette.grassInside)
+    const inside = new THREE.Color('#1c8a42')
+    const strawTone = new THREE.Color('#f0d15a')
     const outside = new THREE.Color(palette.grassOutside)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
+    // Gate key comes from +X +Z. The infield ridge runs across that axis.
+    const sunX = 0.86
+    const sunZ = 0.51
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      c.copy(inside).lerp(outside, edge)
-      c.lerp(far, horizon * horizon)
+      const along = (x + 11) * sunX + (z + 2) * sunZ
+      const infield = lat < -1.2
+      if (infield) {
+        c.copy(along >= 0 ? strawTone : inside)
+        const rise = Math.max(0, 1.35 - Math.min(Math.abs(along), 9) * 0.15)
+        pos.setY(i, pos.getY(i) + rise)
+      } else {
+        c.copy(inside).lerp(outside, edge)
+        c.lerp(far, horizon * horizon)
+      }
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
       colors[i * 3 + 2] = c.b
     }
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    g.computeVertexNormals()
     return g
   }, [])
 
+  const material = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      map: fiber,
+      vertexColors: true,
+      roughness: 0.82,
+    })
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uStraw = { value: straw }
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying float vStraw;')
+        .replace(
+          '#include <color_vertex>',
+          '#include <color_vertex>\nvStraw = vColor.r > vColor.g * 1.05 ? 1.0 : 0.0;',
+        )
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform sampler2D uStraw;\nvarying float vStraw;')
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+           vec4 strawSample = texture2D(uStraw, vUv * 12.0);
+           diffuseColor.rgb = mix(diffuseColor.rgb, strawSample.rgb, vStraw);`,
+        )
+    }
+    return mat
+  }, [fiber, straw])
+
   return (
-    <mesh geometry={geo} position={[-16, -0.05, 2]} receiveShadow>
-      <meshStandardMaterial map={fiber} vertexColors roughness={1} />
-    </mesh>
+    <mesh
+      geometry={geo}
+      material={material}
+      position={[-16, -0.05, 2]}
+      receiveShadow
+    />
   )
 }
 
@@ -274,21 +316,6 @@ function Crowd() {
   )
 }
 
-/** Straw fairway in the first-corner infield. The ring around it stays emerald. */
-function Fairway({ map }: { map: THREE.Texture }) {
-  return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0.4]}
-      scale={[16, 12, 1]}
-      position={[-12, -0.02, -6]}
-      receiveShadow
-    >
-      <circleGeometry args={[1, 48]} />
-      <meshStandardMaterial map={map} color="#fff8ea" roughness={0.94} />
-    </mesh>
-  )
-}
-
 function CoralBank({
   sign,
   grain,
@@ -430,17 +457,17 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
 /** Outside the first corner. One board, facing the chase, clear of the lens. */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[2.4, 0, -16.2]}>
-      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.2, 1.45, 0.7, 12]} />
+    <group position={[6.4, 0, -13.6]}>
+      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.35, 1.6, 0.8, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 4.3, 0]} castShadow>
-        <cylinderGeometry args={[0.26, 0.42, 7.2, 10]} />
+      <mesh position={[0, 3.3, 0]} castShadow>
+        <cylinderGeometry args={[0.32, 0.5, 5.2, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 8.2, 0]} castShadow>
-        <sphereGeometry args={[0.55, 14, 12]} />
+      <mesh position={[0, 6.3, 0]} castShadow>
+        <sphereGeometry args={[0.62, 14, 12]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
@@ -448,9 +475,9 @@ function ApexLantern({ sign }: { sign: THREE.Texture }) {
           roughness={0.22}
         />
       </mesh>
-      <pointLight position={[0, 8, 0.4]} color={palette.gold} intensity={10} distance={7} decay={2} />
-      <mesh position={[0, 6.7, 0.45]}>
-        <planeGeometry args={[7.2, 1.9]} />
+      <pointLight position={[0, 6.1, 0.4]} color={palette.gold} intensity={12} distance={8} decay={2} />
+      <mesh position={[0, 5.5, 0.55]}>
+        <planeGeometry args={[8.2, 2.15]} />
         <meshStandardMaterial map={sign} roughness={0.4} />
       </mesh>
     </group>
@@ -542,8 +569,7 @@ function ShellBeach({
 export function World({ textures }: { textures: TrackTextures }) {
   return (
     <group>
-      <Grass fiber={textures.grass} />
-      <Fairway map={textures.fairway} />
+      <Grass fiber={textures.grass} straw={textures.fairway} />
       <ShellBeach textures={textures} />
       <CoralBank sign={textures.signBank} grain={textures.bank} grainNormal={textures.bankNormal} />
       <BankFace grain={textures.bank} grainNormal={textures.bankNormal} />
