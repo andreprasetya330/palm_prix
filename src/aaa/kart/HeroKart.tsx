@@ -209,14 +209,14 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       origin.current.set(kart.x, 0, kart.z)
       camera.position
         .copy(origin.current)
-        .addScaledVector(camRight.current, 2.85)
-        .addScaledVector(camFwd.current, 2.45)
-      camera.position.y += 1.28
-      camLook.current.copy(origin.current).addScaledVector(camFwd.current, 0.05)
-      camLook.current.y += 0.7
+        .addScaledVector(camRight.current, 1.7)
+        .addScaledVector(camFwd.current, 1.05)
+      camera.position.y += 2.55
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.55)
+      camLook.current.y += 1.02
       camera.lookAt(camLook.current)
-      if (camera.fov !== 30 || camera.near !== 0.08) {
-        camera.fov = 30
+      if (camera.fov !== 42 || camera.near !== 0.08) {
+        camera.fov = 42
         camera.near = 0.08
         camera.updateProjectionMatrix()
       }
@@ -366,7 +366,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <Headlight x={-0.2} z={noseZ - 0.02} />
             <Headlight x={0.2} z={noseZ - 0.02} />
 
-            <group position={[0, 1.52, -1.36]} rotation={[-0.16, 0, 0]}>
+            <group position={[0, 1.52, -1.36]} rotation={[0.42, 0, 0]}>
               <mesh geometry={wing} castShadow>
                 <meshPhysicalMaterial
                   color="#ff3d66"
