@@ -116,8 +116,8 @@ function isKartRoot(obj: THREE.Object3D): boolean {
     obj.type === 'Group' &&
     Math.abs(obj.position.x - picture.x) < 0.3 &&
     Math.abs(obj.position.z - picture.z) < 0.3 &&
-    obj.position.y < 3 &&
-    obj.position.y > -1
+    obj.position.y < 0.55 &&
+    obj.position.y > -0.15
   )
 }
 
