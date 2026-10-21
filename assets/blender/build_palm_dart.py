@@ -575,11 +575,13 @@ def sidewall_mark(name, center, outer, mat):
     """One mesh. The bowl is the top of the P and the stem runs below it."""
     depth = 0.045
     x = outer * 0.175
+    # Y is mirrored so the stem sits on the left when the chase camera
+    # looks at the outer sidewall of the yawed rear wheel.
     parts = [
-        box(f"{name}Stem", center + Vector((x, -0.07, 0.10)), (depth, 0.07, 0.32), mat, bevel=0.004),
-        box(f"{name}Top", center + Vector((x, 0.015, 0.235)), (depth, 0.18, 0.07), mat, bevel=0.004),
-        box(f"{name}Bar", center + Vector((x, 0.01, 0.095)), (depth, 0.15, 0.065), mat, bevel=0.004),
-        box(f"{name}Bowl", center + Vector((x, 0.075, 0.165)), (depth, 0.07, 0.20), mat, bevel=0.004),
+        box(f"{name}Stem", center + Vector((x, 0.07, 0.10)), (depth, 0.07, 0.32), mat, bevel=0.004),
+        box(f"{name}Top", center + Vector((x, -0.015, 0.235)), (depth, 0.18, 0.07), mat, bevel=0.004),
+        box(f"{name}Bar", center + Vector((x, -0.01, 0.095)), (depth, 0.15, 0.065), mat, bevel=0.004),
+        box(f"{name}Bowl", center + Vector((x, -0.075, 0.165)), (depth, 0.07, 0.20), mat, bevel=0.004),
     ]
     select_only(parts[0])
     for part in parts[1:]:
