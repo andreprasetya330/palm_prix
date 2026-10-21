@@ -13,9 +13,9 @@ const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, s
 ]
 
 /**
- * The white core stays on the pipe. The wide crown stays seated, the point
- * stays short of the pace bar, and a raised rim gives the edge thickness.
- * The camera stays at the idle chase distance.
+ * The white core stays on the pipe. The pale face and orange lip stay, and
+ * the lip turns down into a wall so it reads as the edge of a flame.
+ * The point stays short of the pace bar. The camera stays at the idle chase distance.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
@@ -114,8 +114,8 @@ function pushVert(
 }
 
 /**
- * A teardrop face plus a rim that stands up off it. The rim is the thickness
- * the chase camera can see around the edge.
+ * Pale face, hard orange lip, and a wall that drops off that lip.
+ * The drop is the thickness. It pinches out at the point.
  */
 function makeFlameGeometry() {
   const positions: number[] = []
@@ -124,11 +124,13 @@ function makeFlameGeometry() {
   const back: number[] = []
   const seam: number[] = []
   const front: number[] = []
+  const hem: number[] = []
   const ring: Array<readonly [number, number]> = []
   for (let i = FLAME_STEPS; i >= 0; i--) ring.push([i / FLAME_STEPS, 1])
   for (let i = 1; i < FLAME_STEPS; i++) ring.push([i / FLAME_STEPS, -1])
   const lip: [number, number, number] = [1, 0.28, 0.02]
   const face: [number, number, number] = [1, 0.94, 0.42]
+  const ember: [number, number, number] = [0.62, 0.08, 0.01]
 
   for (const [t, sign] of ring) {
     const y = -0.5 + t
@@ -141,12 +143,14 @@ function makeFlameGeometry() {
     back.push(pushVert(positions, colors, outerX, y - 0.08 * rise, 0, lip))
     seam.push(pushVert(positions, colors, innerX, y, innerZ, lip))
     front.push(pushVert(positions, colors, innerX, y, innerZ, face))
+    hem.push(pushVert(positions, colors, outerX * 1.04, y - 0.02 * rise, -1.35 * rise, ember))
   }
 
   const n = back.length
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n
     indices.push(back[i], back[j], seam[j], back[i], seam[j], seam[i])
+    indices.push(hem[i], back[i], back[j], hem[i], back[j], hem[j])
   }
 
   const faceHot: [number, number, number] = [1, 0.98, 0.7]
