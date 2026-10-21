@@ -4,15 +4,16 @@ import * as THREE from 'three'
 import { palette } from './palette'
 import type { TrackTextures } from './textures'
 
-const SUN = new THREE.Vector3(14, 26, 4)
+/** Right of the gate and behind the chase, so shadows fall across the road ahead. */
+const SUN = new THREE.Vector3(24, 14, 26)
 
 function SkyDome() {
   const geo = useMemo(() => {
     const g = new THREE.SphereGeometry(150, 28, 18)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const horizon = new THREE.Color('#d9f1ff')
-    const mid = new THREE.Color(palette.skyHorizon)
+    const horizon = new THREE.Color(palette.skyHorizon)
+    const mid = new THREE.Color('#8ec8ee')
     const zenith = new THREE.Color(palette.skyZenith)
     const sunCol = new THREE.Color(palette.sun)
     const c = new THREE.Color()
@@ -21,10 +22,11 @@ function SkyDome() {
     for (let i = 0; i < pos.count; i++) {
       dir.set(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize()
       const h = THREE.MathUtils.clamp(dir.y, 0, 1)
-      c.copy(horizon).lerp(mid, Math.min(1, h * 3.2))
-      if (h > 0.28) c.lerp(zenith, (h - 0.28) / 0.72)
-      const glow = Math.pow(Math.max(0, dir.dot(sunDir)), 10)
-      c.lerp(sunCol, glow)
+      const lift = h * h * (3 - 2 * h)
+      c.copy(horizon).lerp(mid, THREE.MathUtils.smoothstep(h, 0.02, 0.28))
+      c.lerp(zenith, lift)
+      const glow = Math.pow(Math.max(0, dir.dot(sunDir)), 14)
+      c.lerp(sunCol, glow * 0.85)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
       colors[i * 3 + 2] = c.b
@@ -70,7 +72,7 @@ function CloudPuff({
         [0.25, 0.48, 0.05, 0.7],
         [-0.2, -0.15, 0.4, 0.62],
       ].map(([x, y, z, r], i) => (
-        <mesh key={i} position={[x, y, z]} castShadow>
+        <mesh key={i} position={[x, y, z]}>
           <sphereGeometry args={[r, 12, 10]} />
           <meshStandardMaterial color={palette.cloud} roughness={1} />
         </mesh>
@@ -88,26 +90,29 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
     scene.traverse((obj) => {
       if ((obj as THREE.HemisphereLight).isHemisphereLight) {
         const hemi = obj as THREE.HemisphereLight
-        hemi.intensity = 0.38
-        hemi.color.set('#e7f6ff')
-        hemi.groundColor.set('#9ed36a')
+        hemi.intensity = 0.14
+        hemi.color.set('#d7ecff')
+        hemi.groundColor.set('#6aaf62')
       } else if ((obj as THREE.AmbientLight).isAmbientLight) {
-        ;(obj as THREE.AmbientLight).intensity = 0.2
+        ;(obj as THREE.AmbientLight).intensity = 0.06
       } else if ((obj as THREE.DirectionalLight).isDirectionalLight) {
         const sun = obj as THREE.DirectionalLight
         if (sun.castShadow) {
-          sun.intensity = 2.45
-          sun.color.set('#fff2cc')
+          sun.intensity = 3.5
+          sun.color.set('#fff0c4')
           sun.position.set(SUN.x, SUN.y, SUN.z)
+          sun.target.position.set(-14, 0, 4)
+          scene.add(sun.target)
           const cam = sun.shadow.camera
-          cam.left = -60
-          cam.right = 40
-          cam.top = 40
-          cam.bottom = -60
-          cam.far = 140
+          cam.left = -48
+          cam.right = 48
+          cam.top = 48
+          cam.bottom = -48
+          cam.near = 1
+          cam.far = 160
           cam.updateProjectionMatrix()
-          sun.shadow.bias = -0.00035
-          sun.shadow.normalBias = 0.035
+          sun.shadow.bias = -0.00025
+          sun.shadow.normalBias = 0.04
           sun.shadow.mapSize.set(2048, 2048)
         } else {
           sun.intensity = 0
@@ -121,17 +126,17 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
       }
     })
     if (scene.fog instanceof THREE.Fog) {
-      scene.fog.color.set('#c5e4ff')
-      scene.fog.near = 70
-      scene.fog.far = 170
+      scene.fog.color.set(palette.skyHorizon)
+      scene.fog.near = 90
+      scene.fog.far = 210
     }
-    scene.background = new THREE.Color('#8ec8ff')
+    scene.background = new THREE.Color(palette.skyHorizon)
   }, [scene])
 
   return (
     <group>
       <SkyDome />
-      <sprite position={[7.5, 5.6, -10]} scale={[5.5, 5.5, 1]}>
+      <sprite position={[11, 6.4, 16]} scale={[6.2, 6.2, 1]}>
         <spriteMaterial map={textures.sun} transparent depthWrite={false} fog={false} />
       </sprite>
       <CloudPuff position={[-6, 4.8, -6]} scale={0.85} phase={0.2} />
