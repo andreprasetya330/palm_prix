@@ -93,26 +93,31 @@ function Grass({ fiber, straw }: { fiber: THREE.Texture; straw: THREE.Texture })
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const inside = new THREE.Color('#146b34')
-    const strawTone = new THREE.Color('#a67c32')
+    const shade = new THREE.Color('#126b32')
+    const strawTone = new THREE.Color('#e7b45a')
     const outside = new THREE.Color(palette.grassOutside)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
-    // Straight line down the infield. The sunward side of the ridge faces +X, same as the sand key.
+    // Crest through the middle of the infield. The sunward face points +X, same key as the sand.
+    const crest = -14
+    const half = 6
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) - 16
       const z = pos.getZ(i) + 2
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      const along = x + 9
+      const along = x - crest
       const infield = lat < -1.2
       if (infield) {
-        c.copy(along >= 0 ? strawTone : inside)
-        const rise = Math.max(0, 0.72 - Math.min(Math.abs(along), 7) * 0.11)
+        c.copy(along >= 0 ? strawTone : shade)
+        let rise = 1.8 * Math.max(0, 1 - Math.abs(along) / half)
+        const pond = Math.hypot((x + 12.2) / 7.4, (z - 4.6) / 6.4)
+        if (pond < 1) rise *= pond * pond
+        if (lat > -7.4) rise *= 1 - THREE.MathUtils.smoothstep(lat, -7.4, -6.6)
         pos.setY(i, pos.getY(i) + rise)
       } else {
-        c.copy(inside).lerp(outside, edge)
+        c.copy(shade).lerp(outside, edge)
         c.lerp(far, horizon * horizon)
       }
       colors[i * 3] = c.r
