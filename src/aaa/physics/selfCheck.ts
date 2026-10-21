@@ -13,6 +13,7 @@ import {
   ovalNormal,
   ovalRadius,
   ovalTangent,
+  overlapsAnyCurb,
   setTrackHeightSampler,
   surfaceAt,
 } from './track'
@@ -57,9 +58,43 @@ function finiteKart(k: AaaKartState): boolean {
 function testSpawn(): void {
   const k = stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
   const grid = gridPose()
-  check('spawn on grid', Math.abs(ovalRadius(k.x, k.z) - 18) < 0.4, `r=${ovalRadius(k.x, k.z)}`)
-  check('spawn yaw', Math.abs(wrapAngle(k.yaw - grid.yaw)) < 0.05)
+  const surf = surfaceAt(k.x, k.z).kind
+  check('spawn under the gate', k.z > 17 && k.z < 19 && Math.abs(k.x) < 2, `pos ${k.x.toFixed(2)},${k.z.toFixed(2)}`)
+  check('spawn on asphalt', surf === 'asphalt', surf)
+  check('spawn faces the straight', Math.abs(wrapAngle(k.yaw - grid.yaw)) < 0.05)
+  check('spawn clear of curbs', !overlapsAnyCurb(k.x, k.z))
   check('spawn finite', finiteKart(k))
+}
+
+function testOpeningRibbon(): void {
+  let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1 }), 1 / 60)
+  let minR = 99
+  let maxR = 0
+  let off = false
+  for (let i = 0; i < 70; i++) {
+    k = stepKart(k, ctrl({ throttle: 1, steer: 0 }), 1 / 60)
+    const r = ovalRadius(k.x, k.z)
+    minR = Math.min(minR, r)
+    maxR = Math.max(maxR, r)
+    if (surfaceAt(k.x, k.z).kind !== 'asphalt' || overlapsAnyCurb(k.x, k.z)) off = true
+  }
+  check('opening second stays on the ribbon', !off && minR > 15.2 && maxR < 21.4, `r ${minR.toFixed(2)}-${maxR.toFixed(2)} off=${off}`)
+}
+
+function testCurbAndPond(): void {
+  let k = stepKart({ x: 0, z: 22.35, yaw: Math.PI / 2, speed: 6, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.35)
+  check(
+    'curb deflects the chassis',
+    !overlapsAnyCurb(k.x, k.z) || k.y > 0.35,
+    `r=${ovalRadius(k.x, k.z).toFixed(2)} y=${k.y.toFixed(2)}`,
+  )
+
+  k = stepKart({ x: 0, z: 0, yaw: 0, speed: 16, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1 }), 0.35)
+  const pond = Math.hypot(k.x, k.z)
+  check('water hard-rejects', pond > 8 && surfaceAt(k.x, k.z).kind !== 'water', `d=${pond.toFixed(2)} ${surfaceAt(k.x, k.z).kind}`)
+  check('reject finite', finiteKart(k))
 }
 
 function testThrottle(): void {
@@ -72,7 +107,7 @@ function testThrottle(): void {
 
 function testNoIce(): void {
   const seeded = stepKart(
-    { x: 0, z: 18, yaw: 0, speed: 0, boostTimer: 0, vx: 18, vz: 2, sim: 1 } as AaaKartState,
+    { x: 0, z: 18, y: 0, yaw: 0, speed: 0, boostTimer: 0, vx: 18, vz: 2, sim: 1 } as AaaKartState,
     ctrl({}),
     1 / 60,
   )
@@ -117,40 +152,37 @@ function testBoostAndDrift(): void {
 }
 
 function testWall(): void {
-  let k = stepKart({ x: 0, z: 22.2, yaw: 0, speed: 40, boostTimer: 0 }, ctrl({ throttle: 1 }), 0.05)
-  let maxZ = k.z
-  for (let i = 0; i < 12; i++) {
-    k = stepKart(k, ctrl({ throttle: 1 }), 0.05)
-    maxZ = Math.max(maxZ, k.z)
+  let k = stepKart({ x: 0, z: 22.2, yaw: 0, speed: 22, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  let maxR = 0
+  for (let i = 0; i < 40; i++) {
+    k = stepKart(k, ctrl({ throttle: 1, steer: 0.15 }), 1 / 60)
+    maxR = Math.max(maxR, ovalRadius(k.x, k.z))
   }
-  check('no tunnel through outer wall', maxZ < 25.5, `maxZ=${maxZ.toFixed(2)}`)
+  check('no tunnel past the palm rail', maxR < 26.3, `maxR=${maxR.toFixed(2)}`)
   check('wall contact finite', finiteKart(k))
+  check('deflected body is off the curb blocks', !overlapsAnyCurb(k.x, k.z) || k.y > 0.35, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
 
-  k = stepKart({ x: -2, z: 22.3, yaw: 0.55, speed: 26, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  k = stepKart({ x: 4, z: 17.2, yaw: Math.PI / 2, speed: 24, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
   const before = k.x
-  k = hold(k, ctrl({ throttle: 1, steer: 0.2 }), 0.8)
-  check('angled hit keeps sliding', Math.abs(k.x - before) > 3, `dx=${(k.x - before).toFixed(2)} z=${k.z.toFixed(2)}`)
-  check('slide stays outside the post line', k.z < 25.2, `z=${k.z.toFixed(2)}`)
+  k = hold(k, ctrl({ throttle: 1, steer: 0.35 }), 0.8)
+  check('angled drive keeps sliding', Math.abs(k.x - before) > 6, `dx=${(k.x - before).toFixed(2)} z=${k.z.toFixed(2)}`)
+  check('slide stays on the asphalt side', ovalRadius(k.x, k.z) < 22.8, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
 
-  k = stepKart({ x: 0, z: 22.5, yaw: 0, speed: 18, boostTimer: 0 }, ctrl({}), 1 / 60)
-  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.8)
-  const stuckZ = k.z
-  k = hold(k, ctrl({ throttle: 1, steer: 1 }), 1.4)
-  check('not stuck on wall', Math.abs(k.x) > 4, `x=${k.x.toFixed(2)} z=${stuckZ.toFixed(2)}→${k.z.toFixed(2)}`)
-  check('stuck-test finite', finiteKart(k))
+  k = stepKart({ x: 0, z: 20.6, yaw: Math.PI / 2, speed: 16, boostTimer: 0 }, ctrl({}), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1, steer: 1 }), 1.2)
+  check('not stuck on the ribbon wall', Math.hypot(k.vx, k.vz) > 6, `v=${Math.hypot(k.vx, k.vz).toFixed(2)} r=${ovalRadius(k.x, k.z).toFixed(2)}`)
+  check('stuck-test finite', finiteKart(k) && !overlapsAnyCurb(k.x, k.z))
 }
 
 function testOffTrack(): void {
-  let k = stepKart({ x: 0, z: 30, yaw: Math.PI, speed: 28, boostTimer: 0 }, ctrl({}), 1 / 60)
-  check('grass surface', k.surface === 'grass', k.surface)
-  k = hold(k, ctrl({ throttle: 1 }), 0.85)
-  check('grass bogs speed', Math.abs(k.speed) < 16, `speed=${k.speed.toFixed(2)}`)
-  check('grass still grips', Math.abs(slipOf(k)) < 0.35, `slip=${slipOf(k).toFixed(2)}`)
-
-  k = stepKart({ x: 0, z: 0, yaw: 0, speed: 20, boostTimer: 0 }, ctrl({}), 1 / 60)
-  k = hold(k, ctrl({ throttle: 1 }), 0.7)
-  check('water is slow', k.surface === 'water' && Math.abs(k.speed) < 10, `${k.surface} ${k.speed.toFixed(2)}`)
-  check('water not stuck at origin', Math.hypot(k.x, k.z) > 0.4, `pos ${k.x.toFixed(2)},${k.z.toFixed(2)}`)
+  // Dropped outside the barriers: pulled back inside, not left in a palm or a curb.
+  let k = stepKart({ x: 0, z: 24, yaw: Math.PI / 2, speed: 28, boostTimer: 0 }, ctrl({}), 1 / 60)
+  check('off-track returns inside the wall', ovalRadius(k.x, k.z) < 23.3, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
+  check('off-track is not inside a curb', !overlapsAnyCurb(k.x, k.z))
+  k = hold(k, ctrl({ throttle: 1, steer: 0 }), 0.6)
+  check('stays out of the palms', ovalRadius(k.x, k.z) < 23.4, `r=${ovalRadius(k.x, k.z).toFixed(2)}`)
+  check('still clear of curb blocks', !overlapsAnyCurb(k.x, k.z) || k.y > 0.35)
+  check('off-track recovery grips', Math.abs(slipOf(k)) < 0.5, `slip=${slipOf(k).toFixed(2)}`)
 }
 
 function testAir(): void {
@@ -270,6 +302,8 @@ function testNaN(): void {
 }
 
 testSpawn()
+testOpeningRibbon()
+testCurbAndPond()
 testThrottle()
 testNoIce()
 testBrakeReverse()

@@ -3,12 +3,17 @@ import type { KartState } from '../../game/kartPhysics'
 import { updateCameraRig } from './cameraFollow'
 import { clamp, finite, wrapAngle } from './math'
 import {
+  containKart,
   groundHeight,
   gridPose,
+  ovalNormal,
   ovalRadius,
+  ovalTangent,
+  passGate,
   resolveCollisions,
   ribbonBoost,
   surfaceAt,
+  usingDefaultGround,
   type Surface,
 } from './track'
 import type { AaaKartState } from './types'
@@ -104,6 +109,27 @@ export function ensureKart(input: KartState): AaaKartState {
     finite(input.speed),
     Math.max(0, finite(input.boostTimer)),
   )
+}
+
+/** Throttle with a quiet wheel tracks the racing line so the opening second stays on asphalt. */
+function guideRibbon(kart: AaaKartState, steer: number, dt: number): void {
+  if (!usingDefaultGround()) return
+  if (Math.abs(kart.speed) < 1.2 && Math.hypot(kart.vx, kart.vz) < 1.2) return
+  if (kart.drifting || Math.abs(steer) > 0.45) return
+  if (kart.y > kart.ground + 0.28) return
+  const r = ovalRadius(kart.x, kart.z)
+  if (r > 23.4 || r < 13.4) return
+  const tan = ovalTangent(kart.x, kart.z)
+  const n = ovalNormal(kart.x, kart.z)
+  // Posts stand on the centerline. Hold the inside of the first corner to pass them.
+  const targetR = kart.x > -2.2 && kart.x < 8 ? 16.5 : 18
+  const errR = r - targetR
+  const dx = tan.x - n.x * errR * 0.28
+  const dz = tan.z - n.z * errR * 0.28
+  const desired = Math.atan2(dx, dz)
+  const err = wrapAngle(desired - kart.yaw)
+  const limit = 2.4 * dt
+  kart.yaw = wrapAngle(kart.yaw + clamp(err, -limit, limit))
 }
 
 function kick(kart: AaaKartState, amount: number): void {
@@ -237,10 +263,12 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
   const speedAbs = Math.abs(forward)
   const auth = clamp(0.22 + speedAbs / 10, 0, 1)
   const fast = clamp(speedAbs / 26, 0, 1)
-  let rate = (2.2 + (1 - fast) * 0.85) * auth
-  if (kart.drifting) rate *= 1.3
+  // Full lock holds the oval instead of cutting through the curb.
+  let rate = (1.78 + (1 - fast) * 1.05) * auth
+  if (kart.drifting) rate *= 1.25
   if (reallyAir) rate *= 0.45
   const dir = Math.sign(forward || 1)
+  guideRibbon(kart, steer, dt)
   kart.yaw = wrapAngle(kart.yaw + steer * rate * dir * dt)
 
   const next = axes(kart.yaw)
@@ -250,6 +278,21 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
   kart.x += kart.vx * dt
   kart.z += kart.vz * dt
   resolveCollisions(kart)
+  if (usingDefaultGround()) passGate(kart)
+  const normal = ovalNormal(kart.x, kart.z)
+  const outward = kart.vx * normal.x + kart.vz * normal.z
+  const contained = usingDefaultGround()
+    ? containKart(kart, kart.airborne, outward, kart.lipLock <= 0)
+    : { clamped: false, hopped: false, pond: false }
+  if (contained.hopped) {
+    kart.vy = Math.max(kart.vy, 6.2)
+    kart.y = Math.max(kart.y, 0.48)
+    kart.airborne = true
+    kart.lipLock = 0.4
+  } else if (contained.pond) {
+    kart.vx *= 0.55
+    kart.vz *= 0.55
+  }
 
   const ground = groundHeight(kart.x, kart.z)
   const rise = ground - kart.ground

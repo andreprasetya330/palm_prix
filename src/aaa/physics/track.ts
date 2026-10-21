@@ -65,17 +65,32 @@ export function ovalTangent(x: number, z: number): { x: number; z: number } {
   return { x: tx / m, z: tz / m }
 }
 
-/** Start grid just before the finish stripe, pointed down the racing line. */
+/**
+ * Center slot under the start arch (the gate sits on z = 18).
+ * Faces +X, down the start straight, on asphalt, clear of the posts at x = ±3.4.
+ */
 export function gridPose(): { x: number; z: number; yaw: number } {
-  const t = -0.5
-  const r = 18
-  const x = Math.sin(t) * r * OVAL_X_SCALE
-  const z = Math.cos(t) * r
-  const tangent = ovalTangent(x, z)
-  return { x, z, yaw: Math.atan2(tangent.x, tangent.z) }
+  return { x: -0.35, z: 18, yaw: Math.PI / 2 }
 }
 
+/** Kart-center band. The body stays off the curb blocks inside this range. */
+export const RIBBON_INNER = 14.95
+export const RIBBON_OUTER = 20.9
+/**
+ * Continuous slide rail just inside the barrier blocks (centers at oval r = 24.1).
+ * Discrete posts snag the chassis; the rail keeps tangent speed and stays out of the palms.
+ */
+export const BARRIER_WALL = 23.15
+const CURB_OUTER_END = 22.75
+/** Half-extent of the chassis in the ground plane, used for curb clearance. */
+export const CHASSIS_REACH = 0.92
+
 let heightSampler: ((x: number, z: number) => number) | null = null
+
+/** Custom elevation replaces the oval ribbon walls so a sampler can shape the drive. */
+export function usingDefaultGround(): boolean {
+  return heightSampler === null
+}
 
 /**
  * Optional elevation. When set, it replaces the default curb height field.
@@ -164,6 +179,111 @@ export const BOOST_PADS: readonly { x: number; z: number; r: number }[] = [0.35,
 )
 
 export type Body = { x: number; z: number; vx: number; vz: number }
+
+/** Candy curb blocks, same layout as `Track.tsx` (56 per edge). */
+export const CURBS: readonly BoxObstacle[] = (() => {
+  const list: BoxObstacle[] = []
+  const count = 56
+  for (let i = 0; i < count; i++) {
+    const t = (i / count) * Math.PI * 2
+    const yaw = -t
+    const hx = 1.15 / 2
+    const hz = 0.55 / 2
+    const outer = ovalPoint(t, 22.35)
+    const inner = ovalPoint(t, 13.65)
+    list.push({ x: outer.x, z: outer.z, yaw, hx, hz })
+    list.push({ x: inner.x, z: inner.z, yaw, hx, hz })
+  }
+  return list
+})()
+
+export function overlapsBox(x: number, z: number, box: BoxObstacle, radius: number): boolean {
+  const dx = x - box.x
+  const dz = z - box.z
+  const c = Math.cos(box.yaw)
+  const s = Math.sin(box.yaw)
+  const lx = dx * c + dz * s
+  const lz = -dx * s + dz * c
+  const clx = clamp(lx, -box.hx, box.hx)
+  const clz = clamp(lz, -box.hz, box.hz)
+  const ox = lx - clx
+  const oz = lz - clz
+  return ox * ox + oz * oz < radius * radius
+}
+
+export function overlapsAnyCurb(x: number, z: number, radius = CHASSIS_REACH): boolean {
+  for (const box of CURBS) {
+    if (overlapsBox(x, z, box, radius)) return true
+  }
+  return false
+}
+
+export type ContainResult = { clamped: boolean; hopped: boolean; pond: boolean }
+
+function placeOnRadius(body: Body, radius: number): void {
+  const t = ovalAngle(body.x, body.z)
+  body.x = Math.sin(t) * radius * OVAL_X_SCALE
+  body.z = Math.cos(t) * radius
+}
+
+function killRadial(body: Body, outward: boolean): void {
+  const n = ovalNormal(body.x, body.z)
+  const vn = body.vx * n.x + body.vz * n.z
+  if (outward ? vn > 0 : vn < 0) {
+    body.vx -= vn * n.x
+    body.vz -= vn * n.z
+  }
+}
+
+/**
+ * Keep a grounded kart on the asphalt ribbon.
+ * Outer curb: slide back onto the lane, or hop if you're launching over it.
+ * Inner side and the pond: hard reject onto the lane. Never sit on the blue disc.
+ * Barrier blocks and palm trunks stay outside a slide rail.
+ */
+export function containKart(
+  body: Body,
+  airborne: boolean,
+  outward: number,
+  canHop: boolean,
+): ContainResult {
+  const result: ContainResult = { clamped: false, hopped: false, pond: false }
+  let r = ovalRadius(body.x, body.z)
+
+  if (r > BARRIER_WALL) {
+    placeOnRadius(body, BARRIER_WALL)
+    killRadial(body, true)
+    result.clamped = true
+    r = BARRIER_WALL
+  }
+
+  if (r < RIBBON_INNER && (!airborne || r < 13.5)) {
+    result.pond = r < 8 || Math.hypot(body.x, body.z) < 4.6
+    placeOnRadius(body, RIBBON_INNER)
+    killRadial(body, false)
+    result.clamped = true
+    return result
+  }
+
+  if (!airborne && r > RIBBON_OUTER && r < CURB_OUTER_END) {
+    if (canHop && outward > 14) {
+      result.hopped = true
+      return result
+    }
+    placeOnRadius(body, RIBBON_OUTER)
+    killRadial(body, true)
+    result.clamped = true
+  }
+
+  // Still inside a curb block: shove back onto the lane. Do not park in the mesh.
+  if (!airborne && overlapsAnyCurb(body.x, body.z)) {
+    const rr = ovalRadius(body.x, body.z)
+    placeOnRadius(body, rr >= 18 ? RIBBON_OUTER : RIBBON_INNER)
+    killRadial(body, rr >= 18)
+    result.clamped = true
+  }
+  return result
+}
 
 const SKIN = 0.02
 const BOUND = 54
@@ -274,13 +394,45 @@ function pushBounds(body: Body): void {
   }
 }
 
+/**
+ * Arch posts sit on the start-line center. Separate in Z so a kart driving the
+ * straight slides past the post instead of stopping dead against it.
+ */
+export function passGate(body: Body): void {
+  const reach = 0.86
+  for (const post of PILLARS) {
+    const min = post.hx + reach
+    let dx = body.x - post.x
+    let dz = body.z - post.z
+    let d = Math.hypot(dx, dz)
+    if (d >= min) continue
+    const zDir = dz > 0.15 ? 1 : -1
+    body.z += zDir * (min - Math.abs(dz) + 0.06)
+    dx = body.x - post.x
+    dz = body.z - post.z
+    d = Math.hypot(dx, dz) || 1
+    if (d < min) {
+      const xDir = dx >= 0 ? 1 : -1
+      body.x += xDir * (min - d + 0.02)
+      dx = body.x - post.x
+      dz = body.z - post.z
+      d = Math.hypot(dx, dz) || 1
+    }
+    const nx = dx / d
+    const nz = dz / d
+    const vn = body.vx * nx + body.vz * nz
+    if (vn < 0) {
+      body.vx -= vn * nx
+      body.vz -= vn * nz
+    }
+  }
+}
+
 /** Slide the body out of walls, trunks, hills, and the map edge. Keeps tangent speed. */
 export function resolveCollisions(body: Body): number {
   let hits = 0
   for (let pass = 0; pass < 3; pass++) {
     let hit = false
-    for (const box of BARRIERS) hit = pushBox(body, box, KART_RADIUS) || hit
-    for (const box of PILLARS) hit = pushBox(body, box, KART_RADIUS) || hit
     for (const c of TRUNKS) hit = pushCircle(body, c, KART_RADIUS) || hit
     for (const c of HILLS) hit = pushCircle(body, c, KART_RADIUS) || hit
     pushBounds(body)
