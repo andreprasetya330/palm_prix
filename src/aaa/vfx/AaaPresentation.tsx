@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber'
-import { createPortal } from 'react-dom'
-import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 import type { ControlState } from '../../game/controlState'
 import type { KartState } from '../../game/kartPhysics'
 import type { RaceStatus } from '../../game/raceLoop'
@@ -29,17 +29,36 @@ export function AaaPresentation({ kart, race, control }: AaaPresentationProps) {
       <RaceComposer kart={kart} />
       <BoostRead kart={kart} />
       <SurfaceFx kart={kart} control={control} />
-      {showHud && (
-        <HudPortal>
-          <RaceHud race={race} kart={kart} />
-        </HudPortal>
-      )}
+      {showHud && <HudMount race={race} kart={kart} />}
     </>
   )
 }
 
-function HudPortal({ children }: { children: ReactNode }) {
+/** DOM HUD through its own React root so R3F never tries to construct a div. */
+function HudMount({ race, kart }: { race: RaceStatus; kart: KartState }) {
   const parent = useThree((s) => s.gl.domElement.parentElement)
-  if (!parent) return null
-  return createPortal(children, parent)
+  const rootRef = useRef<Root | null>(null)
+
+  useEffect(() => {
+    if (!parent) return
+    const host = document.createElement('div')
+    host.dataset.ppHost = ''
+    host.style.cssText =
+      'position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;'
+    parent.appendChild(host)
+    const root = createRoot(host)
+    rootRef.current = root
+    root.render(<RaceHud race={race} kart={kart} />)
+    return () => {
+      root.unmount()
+      host.remove()
+      rootRef.current = null
+    }
+  }, [parent])
+
+  useEffect(() => {
+    rootRef.current?.render(<RaceHud race={race} kart={kart} />)
+  }, [race, kart])
+
+  return null
 }
