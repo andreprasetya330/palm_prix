@@ -139,10 +139,10 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
       <sprite position={[11, 6.4, 16]} scale={[6.2, 6.2, 1]}>
         <spriteMaterial map={textures.sun} transparent depthWrite={false} fog={false} />
       </sprite>
-      <CloudPuff position={[-6, 4.8, -6]} scale={0.85} phase={0.2} />
-      <CloudPuff position={[4, 5.4, -14]} scale={1.05} phase={1.1} />
-      <CloudPuff position={[-12, 5.1, -18]} scale={0.9} phase={2.2} />
-      <CloudPuff position={[14, 4.6, -2]} scale={0.7} phase={0.6} />
+      <CloudPuff position={[-24, 8.2, 2]} scale={0.85} phase={0.2} />
+      <CloudPuff position={[2, 10.4, -36]} scale={1.05} phase={1.1} />
+      <CloudPuff position={[-22, 9.2, -34]} scale={0.9} phase={2.2} />
+      <CloudPuff position={[26, 8.6, -4]} scale={0.7} phase={0.6} />
     </group>
   )
 }

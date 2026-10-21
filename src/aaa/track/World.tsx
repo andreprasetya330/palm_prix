@@ -343,36 +343,69 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
 }
 
 /**
- * Outside the first corner, on the right of the chase that looks down the straight.
- * High enough that the name sits in the sky above the gate banner.
+ * Outside the first corner. The name is large enough for the start chase,
+ * and the lantern throws a warm pool onto Coral Bank.
  */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[15, 0, -16]}>
-      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[2.2, 2.6, 0.9, 12]} />
+    <group position={[18, 0, -20]}>
+      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[2.4, 2.8, 1, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 5.4, 0]} castShadow>
-        <cylinderGeometry args={[0.55, 0.9, 9.2, 10]} />
+      <mesh position={[0, 6.2, 0]} castShadow>
+        <cylinderGeometry args={[0.62, 1.05, 10.4, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 10.6, 0]} castShadow>
-        <sphereGeometry args={[1.15, 18, 14]} />
+      <mesh position={[0, 12.2, 0]} castShadow>
+        <sphereGeometry args={[1.35, 18, 14]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
-          emissiveIntensity={1.1}
-          roughness={0.25}
+          emissiveIntensity={1.4}
+          roughness={0.22}
         />
       </mesh>
-      <mesh position={[0, 10.6, 0]}>
-        <sphereGeometry args={[1.9, 16, 12]} />
-        <meshBasicMaterial color={palette.sun} transparent opacity={0.35} depthWrite={false} />
+      <pointLight position={[0, 11.2, 2]} color={palette.gold} intensity={80} distance={28} decay={2} />
+      <mesh position={[0, 8.4, 1.35]} castShadow>
+        <planeGeometry args={[16, 4.2]} />
+        <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, 7.6, 1.2]} castShadow>
-        <planeGeometry args={[11.5, 3]} />
-        <meshStandardMaterial map={sign} roughness={0.45} side={THREE.DoubleSide} />
+      <mesh position={[-1.35, 8.4, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow>
+        <planeGeometry args={[12, 3.4]} />
+        <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Built bell in the infield of the first corner. Not another patch of lawn. */
+function ReefBell({ sign }: { sign: THREE.Texture }) {
+  return (
+    <group position={[-16, 0, -4]}>
+      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[2.3, 2.7, 0.8, 12]} />
+        <meshStandardMaterial color={palette.coral} roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 3.6, 0]} castShadow>
+        <cylinderGeometry args={[0.7, 1.15, 5.6, 10]} />
+        <meshStandardMaterial color={palette.cream} roughness={0.48} />
+      </mesh>
+      <mesh position={[0, 6.7, 0]} castShadow>
+        <sphereGeometry args={[1.15, 16, 12]} />
+        <meshStandardMaterial color={palette.gold} emissive={palette.gold} emissiveIntensity={0.35} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 6.1, 0]} rotation={[Math.PI, 0, 0]} castShadow>
+        <coneGeometry args={[1.5, 1.6, 12, 1, true]} />
+        <meshStandardMaterial color={palette.coral} side={THREE.DoubleSide} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 4.5, 1.2]}>
+        <planeGeometry args={[8.4, 2.35]} />
+        <meshStandardMaterial map={sign} roughness={0.42} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[1.2, 4.5, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[8.4, 2.35]} />
+        <meshStandardMaterial map={sign} roughness={0.42} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -437,6 +470,7 @@ export function World({ textures }: { textures: TrackTextures }) {
       <CoralBank sign={textures.signBank} grain={textures.bank} />
       <TideCrown sign={textures.signCrown} />
       <ApexLantern sign={textures.signApex} />
+      <ReefBell sign={textures.signReef} />
       <ItemCrate position={[6.5, 0.7, 1.6]} phase={0.2} question={textures.question} />
       <ItemCrate position={[8.6, 0.7, -14]} phase={1.3} question={textures.question} />
       <ItemCrate position={[-22, 0.7, 22]} phase={2.1} question={textures.question} />
