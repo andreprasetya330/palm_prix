@@ -6,13 +6,12 @@ import { LAGOON } from './spline'
 import type { TrackTextures } from './textures'
 
 const palms: [number, number, number, number, number][] = [
-  [-10.7, 0, 4.1, 1.05, 0.28],
-  [-10.3, 0, 9.5, 0.92, -0.22],
-  [-11.5, 0, 12.8, 1.12, 0.16],
-  [-25.6, 0, 11.4, 1.05, 0.34],
-  [-26.2, 0, 6.6, 1.18, -0.18],
-  [-25.2, 0, 2.4, 0.88, 0.3],
-  [-22.4, 0, 13.6, 1.0, 0.08],
+  [-8.2, 0, 2.2, 1.02, 0.28],
+  [-8.6, 0, 6.8, 0.9, -0.2],
+  [-9.1, 0, 10.2, 1.1, 0.16],
+  [-17.4, 0, 7.6, 1.05, 0.32],
+  [-16.8, 0, 2.4, 0.92, -0.18],
+  [-15.6, 0, 11.2, 1.0, 0.12],
 ]
 
 function frondGeometry(): THREE.BufferGeometry {
@@ -355,23 +354,23 @@ function ShellBeach({
       {palms.map(([x, y, z, s, lean]) => (
         <Palm key={`${x}-${z}`} position={[x, y, z]} scale={s} lean={lean} bark={textures.bark} />
       ))}
-      {[-13.2, -14.4, -15.6].map((x) => (
-        <mesh key={x} position={[x, 0.22, 6.5]} receiveShadow castShadow>
+      {[-7.6, -8.7, -9.8].map((x) => (
+        <mesh key={x} position={[x, 0.22, 4.6]} receiveShadow castShadow>
           <boxGeometry args={[1.15, 0.12, 1.35]} />
           <meshStandardMaterial map={textures.wood} roughness={0.8} />
         </mesh>
       ))}
-      {[-12.6, -16.2].map((x) => (
-        <mesh key={x} position={[x, 0.15, 6.5]} castShadow>
+      {[-7.1, -10.4].map((x) => (
+        <mesh key={x} position={[x, 0.15, 4.6]} castShadow>
           <cylinderGeometry args={[0.08, 0.1, 0.5, 6]} />
           <meshStandardMaterial color={palette.woodDark} />
         </mesh>
       ))}
-      <mesh position={[-12.2, 1.15, 8.4]}>
+      <mesh position={[-8.2, 1.25, 8.2]}>
         <planeGeometry args={[2.8, 0.85]} />
         <meshStandardMaterial map={textures.signBeach} />
       </mesh>
-      <group position={[-20.2, 0.18, 8.4]} rotation={[0, 0.6, 0]}>
+      <group position={[-13.4, 0.18, 5.2]} rotation={[0, 0.4, 0]}>
         <mesh castShadow scale={[1.55, 0.36, 0.62]}>
           <sphereGeometry args={[1, 16, 12]} />
           <meshStandardMaterial color={palette.cream} roughness={0.55} />
@@ -382,9 +381,9 @@ function ShellBeach({
         </mesh>
       </group>
       {[
-        [-14.5, 0.2, 3.2, 0.7],
-        [-23.5, 0.15, 3.4, 0.55],
-        [-21.2, 0.18, 12.2, 0.8],
+        [-7.4, 0.2, 1.6, 0.55],
+        [-16.8, 0.16, 1.8, 0.6],
+        [-15.2, 0.18, 9.4, 0.7],
       ].map(([x, y, z, s]) => (
         <mesh key={`${x}-${z}`} position={[x, y, z]} scale={[s, s * 0.6, s]} castShadow receiveShadow>
           <sphereGeometry args={[1, 10, 8]} />
@@ -403,7 +402,7 @@ export function World({ textures }: { textures: TrackTextures }) {
       <CoralBank sign={textures.signBank} />
       <TideCrown sign={textures.signCrown} />
       <ItemCrate position={[6.5, 0.7, 1.6]} phase={0.2} question={textures.question} />
-      <ItemCrate position={[7.4, 0.7, -4.5]} phase={1.3} question={textures.question} />
+      <ItemCrate position={[8.6, 0.7, -14]} phase={1.3} question={textures.question} />
       <ItemCrate position={[-22, 0.7, 22]} phase={2.1} question={textures.question} />
       <mesh position={[-16, -1.5, -52]} scale={[20, 4.2, 12]} receiveShadow>
         <sphereGeometry args={[1, 18, 12]} />

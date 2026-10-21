@@ -86,7 +86,7 @@ export function Road({ textures }: { textures: TrackTextures }) {
           map={textures.asphalt}
           normalMap={textures.asphaltNormal}
           normalScale={new THREE.Vector2(0.65, 0.65)}
-          color={palette.asphalt}
+          color={'#8d97ab'}
           vertexColors
           roughness={0.84}
           metalness={0.04}

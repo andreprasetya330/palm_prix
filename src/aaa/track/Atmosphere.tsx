@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { palette } from './palette'
 import type { TrackTextures } from './textures'
 
-const SUN = new THREE.Vector3(10, 14, -16)
+const SUN = new THREE.Vector3(14, 26, 4)
 
 function SkyDome() {
   const geo = useMemo(() => {
@@ -88,15 +88,15 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
     scene.traverse((obj) => {
       if ((obj as THREE.HemisphereLight).isHemisphereLight) {
         const hemi = obj as THREE.HemisphereLight
-        hemi.intensity = 0.22
-        hemi.color.set('#d7f3ff')
-        hemi.groundColor.set('#8fbf62')
+        hemi.intensity = 0.38
+        hemi.color.set('#e7f6ff')
+        hemi.groundColor.set('#9ed36a')
       } else if ((obj as THREE.AmbientLight).isAmbientLight) {
-        ;(obj as THREE.AmbientLight).intensity = 0.07
+        ;(obj as THREE.AmbientLight).intensity = 0.2
       } else if ((obj as THREE.DirectionalLight).isDirectionalLight) {
         const sun = obj as THREE.DirectionalLight
         if (sun.castShadow) {
-          sun.intensity = 3.15
+          sun.intensity = 2.45
           sun.color.set('#fff2cc')
           sun.position.set(SUN.x, SUN.y, SUN.z)
           const cam = sun.shadow.camera

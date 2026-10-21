@@ -24,7 +24,7 @@ export function buildStrip(
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i]
     roadNormal(f, up)
-    const shade = 0.92 + 0.08 * Math.sin(f.distance * 0.17)
+      const shade = 0.97 + 0.06 * Math.sin(f.distance * 0.17)
     const v = f.distance / 4
     for (let k = 0; k < cols; k++) {
       const p = pointOn(f, columns[k].lat, columns[k].lift)
@@ -32,7 +32,7 @@ export function buildStrip(
       normals.push(up.x, up.y, up.z)
       uvs.push(((columns[k].lat - minLat) / span) * (span / 4), v)
       const edge = Math.abs(columns[k].lat) / Math.max(Math.abs(minLat), Math.abs(maxLat))
-      const value = shade * (1 - edge * 0.18)
+      const value = shade * (1 - edge * 0.06)
       colors.push(value, value, value)
     }
     if (i < frames.length - 1) {

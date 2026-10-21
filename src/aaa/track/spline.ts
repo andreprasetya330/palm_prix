@@ -30,7 +30,7 @@ export const GRID = {
   lineDepth: 1.55,
 }
 
-export const LAGOON = { x: -17.2, z: 6.4, rx: 7.4, rz: 5.1 }
+export const LAGOON = { x: -12.2, z: 4.6, rx: 5.4, rz: 4.3 }
 
 export type Frame = {
   p: THREE.Vector3
