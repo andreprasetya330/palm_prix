@@ -259,9 +259,7 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 }
 
 .pp-map-grass { fill: #3ecf5a; }
-.pp-map-road { fill: #3c4254; }
-.pp-map-in { fill: #7adf62; }
-.pp-map-pond { fill: #3db8ff; }
+.pp-map-pond { fill: #3db8ff; stroke: #e8f7ff; stroke-width: 0.6; }
 .pp-map-box { fill: #ffc83d; stroke: #10241c; stroke-width: 0.6; }
 .pp-map-kart { fill: #ff4b32; stroke: #10241c; stroke-width: 0.8; }
 

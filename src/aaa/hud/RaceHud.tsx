@@ -100,12 +100,31 @@ function MiniMap({ kart }: { kart: KartState }) {
   const px = (x: number) => 70 + (x / 34) * 54
   const py = (z: number) => 70 - (z / 34) * 54
   const yaw = (kart.yaw * 180) / Math.PI
+  const rx = (r: number) => (r * 1.15 * 54) / 34
+  const ry = (r: number) => (r * 54) / 34
   return (
     <div className="pp-map" aria-label="Oval map">
       <svg viewBox="0 0 140 140">
-        <ellipse cx="70" cy="70" rx="62" ry="54" className="pp-map-grass" />
-        <ellipse cx="70" cy="70" rx={(22 * 1.15 * 54) / 34} ry={(22 * 54) / 34} className="pp-map-road" />
-        <ellipse cx="70" cy="70" rx={(14 * 1.15 * 54) / 34} ry={(14 * 54) / 34} className="pp-map-in" />
+        <ellipse cx="70" cy="70" rx="64" ry="56" className="pp-map-grass" />
+        <ellipse
+          cx="70"
+          cy="70"
+          rx={rx(18)}
+          ry={ry(18)}
+          fill="none"
+          stroke="#2c3142"
+          strokeWidth={ry(8.2)}
+        />
+        <ellipse
+          cx="70"
+          cy="70"
+          rx={rx(18)}
+          ry={ry(18)}
+          fill="none"
+          stroke="#ffe566"
+          strokeWidth="1.6"
+          strokeDasharray="3.2 2.4"
+        />
         <circle cx={px(POND.x)} cy={py(POND.z)} r={(POND.radius * 54) / 34} className="pp-map-pond" />
         {ITEM_BOXES.map((b, i) => (
           <rect
