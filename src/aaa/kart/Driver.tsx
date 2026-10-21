@@ -68,14 +68,8 @@ export function Driver({ texture, envMap }: Props) {
 
       <Limb from={[-0.22, 0.34, 0.04]} to={[-0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
       <Limb from={[0.22, 0.34, 0.04]} to={[0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
-      <mesh position={[-0.16, 0.2, 0.3]}>
-        <sphereGeometry args={[0.07, 16, 12]} />
-        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
-      </mesh>
-      <mesh position={[0.16, 0.2, 0.3]}>
-        <sphereGeometry args={[0.07, 16, 12]} />
-        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
-      </mesh>
+      <Glove x={-0.16} />
+      <Glove x={0.16} />
 
       <group position={[0, 0.56, 0.04]}>
         <mesh castShadow>
@@ -164,8 +158,8 @@ function Face() {
       </mesh>
       <Eye x={-0.055} />
       <Eye x={0.055} />
-      <mesh position={[0, -0.012, 0.078]} scale={[0.75, 0.9, 1.1]}>
-        <sphereGeometry args={[0.02, 12, 10]} />
+      <mesh position={[0, 0.004, 0.07]} scale={[0.7, 0.85, 0.8]}>
+        <sphereGeometry args={[0.016, 12, 10]} />
         <meshStandardMaterial color="#e0a184" roughness={0.6} />
       </mesh>
       <Brow x={-0.058} />
@@ -191,28 +185,54 @@ function Brow({ x }: { x: number }) {
   )
 }
 
+function Lip({
+  y,
+  radius,
+  tube,
+  color,
+}: {
+  y: number
+  radius: number
+  tube: number
+  color: string
+}) {
+  return (
+    <mesh position={[0, y, 0.02]} rotation={[0.15, 0, Math.PI]} castShadow>
+      <torusGeometry args={[radius, tube, 10, 18, Math.PI]} />
+      <meshStandardMaterial color={color} roughness={0.48} />
+    </mesh>
+  )
+}
+
 function Mouth() {
   return (
-    <group position={[0, -0.05, 0.075]} rotation={[0.25, 0, 0]}>
-      <mesh position={[0, 0.012, 0.012]} scale={[1.15, 0.55, 0.75]} castShadow>
-        <sphereGeometry args={[0.042, 18, 14]} />
-        <meshStandardMaterial color="#c45b58" roughness={0.48} />
-      </mesh>
-      <mesh position={[0, -0.016, 0.016]} scale={[1.05, 0.62, 0.8]} castShadow>
-        <sphereGeometry args={[0.038, 18, 14]} />
-        <meshStandardMaterial color="#d4706c" roughness={0.5} />
-      </mesh>
-      <mesh position={[0, -0.002, 0.004]} scale={[0.85, 0.28, 0.4]}>
-        <sphereGeometry args={[0.036, 14, 10]} />
+    <group position={[0, -0.045, 0.06]} rotation={[0.2, 0, 0]}>
+      <Lip y={0.012} radius={0.05} tube={0.014} color="#c45b58" />
+      <Lip y={-0.012} radius={0.052} tube={0.016} color="#d4706c" />
+      <mesh position={[0, 0, 0.012]} scale={[1.3, 0.35, 0.4]}>
+        <sphereGeometry args={[0.03, 14, 10]} />
         <meshStandardMaterial color="#6a2430" roughness={0.7} />
       </mesh>
-      <mesh position={[-0.04, 0.008, 0.01]} scale={[0.45, 0.4, 0.45]}>
-        <sphereGeometry args={[0.02, 10, 8]} />
-        <meshStandardMaterial color="#c45b58" roughness={0.5} />
+    </group>
+  )
+}
+
+function Glove({ x }: { x: number }) {
+  const side = Math.sign(x) || 1
+  return (
+    <group position={[x, 0.2, 0.3]} rotation={[0.5, side * 0.2, side * -0.2]}>
+      <mesh scale={[1.2, 0.62, 0.9]} castShadow>
+        <sphereGeometry args={[0.06, 16, 12]} />
+        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
       </mesh>
-      <mesh position={[0.04, 0.008, 0.01]} scale={[0.45, 0.4, 0.45]}>
-        <sphereGeometry args={[0.02, 10, 8]} />
-        <meshStandardMaterial color="#c45b58" roughness={0.5} />
+      <mesh
+        position={[side * 0.048, 0.03, 0.012]}
+        rotation={[0.15, 0, side * 0.85]}
+        scale={[0.55, 0.95, 0.5]}
+        castShadow
+      >
+        <sphereGeometry args={[0.03, 12, 10]} />
+        <meshStandardMaterial color="#efe2cf" roughness={0.94} />
       </mesh>
     </group>
   )
