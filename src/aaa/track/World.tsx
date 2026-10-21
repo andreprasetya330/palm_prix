@@ -348,17 +348,17 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
  */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[18, 0, -20]}>
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[2.4, 2.8, 1, 12]} />
+    <group position={[2, 0, -22]}>
+      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[2.2, 2.6, 0.9, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 6.2, 0]} castShadow>
-        <cylinderGeometry args={[0.62, 1.05, 10.4, 10]} />
+      <mesh position={[0, 3.3, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.9, 5.6, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 12.2, 0]} castShadow>
-        <sphereGeometry args={[1.35, 18, 14]} />
+      <mesh position={[0, 6.8, 0]} castShadow>
+        <sphereGeometry args={[0.85, 16, 12]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
@@ -366,13 +366,9 @@ function ApexLantern({ sign }: { sign: THREE.Texture }) {
           roughness={0.22}
         />
       </mesh>
-      <pointLight position={[0, 11.2, 2]} color={palette.gold} intensity={80} distance={28} decay={2} />
-      <mesh position={[0, 8.4, 1.35]} castShadow>
-        <planeGeometry args={[16, 4.2]} />
-        <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[-1.35, 8.4, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow>
-        <planeGeometry args={[12, 3.4]} />
+      <pointLight position={[4, 6.2, 4]} color={palette.gold} intensity={60} distance={36} decay={2} />
+      <mesh position={[0, 5.5, 0.7]}>
+        <planeGeometry args={[15, 3.5]} />
         <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
     </group>
@@ -399,12 +395,8 @@ function ReefBell({ sign }: { sign: THREE.Texture }) {
         <coneGeometry args={[1.5, 1.6, 12, 1, true]} />
         <meshStandardMaterial color={palette.coral} side={THREE.DoubleSide} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 4.5, 1.2]}>
-        <planeGeometry args={[8.4, 2.35]} />
-        <meshStandardMaterial map={sign} roughness={0.42} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[1.2, 4.5, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[8.4, 2.35]} />
+      <mesh position={[0, 4.6, 1.25]}>
+        <planeGeometry args={[9.2, 2.6]} />
         <meshStandardMaterial map={sign} roughness={0.42} side={THREE.DoubleSide} />
       </mesh>
     </group>
