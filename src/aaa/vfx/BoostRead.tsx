@@ -122,34 +122,35 @@ function makeFlameGeometry() {
   const colors: number[] = []
   const indices: number[] = []
   const back: number[] = []
+  const seam: number[] = []
   const front: number[] = []
   const ring: Array<readonly [number, number]> = []
   for (let i = FLAME_STEPS; i >= 0; i--) ring.push([i / FLAME_STEPS, 1])
   for (let i = 1; i < FLAME_STEPS; i++) ring.push([i / FLAME_STEPS, -1])
+  const lip: [number, number, number] = [1, 0.28, 0.02]
+  const face: [number, number, number] = [1, 0.94, 0.42]
 
   for (const [t, sign] of ring) {
     const y = -0.5 + t
     const width = flameProfile(t)
-    const rise = Math.pow(1 - t, 0.65)
-    const lick = 1 + 0.09 * Math.sin(t * Math.PI * 5)
-    const lip: [number, number, number] = [1, 0.38 + 0.16 * (1 - t), 0.02]
-    const face: [number, number, number] = [1, 0.9 - 0.25 * t, 0.28]
-    back.push(
-      pushVert(positions, colors, sign * 0.5 * width * lick, y - 0.1 * rise, 0, lip),
-    )
-    front.push(
-      pushVert(positions, colors, sign * 0.5 * width * 0.64, y, 0.55 * rise, face),
-    )
+    const rise = Math.pow(1 - t, 0.6)
+    const lick = 1 + 0.08 * Math.sin(t * Math.PI * 4)
+    const outerX = sign * 0.5 * width * lick
+    const innerX = sign * 0.5 * width * 0.48
+    const innerZ = 0.7 * rise
+    back.push(pushVert(positions, colors, outerX, y - 0.08 * rise, 0, lip))
+    seam.push(pushVert(positions, colors, innerX, y, innerZ, lip))
+    front.push(pushVert(positions, colors, innerX, y, innerZ, face))
   }
 
   const n = back.length
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n
-    indices.push(back[i], back[j], front[j], back[i], front[j], front[i])
+    indices.push(back[i], back[j], seam[j], back[i], seam[j], seam[i])
   }
 
-  const faceHot: [number, number, number] = [1, 0.96, 0.62]
-  const hub = pushVert(positions, colors, 0, -0.18, 0.55, faceHot)
+  const faceHot: [number, number, number] = [1, 0.98, 0.7]
+  const hub = pushVert(positions, colors, 0, -0.16, 0.4, faceHot)
   for (let i = 0; i < n; i++) indices.push(hub, front[i], front[(i + 1) % n])
 
   const geo = new THREE.BufferGeometry()
