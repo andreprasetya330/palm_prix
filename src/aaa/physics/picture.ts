@@ -176,60 +176,74 @@ function flameRadius(t: number): number {
   return Math.max(0.02, taper * cut + Math.sin(t * Math.PI) * 0.1 * (1 - t))
 }
 
-function fireGeometry(length: number, radius: number, lobes: number): THREE.BufferGeometry {
-  const rows = 14
-  const cols = 11
-  const positions: number[] = []
-  const indices: number[] = []
-  for (let i = 0; i <= rows; i++) {
-    const t = i / rows
-    const rad = radius * flameRadius(t)
-    for (let j = 0; j < cols; j++) {
-      const a = (j / cols) * Math.PI * 2
-      const lobe = 0.55 + 0.45 * Math.cos(lobes * a + i * 0.35)
-      positions.push(Math.cos(a) * rad * lobe, t * length, Math.sin(a) * rad * lobe)
-    }
+/** Flame outline in the local XY plane. Local +Y runs back along the road. */
+function flameShape(length: number, radius: number, phase: number): THREE.Shape {
+  const shape = new THREE.Shape()
+  const steps = 14
+  const right: Array<[number, number]> = []
+  const left: Array<[number, number]> = []
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const env = flameRadius(t)
+    const wobble = Math.sin(t * Math.PI * 3.5 + phase) * 0.07 * (1 - t)
+    right.push([radius * Math.max(0.02, env + wobble), t * length])
+    const wobbleL = Math.sin(t * Math.PI * 3.5 + phase + 1.4) * 0.06 * (1 - t)
+    left.push([-radius * Math.max(0.02, env * 0.84 + wobbleL), t * length])
   }
-  const tip = (rows + 1) * cols
-  positions.push(0, length, 0)
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      const a = i * cols + j
-      const b = i * cols + ((j + 1) % cols)
-      const c = a + cols
-      const d = b + cols
-      indices.push(a, c, b, b, c, d)
-    }
-  }
-  const last = rows * cols
-  for (let j = 0; j < cols; j++) indices.push(last + j, tip, last + ((j + 1) % cols))
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geo.setIndex(indices)
+  shape.moveTo(right[0][0], right[0][1])
+  for (let i = 1; i < right.length; i++) shape.lineTo(right[i][0], right[i][1])
+  for (let i = left.length - 2; i >= 0; i--) shape.lineTo(left[i][0], left[i][1])
+  shape.closePath()
+  return shape
+}
+
+/**
+ * A tongue with real depth. The cap is the orange body. The extruded wall
+ * is the hot rim, so the silhouette edge reads as fire instead of a paper cut.
+ */
+function thickTongue(length: number, radius: number, thick: number, phase: number): THREE.ExtrudeGeometry {
+  const geo = new THREE.ExtrudeGeometry(flameShape(length, radius, phase), {
+    depth: thick,
+    bevelEnabled: true,
+    bevelThickness: thick * 0.16,
+    bevelSize: radius * 0.07,
+    bevelSegments: 1,
+    curveSegments: 1,
+    steps: 1,
+  })
   geo.computeBoundingBox()
   return geo
+}
+
+function tongueMaterials(body: string): THREE.MeshBasicMaterial[] {
+  return [
+    new THREE.MeshBasicMaterial({
+      color: body,
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+    }),
+    new THREE.MeshBasicMaterial({
+      color: '#ffe56a',
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+    }),
+  ]
 }
 
 function addLick(
   plume: THREE.Group,
   length: number,
   radius: number,
-  lobes: number,
-  color: string,
+  thick: number,
+  phase: number,
+  body: string,
   x: number,
   z: number,
   rotZ: number,
 ): void {
-  const lick = new THREE.Mesh(
-    fireGeometry(length, radius, lobes),
-    new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.94,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }),
-  )
+  const lick = new THREE.Mesh(thickTongue(length, radius, thick, phase), tongueMaterials(body))
   lick.position.set(x, 0, z)
   lick.rotation.z = rotZ
   lick.name = 'lick'
@@ -262,23 +276,14 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     plume.rotation.set(-Math.PI / 2, 0, 0)
     plume.name = 'plume'
     const flameLen = 2.8
-    const shell = new THREE.Mesh(
-      fireGeometry(flameLen, 0.46, 3),
-      new THREE.MeshBasicMaterial({
-        color: '#ff3d0a',
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    )
+    const shell = new THREE.Mesh(thickTongue(flameLen, 0.5, 0.46, 0.4), tongueMaterials('#ff3d0a'))
     shell.name = 'shell'
     shell.renderOrder = 1
     plume.add(shell)
-    // Side tongues stick out of the main taper so the outline is not one triangle.
-    addLick(plume, 2.15, 0.24, 4, '#ff7a18', 0.26, 0.05, 0.32)
-    addLick(plume, 1.75, 0.22, 5, '#e22600', -0.24, -0.04, -0.38)
-    addLick(plume, 1.45, 0.18, 3, '#ffb03a', 0.04, 0.2, 0.12)
+    // Separate tongues, each thick enough that the hot wall shows as an edge.
+    addLick(plume, 2.15, 0.28, 0.4, 1.1, '#ff5a12', 0.28, 0.08, 0.32)
+    addLick(plume, 1.8, 0.26, 0.36, 2.2, '#e22600', -0.26, 0.16, -0.36)
+    addLick(plume, 1.5, 0.22, 0.34, 0.2, '#ff7a18', 0.05, 0.28, 0.1)
     const coreLen = 2.35
     const core = new THREE.Mesh(
       new THREE.ConeGeometry(0.14, coreLen, 10),

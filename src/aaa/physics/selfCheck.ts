@@ -403,9 +403,13 @@ function testChaseAndPlume(): void {
   const plume = root.getObjectByName('plume')
   check('boost shows a plume', !!plume && plume.visible, `boost=${boosted.boostTimer.toFixed(2)}`)
   const shell = plume?.getObjectByName('shell') as THREE.Mesh | undefined
-  const shellColor = (shell?.material as THREE.MeshBasicMaterial | undefined)?.color
+  const shellMats = shell?.material
+  const shellList = Array.isArray(shellMats) ? shellMats : shellMats ? [shellMats] : []
+  const shellColor = (shellList[0] as THREE.MeshBasicMaterial | undefined)?.color
+  const edgeColor = (shellList[1] as THREE.MeshBasicMaterial | undefined)?.color
   const shellBox = shell?.geometry?.boundingBox
   const shellLen = shellBox ? shellBox.max.y - shellBox.min.y : 0
+  const shellThick = shellBox ? shellBox.max.z - shellBox.min.z : 0
   const licks = plume?.children.filter((child) => child.name === 'lick').length ?? 0
   check(
     'plume is an orange exhaust flame',
@@ -420,6 +424,11 @@ function testChaseAndPlume(): void {
       shellColor.g < 0.55 &&
       shellColor.b < 0.2,
     `y=${plume?.position.y.toFixed(2)} z=${plume?.position.z.toFixed(2)} len=${shellLen.toFixed(2)} licks=${licks}`,
+  )
+  check(
+    'flame tongues have a hot edge',
+    shellThick > 0.3 && !!edgeColor && edgeColor.r > 0.95 && edgeColor.g > 0.7 && edgeColor.b < 0.55,
+    `thick=${shellThick.toFixed(2)}`,
   )
   const coreMesh = plume?.getObjectByName('core') as THREE.Mesh | undefined
   const coreColor = (coreMesh?.material as THREE.MeshBasicMaterial | undefined)?.color
