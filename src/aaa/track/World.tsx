@@ -348,17 +348,17 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
  */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[2, 0, -22]}>
-      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[2.2, 2.6, 0.9, 12]} />
+    <group position={[14, 0, -2]}>
+      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.8, 2.2, 0.8, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 3.3, 0]} castShadow>
-        <cylinderGeometry args={[0.55, 0.9, 5.6, 10]} />
+      <mesh position={[0, 2.5, 0]} castShadow>
+        <cylinderGeometry args={[0.42, 0.7, 4.2, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 6.8, 0]} castShadow>
-        <sphereGeometry args={[0.85, 16, 12]} />
+      <mesh position={[0, 5.1, 0]} castShadow>
+        <sphereGeometry args={[0.7, 16, 12]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
@@ -366,9 +366,9 @@ function ApexLantern({ sign }: { sign: THREE.Texture }) {
           roughness={0.22}
         />
       </mesh>
-      <pointLight position={[4, 6.2, 4]} color={palette.gold} intensity={60} distance={36} decay={2} />
-      <mesh position={[0, 5.5, 0.7]}>
-        <planeGeometry args={[15, 3.5]} />
+      <pointLight position={[-2, 4.4, -2]} color={palette.gold} intensity={50} distance={24} decay={2} />
+      <mesh position={[0, 3.3, 0.55]}>
+        <planeGeometry args={[13, 3.3]} />
         <meshStandardMaterial map={sign} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
     </group>
