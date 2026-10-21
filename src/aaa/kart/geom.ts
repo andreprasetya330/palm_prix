@@ -297,11 +297,10 @@ function displaceTread(geo: THREE.BufferGeometry) {
     let g = paint.sidewall.g
     let b = paint.sidewall.b
 
-    if (radial > 0.3 && Math.abs(y) < 0.078) {
+    if (radial > 0.318 && Math.abs(y) < 0.07) {
       const row = y >= 0 ? 0 : Math.PI / blocks
       const wave = Math.sin(ang * blocks + row)
-      let bump = wave > 0.05 ? 0.03 : -0.016
-      if (Math.abs(Math.abs(y) - 0.04) < 0.008) bump = -0.026
+      const bump = wave > 0.15 ? 0.012 : -0.008
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -665,7 +664,75 @@ export function createSplitter(): THREE.BufferGeometry {
   return g
 }
 
+function kartPlan(nose: number, tail: number, waist: number): THREE.Shape {
+  const s = new THREE.Shape()
+  // Nose is -Y here. rotX(-90) maps that to +Z.
+  s.moveTo(0, -nose)
+  s.bezierCurveTo(waist * 0.85, -nose * 0.82, waist, -nose * 0.28, waist * 0.96, 0.02)
+  s.bezierCurveTo(waist * 0.92, tail * 0.35, waist * 0.78, tail * 0.72, waist * 0.62, tail)
+  s.lineTo(-waist * 0.62, tail)
+  s.bezierCurveTo(-waist * 0.78, tail * 0.72, -waist * 0.92, tail * 0.35, -waist * 0.96, 0.02)
+  s.bezierCurveTo(-waist, -nose * 0.28, -waist * 0.85, -nose * 0.82, 0, -nose)
+  return s
+}
+
+function extrudePlan(shape: THREE.Shape, depth: number, y: number): THREE.BufferGeometry {
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.055,
+    bevelSize: 0.06,
+    bevelSegments: 3,
+    curveSegments: 18,
+  })
+  g.rotateX(-Math.PI / 2)
+  g.translate(0, y, 0)
+  g.computeVertexNormals()
+  return g
+}
+
+/** Cream lower tub. Soft plan-view kart, not a stack of boxes. */
+export function createLowerBody(): THREE.BufferGeometry {
+  return extrudePlan(kartPlan(1.02, 0.96, 0.5), 0.28, 0.2)
+}
+
+/** Coral cowl with an open cockpit. */
+export function createCowl(): THREE.BufferGeometry {
+  const s = kartPlan(0.78, 0.7, 0.4)
+  const hole = new THREE.Path()
+  hole.absellipse(0, 0.08, 0.2, 0.28, 0, Math.PI * 2, true)
+  s.holes.push(hole)
+  return extrudePlan(s, 0.2, 0.46)
+}
+
+/** Thick geometric 7, standing in the XY plane. */
+export function createSeven(): THREE.BufferGeometry {
+  const s = new THREE.Shape()
+  s.moveTo(-0.12, 0.16)
+  s.lineTo(0.16, 0.16)
+  s.lineTo(0.16, 0.07)
+  s.lineTo(-0.01, 0.07)
+  s.lineTo(-0.12, -0.16)
+  s.lineTo(-0.2, -0.12)
+  s.lineTo(-0.06, 0.05)
+  s.lineTo(-0.12, 0.05)
+  s.closePath()
+  const g = new THREE.ExtrudeGeometry(s, {
+    depth: 0.045,
+    bevelEnabled: true,
+    bevelThickness: 0.008,
+    bevelSize: 0.006,
+    bevelSegments: 1,
+  })
+  g.translate(0, 0, -0.02)
+  g.computeVertexNormals()
+  return g
+}
+
 export const monocoqueGeo = createMonocoque()
+export const lowerBodyGeo = createLowerBody()
+export const cowlGeo = createCowl()
+export const sevenGeo = createSeven()
 export const pontoonGeoL = createPontoon(-1)
 export const pontoonGeoR = createPontoon(1)
 export const tireGeo = createTire()

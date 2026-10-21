@@ -3,23 +3,23 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
-import { createNumberTexture, createShadowTexture } from './decals'
+import { createShadowTexture } from './decals'
 import {
   anchors,
   capGeo,
   endplateGeo,
   exhaustGeo,
   flameGeo,
+  cowlGeo,
   glassFrameGeo,
   glassGeo,
   leafGeo,
   lensGeo,
-  monocoqueGeo,
+  lowerBodyGeo,
   numberBadgeBackGeo,
   numberBadgeGeo,
-  pontoonGeoL,
-  pontoonGeoR,
   rimGeo,
+  sevenGeo,
   seatBackGeo,
   spokeGeo,
   splitterGeo,
@@ -117,21 +117,6 @@ function useCandyEnv() {
   return tex
 }
 
-function bodyMaterial(env: THREE.Texture | null) {
-  return (
-    <meshPhysicalMaterial
-      vertexColors
-      color="#ffffff"
-      roughness={0.2}
-      metalness={0.06}
-      clearcoat={1}
-      clearcoatRoughness={0.1}
-      envMap={env ?? undefined}
-      envMapIntensity={0.9}
-    />
-  )
-}
-
 export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const env = useCandyEnv()
   const root = useRef<THREE.Group>(null)
@@ -149,7 +134,6 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
   const camLook = useRef(new THREE.Vector3())
   const origin = useRef(new THREE.Vector3())
 
-  const numberTex = useMemo(() => createNumberTexture(), [])
   const shadowTex = useMemo(() => createShadowTexture(), [])
   const avatar = useMemo(() => {
     if (!driverTextureUrl) return null
@@ -226,14 +210,14 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       origin.current.set(kart.x, 0, kart.z)
       camera.position
         .copy(origin.current)
-        .addScaledVector(camRight.current, 1.45)
-        .addScaledVector(camFwd.current, -1.05)
-      camera.position.y += 0.82
-      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.05)
-      camLook.current.y += 0.58
+        .addScaledVector(camRight.current, 2.15)
+        .addScaledVector(camFwd.current, -2.05)
+      camera.position.y += 1.25
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.1)
+      camLook.current.y += 0.62
       camera.lookAt(camLook.current)
-      if (camera.fov !== 30 || camera.near !== 0.08) {
-        camera.fov = 30
+      if (camera.fov !== 32 || camera.near !== 0.08) {
+        camera.fov = 32
         camera.near = 0.08
         camera.updateProjectionMatrix()
       }
@@ -276,14 +260,27 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
           ))}
 
           <group ref={squat}>
-            <mesh geometry={monocoqueGeo} castShadow receiveShadow>
-              {bodyMaterial(env)}
+            <mesh geometry={lowerBodyGeo} castShadow receiveShadow>
+              <meshPhysicalMaterial
+                color="#fff3e4"
+                roughness={0.22}
+                metalness={0.04}
+                clearcoat={1}
+                clearcoatRoughness={0.12}
+                envMap={env ?? undefined}
+                envMapIntensity={0.85}
+              />
             </mesh>
-            <mesh geometry={pontoonGeoL} castShadow>
-              {bodyMaterial(env)}
-            </mesh>
-            <mesh geometry={pontoonGeoR} castShadow>
-              {bodyMaterial(env)}
+            <mesh geometry={cowlGeo} castShadow receiveShadow>
+              <meshPhysicalMaterial
+                color="#ff3d66"
+                roughness={0.18}
+                metalness={0.05}
+                clearcoat={1}
+                clearcoatRoughness={0.08}
+                envMap={env ?? undefined}
+                envMapIntensity={0.9}
+              />
             </mesh>
             <mesh geometry={undertrayGeo} position={[0, 0.16, 0.04]}>
               <meshStandardMaterial color="#24182f" roughness={0.85} />
@@ -363,7 +360,6 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               <mesh geometry={endplateGeo} position={[-0.8, -0.02, -0.02]} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
-              <PalmMark position={[0.22, 0.06, 0.04]} scale={1.15} />
             </group>
             {struts.map((g, i) => (
               <mesh key={i} geometry={g} castShadow>
@@ -371,7 +367,8 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               </mesh>
             ))}
 
-            <NumberPlate position={[-0.48, 0.92, -1.12]} texture={numberTex} />
+            <NumberPlate position={[0, 0.78, -1.16]} />
+            <PalmMark position={[0.42, 1.02, -1.05]} scale={0.85} />
             <TailLight x={-0.24} />
             <TailLight x={0.24} />
 
@@ -500,24 +497,17 @@ function TailLight({ x }: { x: number }) {
   )
 }
 
-function NumberPlate({
-  position,
-  texture,
-}: {
-  position: [number, number, number]
-  texture: THREE.Texture
-}) {
+function NumberPlate({ position }: { position: [number, number, number] }) {
   return (
     <group position={position} rotation={[0, Math.PI, 0]}>
       <mesh geometry={numberBadgeBackGeo}>
-        <meshStandardMaterial color="#ff3d66" roughness={0.4} />
+        <meshStandardMaterial color="#2f6bff" roughness={0.35} />
       </mesh>
-      <mesh geometry={numberBadgeGeo} position={[0, 0, 0.02]}>
-        <meshStandardMaterial color="#fff3e4" roughness={0.35} />
+      <mesh geometry={numberBadgeGeo} position={[0, 0, 0.03]}>
+        <meshStandardMaterial color="#fff3e4" roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0, 0.05]}>
-        <planeGeometry args={[0.34, 0.3]} />
-        <meshBasicMaterial map={texture} transparent depthWrite={false} />
+      <mesh geometry={sevenGeo} position={[0, 0, 0.07]} scale={1.15}>
+        <meshStandardMaterial color="#1a1024" roughness={0.4} />
       </mesh>
     </group>
   )
