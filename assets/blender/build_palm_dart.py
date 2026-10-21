@@ -60,6 +60,8 @@ def main() -> None:
         for obj in build_wheel(name, center, mats, nut):
             adopt(obj, hub)
             wheel_objects.append(obj)
+        # Yaw the wheel so the grooved crown faces the front three-quarter camera.
+        hub.rotation_euler = (0.0, 0.0, 0.95)
         wheel_objects.append(hub)
 
     place_hinges(pin, driver)
@@ -207,6 +209,7 @@ def make_materials():
         "groove": material("TreadGroove", (0.012, 0.012, 0.014), rough=0.96),
         "sidewall": material("Sidewall", (0.541, 0.557, 0.596), rough=0.78),
         "letter": material("SidewallLetter", (0.965, 0.945, 0.902), rough=0.55),
+        "glove": material("Glove", (0.957, 0.918, 0.847), rough=0.9),
         "metal": material("Metal", (0.835, 0.871, 0.910), rough=0.25, metal=1.0),
         "skin": material("Skin", (0.953, 0.761, 0.643), rough=0.58),
         "brow": material("Brow", (0.227, 0.165, 0.133), rough=0.5),
@@ -563,9 +566,9 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    label = add_text("PALM", 0.045, 0.004, f"SidewallText{name}")
+    label = add_text("P", 0.2, 0.02, f"SidewallMark{name}")
     if label is not None:
-        label.location = center + Vector((outer * 0.132, 0.0, 0.22))
+        label.location = center + Vector((outer * 0.145, 0.0, 0.02))
         label.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0)
         if label.data.materials:
             label.data.materials[0] = mats["plum"]
@@ -843,8 +846,7 @@ def build_body(mats):
     ))
 
     for side in (-1, 1):
-        palm_loc = Vector((side * 0.11, -0.22, 0.60))
-        made.append(sphere(f"Hand{side}", palm_loc, 0.035, mats["skin"], segments=16))
+        palm_loc = Vector((side * 0.12, -0.24, 0.58))
         made.append(tube(
             f"Arm{side}",
             [DRIVER + Vector((side * 0.16, 0.02, -0.22)), palm_loc],
@@ -852,25 +854,32 @@ def build_body(mats):
             mats["suit"],
             sides=8,
         ))
-        for finger in range(4):
-            fx = (finger - 1.5) * 0.014
-            made.append(sphere(
-                f"Finger{side}{finger}",
-                palm_loc + Vector((fx, -0.03, -0.01)),
-                0.012,
-                mats["skin"],
-                scale=(0.7, 1.3, 0.7),
-                segments=10,
-            ))
-        made.append(sphere(
-            f"Thumb{side}",
-            palm_loc + Vector((side * 0.02, -0.01, -0.02)),
-            0.012,
-            mats["skin"],
-            scale=(0.8, 1.2, 0.7),
-            segments=10,
-        ))
+        made.append(glove_mesh(f"Glove{side}", palm_loc, side, mats["glove"]))
     return made
+
+
+def glove_mesh(name, palm_loc, side, mat):
+    """One mesh: the thumb grows out of the palm instead of sitting beside it."""
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.046, location=palm_loc, segments=20, ring_count=12)
+    glove = bpy.context.active_object
+    glove.scale = (1.05, 0.7, 0.88)
+    bpy.ops.object.transform_apply(scale=True)
+    thumb_loc = palm_loc + Vector((side * 0.028, -0.006, 0.034))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.026, location=thumb_loc, segments=16, ring_count=10)
+    thumb = bpy.context.active_object
+    thumb.scale = (0.62, 0.62, 1.85)
+    bpy.ops.object.transform_apply(scale=True)
+    select_only(glove)
+    thumb.select_set(True)
+    bpy.context.view_layer.objects.active = glove
+    bpy.ops.object.join()
+    glove = bpy.context.active_object
+    glove.name = name
+    if glove.data.materials:
+        glove.data.materials[0] = mat
+    else:
+        glove.data.materials.append(mat)
+    return glove
 
 
 def place_hinges(pin, driver):
