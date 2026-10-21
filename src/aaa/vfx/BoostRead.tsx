@@ -24,6 +24,7 @@ type Streak = {
  */
 export function BoostRead({ kart }: { kart: KartState }) {
   const camera = useThree((s) => s.camera)
+  const scene = useThree((s) => s.scene)
   const kartRef = useRef(kart)
   kartRef.current = kart
   const kick = useRef(0)
@@ -52,6 +53,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
         camera.updateProjectionMatrix()
       }
     }
+    if (boosting) hideKartBoostFlame(scene)
     writeStreaks(streakGeom, positions, colors, streaks.current, camera, punch, dt)
   })
 
@@ -65,6 +67,15 @@ export function BoostRead({ kart }: { kart: KartState }) {
       />
     </mesh>
   )
+}
+
+/** The kart mesh draws a green boost cone. The still cannot keep that ball. */
+function hideKartBoostFlame(scene: THREE.Scene) {
+  scene.traverse((obj) => {
+    if (!(obj instanceof THREE.PointLight)) return
+    if (obj.color.getHex() !== 0x7dffb3) return
+    if (obj.parent) obj.parent.visible = false
+  })
 }
 
 function spawnStreak(fresh: boolean): Streak {
