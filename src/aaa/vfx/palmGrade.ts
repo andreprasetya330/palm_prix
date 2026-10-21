@@ -23,26 +23,23 @@ export const PalmGradeShader = {
       vec2 d = vUv - vec2(0.5);
       float dist = length(d);
       vec2 dir = dist > 0.0001 ? d / dist : vec2(0.0);
-      float edge = smoothstep(0.06, 0.38, dist) * uBoost;
+      float edge = smoothstep(0.36, 0.62, dist) * uBoost;
 
       if (edge > 0.001) {
         vec3 acc = c;
-        acc += texture2D(tDiffuse, vUv - dir * 0.014).rgb;
-        acc += texture2D(tDiffuse, vUv - dir * 0.03).rgb;
-        acc += texture2D(tDiffuse, vUv - dir * 0.048).rgb;
-        acc += texture2D(tDiffuse, vUv + dir * 0.01).rgb;
-        c = mix(c, acc * 0.2, edge);
+        acc += texture2D(tDiffuse, vUv - dir * 0.012).rgb;
+        acc += texture2D(tDiffuse, vUv - dir * 0.026).rgb;
+        c = mix(c, acc * 0.333, edge * 0.65);
         float ang = atan(d.y, d.x);
-        float lines = pow(abs(sin(ang * 22.0)), 18.0);
-        c += vec3(1.15, 0.82, 0.35) * lines * edge * 0.48;
+        float lines = pow(abs(sin(ang * 18.0)), 18.0);
+        c += vec3(0.95, 0.62, 0.22) * lines * edge * 0.22;
       }
 
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      float sat = mix(1.14, 1.5, uBoost);
+      float sat = mix(1.08, 1.16, uBoost);
       c = mix(vec3(luma), c, sat);
       c += vec3(0.02, 0.022, 0.015) * (1.0 - smoothstep(0.0, 0.42, luma)) * (1.0 - uBoost);
-      c *= mix(vec3(1.0), vec3(1.16, 1.04, 0.86), uBoost);
-      c += vec3(0.045, 0.02, 0.0) * uBoost;
+      c *= mix(vec3(1.0), vec3(1.05, 1.02, 0.96), uBoost);
       gl_FragColor = vec4(max(c, vec3(0.0)), 1.0);
     }
   `,

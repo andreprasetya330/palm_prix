@@ -58,13 +58,13 @@ export function BoostRead({ kart }: { kart: KartState }) {
     kick.current = THREE.MathUtils.damp(kick.current, boosting ? 1 : 0, 7, dt)
     const punch = kick.current
     applied.current.set(
-      -Math.sin(k.yaw) * 1.7 * punch,
-      0.42 * punch,
-      -Math.cos(k.yaw) * 1.7 * punch,
+      -Math.sin(k.yaw) * 0.85 * punch,
+      0.18 * punch,
+      -Math.cos(k.yaw) * 0.85 * punch,
     )
 
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = 52 + punch * 11
+      camera.fov = 52 + punch * 5
       camera.updateProjectionMatrix()
     }
     camera.position.add(applied.current)
@@ -99,7 +99,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
 }
 
 function spawnStreak(fresh: boolean): Streak {
-  const edge = 0.55 + Math.random() * 1.7
+  const edge = 1.25 + Math.random() * 1.15
   return {
     side: (Math.random() < 0.5 ? -1 : 1) * edge,
     lift: (Math.random() - 0.35) * 1.5,
@@ -153,17 +153,17 @@ function writeStreaks(
     _axisA.copy(_fwd).multiplyScalar(s.len * (0.6 + punch))
     _bin.crossVectors(_fwd, _right).normalize()
     _axisB.copy(Math.abs(s.side) > Math.abs(s.lift) ? _up : _right).multiplyScalar(s.width * (1 + punch))
-    const alpha = Math.min(1, s.life) * energy * (0.35 + punch * 0.65)
+    const alpha = Math.min(1, s.life) * energy * (0.22 + punch * 0.4)
     const hot = s.hot
     const color: Rgba =
-      punch > 0.2
+      punch > 0.35
         ? {
-            r: 1.45 + hot * 0.35,
-            g: 0.72 + hot * 0.35,
-            b: 0.22,
+            r: 1.05 + hot * 0.12,
+            g: 0.55 + hot * 0.12,
+            b: 0.16,
             a: alpha,
           }
-        : { r: 1.15, g: 1.12, b: 1.02, a: alpha * 0.55 }
+        : { r: 0.9, g: 0.9, b: 0.86, a: alpha * 0.2 }
     v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
   }
   paint(geom, v)
@@ -210,10 +210,10 @@ function writeRibbons(
       _axisB.copy(up).multiplyScalar(0.22 + punch * 0.12)
       const a = (1 - i / 6) * punch
       v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
-        r: 1.55,
-        g: 0.48 + i * 0.06,
-        b: 0.12,
-        a,
+        r: 1.05,
+        g: 0.38 + i * 0.04,
+        b: 0.1,
+        a: a * 0.85,
       })
     }
   }
@@ -259,8 +259,8 @@ function ribbonStrip(
     _axisA.set(dx * 0.5, (b.y - a.y) * 0.5, dz * 0.5)
     _axisB.set(sx, 0.04, sz)
     const color: Rgba = core
-      ? { r: 1.7, g: 1.25, b: 0.4, a: fade }
-      : { r: 1.35 * (1 - t) + 0.35, g: 0.22 + t * 0.15, b: 0.08, a: fade * 0.92 }
+      ? { r: 1.08, g: 0.72, b: 0.28, a: fade }
+      : { r: 0.95 * (1 - t) + 0.28, g: 0.2 + t * 0.1, b: 0.07, a: fade * 0.9 }
     vertex = writeQuad(positions, colors, vertex, _center, _axisA, _axisB, color)
   }
   return vertex
