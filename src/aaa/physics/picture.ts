@@ -7,6 +7,7 @@
  * Chase `lookAt` lives on Object3D, not Camera, so the widen hooks that.
  */
 import * as THREE from 'three'
+import { gridPose } from './track'
 import type { AaaKartState } from './types'
 
 export type PictureState = {
@@ -25,6 +26,7 @@ export type PictureState = {
   camRoll: number
   /** Chassis yaw. The chase rig is rebuilt from this so it cannot walk outward. */
   yaw: number
+  speed: number
 }
 
 export const picture: PictureState = {
@@ -42,6 +44,7 @@ export const picture: PictureState = {
   boostPull: 0,
   camRoll: 0,
   yaw: Math.PI,
+  speed: 0,
 }
 
 const SURFACE = 'palm-prix-surface-read'
@@ -73,6 +76,7 @@ export function publishPicture(kart: AaaKartState): void {
   picture.boostPull = kart.boostTimer > 0 ? 2.6 : 0
   picture.camRoll = kart.camRoll
   picture.yaw = kart.yaw
+  picture.speed = kart.speed
 }
 
 function looksLikeKart(obj: THREE.Object3D): boolean {
@@ -165,6 +169,74 @@ function hideSkyBalls(root: THREE.Object3D): void {
   })
 }
 
+/** Scalloped taper: the side edge rises and falls instead of drawing one triangle. */
+function flameRadius(t: number): number {
+  const cut = 0.36 + 0.64 * Math.pow(0.5 + 0.5 * Math.sin(t * Math.PI * 5 - 0.5), 1.35)
+  const taper = Math.pow(1 - t, 0.7)
+  return Math.max(0.02, taper * cut + Math.sin(t * Math.PI) * 0.1 * (1 - t))
+}
+
+function fireGeometry(length: number, radius: number, lobes: number): THREE.BufferGeometry {
+  const rows = 14
+  const cols = 11
+  const positions: number[] = []
+  const indices: number[] = []
+  for (let i = 0; i <= rows; i++) {
+    const t = i / rows
+    const rad = radius * flameRadius(t)
+    for (let j = 0; j < cols; j++) {
+      const a = (j / cols) * Math.PI * 2
+      const lobe = 0.55 + 0.45 * Math.cos(lobes * a + i * 0.35)
+      positions.push(Math.cos(a) * rad * lobe, t * length, Math.sin(a) * rad * lobe)
+    }
+  }
+  const tip = (rows + 1) * cols
+  positions.push(0, length, 0)
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const a = i * cols + j
+      const b = i * cols + ((j + 1) % cols)
+      const c = a + cols
+      const d = b + cols
+      indices.push(a, c, b, b, c, d)
+    }
+  }
+  const last = rows * cols
+  for (let j = 0; j < cols; j++) indices.push(last + j, tip, last + ((j + 1) % cols))
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setIndex(indices)
+  geo.computeBoundingBox()
+  return geo
+}
+
+function addLick(
+  plume: THREE.Group,
+  length: number,
+  radius: number,
+  lobes: number,
+  color: string,
+  x: number,
+  z: number,
+  rotZ: number,
+): void {
+  const lick = new THREE.Mesh(
+    fireGeometry(length, radius, lobes),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.94,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  )
+  lick.position.set(x, 0, z)
+  lick.rotation.z = rotZ
+  lick.name = 'lick'
+  lick.renderOrder = 1
+  plume.add(lick)
+}
+
 function ensureSurfaceBits(root: THREE.Object3D): void {
   let group = root.getObjectByName(SURFACE) as THREE.Group | undefined
   if (!group) {
@@ -185,41 +257,54 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     spray.name = 'spray'
     group.add(spray)
     const plume = new THREE.Group()
-    // Exhaust mouth. Cone +Y is rolled onto −Z so the tip trails back down the road.
+    // Exhaust mouth. Local +Y is rolled onto −Z so the tongues trail back down the road.
     plume.position.set(0, 0.42, -0.98)
     plume.rotation.set(-Math.PI / 2, 0, 0)
     plume.name = 'plume'
-    const flameLen = 2.7
-    const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.34, flameLen, 12),
+    const flameLen = 2.8
+    const shell = new THREE.Mesh(
+      fireGeometry(flameLen, 0.46, 3),
       new THREE.MeshBasicMaterial({
         color: '#ff3d0a',
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.9,
         depthWrite: false,
+        side: THREE.DoubleSide,
       }),
     )
-    flame.position.y = flameLen / 2
-    flame.name = 'shell'
-    flame.renderOrder = 1
-    // A hot streak the length of the cone, so the plume reads as fire and not a solid carrot.
-    const coreLen = 2.45
+    shell.name = 'shell'
+    shell.renderOrder = 1
+    plume.add(shell)
+    // Side tongues stick out of the main taper so the outline is not one triangle.
+    addLick(plume, 2.15, 0.24, 4, '#ff7a18', 0.26, 0.05, 0.32)
+    addLick(plume, 1.75, 0.22, 5, '#e22600', -0.24, -0.04, -0.38)
+    addLick(plume, 1.45, 0.18, 3, '#ffb03a', 0.04, 0.2, 0.12)
+    const coreLen = 2.35
     const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.15, coreLen, 10),
-      new THREE.MeshBasicMaterial({ color: '#ffe14a' }),
+      new THREE.ConeGeometry(0.14, coreLen, 10),
+      new THREE.MeshBasicMaterial({
+        color: '#ffe14a',
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+      }),
     )
     core.position.y = coreLen / 2
     core.name = 'core'
     core.renderOrder = 2
-    const hotLen = 2.05
+    const hotLen = 1.9
     const hot = new THREE.Mesh(
-      new THREE.ConeGeometry(0.06, hotLen, 8),
-      new THREE.MeshBasicMaterial({ color: '#fff6c8' }),
+      new THREE.ConeGeometry(0.05, hotLen, 8),
+      new THREE.MeshBasicMaterial({
+        color: '#fff6c8',
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+      }),
     )
     hot.position.y = hotLen / 2
     hot.name = 'hot'
     hot.renderOrder = 3
-    plume.add(flame)
     plume.add(core)
     plume.add(hot)
     group.add(plume)
@@ -241,7 +326,7 @@ function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => vo
   kartRoot = root
   root.position.y = 0.05 + picture.y + picture.squat
   origUpdate.call(root)
-  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.44, 0.44), picture.pitch)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.6, 0.6), picture.pitch)
   tameStockFlame(root)
   ensureSurfaceBits(root)
   hideSkyBalls(root)
@@ -261,8 +346,9 @@ const _look = new THREE.Vector3()
 /**
  * Chase from behind, low enough that the kart sits in the lower third.
  * Distance is absolute so a boost cannot walk the camera overhead.
- * A short shoulder keeps the near arch post off the body. The rear stays the face
- * the camera sees: 6.6 m behind, 2.5 m up, 4.8 m to the side.
+ * On the grid the shoulder opens just enough that the far arch post sits
+ * beside the nose. Once the kart is moving, the rear stays the face:
+ * 6.6 m behind, 2.5 m up, 4.8 m to the side.
  */
 function frameChase(
   cam: THREE.Object3D,
@@ -274,8 +360,14 @@ function frameChase(
   const fz = Math.cos(yaw)
   const rx = Math.cos(yaw)
   const rz = -Math.sin(yaw)
-  const back = 6.6 + (picture.boostPull > 0 ? picture.boostPull : 0)
-  const shoulder = 4.8
+  const grid = gridPose()
+  const parked =
+    Math.hypot(picture.x - grid.x, picture.z - grid.z) < 0.35 && Math.abs(picture.speed) < 1.5
+  const back = parked ? 6.3 : 6.6 + (picture.boostPull > 0 ? picture.boostPull : 0)
+  const shoulder = parked ? 6.1 : 4.8
+  const height = parked ? 2.2 : 2.5
+  const lookAhead = parked ? 4.8 : 3.6
+  const lookSide = parked ? -1.6 : 0
   const persp = cam as THREE.PerspectiveCamera
   if (persp.isPerspectiveCamera && Math.abs(persp.fov - 52) > 0.5) {
     persp.fov = 52
@@ -283,10 +375,14 @@ function frameChase(
   }
   cam.position.set(
     target.x - fx * back + rx * shoulder,
-    2.5,
+    height,
     target.z - fz * back + rz * shoulder,
   )
-  _look.set(target.x + fx * 3.6, 1.15, target.z + fz * 3.6)
+  _look.set(
+    target.x + fx * lookAhead + rx * lookSide,
+    1.15,
+    target.z + fz * lookAhead + rz * lookSide,
+  )
   origLook.call(cam, _look)
   if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(THREE.MathUtils.clamp(picture.camRoll, -0.04, 0.04))
 }

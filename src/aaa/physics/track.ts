@@ -70,7 +70,7 @@ export function ovalTangent(x: number, z: number): { x: number; z: number } {
  * Faces +X, down the start straight, on asphalt, clear of the posts at x = ±3.4.
  */
 export function gridPose(): { x: number; z: number; yaw: number } {
-  return { x: -0.35, z: 18, yaw: Math.PI / 2 }
+  return { x: -0.85, z: 18, yaw: Math.PI / 2 }
 }
 
 /** Kart-center band. The body stays off the curb blocks inside this range. */
