@@ -1,14 +1,19 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
-import { kartAxes, kartToWorld, makePaintedGeometry, paint, writeQuad, type Rgba } from './quads'
+import { kartAxes, kartToWorld } from './quads'
 
 const CHASE_BACK = 6.5
 const CHASE_HEIGHT = 3.6
+const STREAKS = 8
+
+const flameTex = loadSprite(new URL('./assets/flame_05.png', import.meta.url).href)
+const coreTex = loadSprite(new URL('./assets/muzzle_02.png', import.meta.url).href)
+const traceTex = loadSprite(new URL('./assets/trace_02.png', import.meta.url).href)
 
 /**
- * A short plume leaves the exhaust, with thin streaks trailing from that pipe.
+ * A soft plume leaves the exhaust, and the speed streaks start on that plume.
  * The camera stays at the idle chase distance so the kart does not shrink.
  */
 export function BoostRead({ kart }: { kart: KartState }) {
@@ -17,10 +22,9 @@ export function BoostRead({ kart }: { kart: KartState }) {
   const kartRef = useRef(kart)
   kartRef.current = kart
   const kick = useRef(0)
-  const streakGeom = useMemo(() => makePaintedGeometry(20 * 6), [])
-
-  const positions = streakGeom.getAttribute('position').array as Float32Array
-  const colors = streakGeom.getAttribute('color').array as Float32Array
+  const coreRef = useRef<THREE.Sprite>(null)
+  const flameRefs = useRef<Array<THREE.Sprite | null>>([])
+  const streakRefs = useRef<Array<THREE.Sprite | null>>([])
 
   useFrame((_, dt) => {
     const k = kartRef.current
@@ -38,22 +42,72 @@ export function BoostRead({ kart }: { kart: KartState }) {
         camera.fov = 52
         camera.updateProjectionMatrix()
       }
+      camera.updateMatrixWorld()
     }
     if (boosting) hideKartBoostFlame(scene)
-    if (punch > 0.12) camera.updateMatrixWorld()
-    writePlume(streakGeom, positions, colors, k, camera, punch)
+    placePlume(k, camera, punch, coreRef.current, flameRefs.current, streakRefs.current)
   })
 
   return (
-    <mesh geometry={streakGeom} frustumCulled={false} renderOrder={6}>
-      <meshBasicMaterial
-        vertexColors
-        transparent
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </mesh>
+    <group>
+      <sprite ref={coreRef} visible={false} renderOrder={6} frustumCulled={false}>
+        <spriteMaterial
+          map={coreTex}
+          color="#ffd56a"
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+          premultipliedAlpha={false}
+        />
+      </sprite>
+      {[0, 1].map((i) => (
+        <sprite
+          key={`flame-${i}`}
+          ref={(el) => {
+            flameRefs.current[i] = el
+          }}
+          visible={false}
+          renderOrder={6}
+          frustumCulled={false}
+        >
+          <spriteMaterial
+            map={flameTex}
+            color={i === 0 ? '#ff7a32' : '#ffb15a'}
+            transparent
+            depthWrite={false}
+            toneMapped={false}
+            premultipliedAlpha={false}
+          />
+        </sprite>
+      ))}
+      {Array.from({ length: STREAKS }, (_, i) => (
+        <sprite
+          key={`streak-${i}`}
+          ref={(el) => {
+            streakRefs.current[i] = el
+          }}
+          visible={false}
+          renderOrder={5}
+          frustumCulled={false}
+        >
+          <spriteMaterial
+            map={traceTex}
+            color="#ff9a3c"
+            transparent
+            depthWrite={false}
+            toneMapped={false}
+            premultipliedAlpha={false}
+          />
+        </sprite>
+      ))}
+    </group>
   )
+}
+
+function loadSprite(url: string) {
+  const tex = new THREE.TextureLoader().load(url)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
 /** The kart mesh draws a green boost cone. The still cannot keep that ball. */
@@ -69,70 +123,77 @@ const _fwd = new THREE.Vector3()
 const _right = new THREE.Vector3()
 const _up = new THREE.Vector3(0, 1, 0)
 const _mouth = new THREE.Vector3()
-const _center = new THREE.Vector3()
-const _axisA = new THREE.Vector3()
-const _axisB = new THREE.Vector3()
 const _view = new THREE.Vector3()
 const _camRight = new THREE.Vector3()
 const _camUp = new THREE.Vector3()
-const _dir = new THREE.Vector3()
 
-function writePlume(
-  geom: THREE.BufferGeometry,
-  positions: Float32Array,
-  colors: Float32Array,
+function placePlume(
   kart: KartState,
   camera: THREE.Camera,
   punch: number,
+  core: THREE.Sprite | null,
+  flames: Array<THREE.Sprite | null>,
+  streaks: Array<THREE.Sprite | null>,
 ) {
-  let v = 0
-  if (punch > 0.2) {
-    kartAxes(kart.yaw, _fwd, _right)
-    kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.4, -1.12, _mouth)
-    _view.copy(camera.position).sub(_mouth)
-    if (_view.lengthSq() < 1e-4) _view.set(0, 0.2, 1)
-    _view.normalize()
-    _camRight.crossVectors(_up, _view)
-    if (_camRight.lengthSq() < 1e-4) _camRight.copy(_right)
-    _camRight.normalize()
-    _camUp.crossVectors(_view, _camRight).normalize()
-
-    for (let i = 0; i < 7; i++) {
-      const t = i / 6
-      _center.copy(_mouth).addScaledVector(_fwd, -(t * 0.72))
-      _center.y += t * 0.08
-      _axisA.copy(_camRight).multiplyScalar(0.1 + t * 0.16)
-      _axisB.copy(_camUp).multiplyScalar(0.07 + t * 0.09)
-      const hot = t < 0.34
-      const color: Rgba = hot
-        ? { r: 1.15, g: 0.9, b: 0.32, a: 0.92 * punch }
-        : { r: 1.05, g: 0.4 - t * 0.12, b: 0.1, a: (0.88 - t * 0.4) * punch }
-      v = writeQuad(positions, colors, v, _center, _axisA, _axisB, color)
-    }
-
-    for (let i = 0; i < 12; i++) {
-      const side = (i - 5.5) / 5.5
-      const outward = side >= 0 ? 1 : -1
-      const fan = -0.08 - (i % 5) * 0.11
-      _center.copy(_mouth).addScaledVector(_camRight, side * 0.2)
-      _center.addScaledVector(_fwd, -0.12)
-      _center.y += 0.03
-      _dir.copy(_camRight).multiplyScalar(outward * (0.7 + Math.abs(side) * 0.45))
-      _dir.addScaledVector(_camUp, fan)
-      _dir.normalize()
-      const len = 0.7 + Math.abs(side) * 1.05
-      _center.addScaledVector(_dir, len * 0.5)
-      _axisA.copy(_dir).multiplyScalar(len * 0.5)
-      _axisB.crossVectors(_dir, _view)
-      if (_axisB.lengthSq() < 1e-4) _axisB.copy(_camUp)
-      _axisB.normalize().multiplyScalar(0.028)
-      v = writeQuad(positions, colors, v, _center, _axisA, _axisB, {
-        r: 1.05,
-        g: 0.52,
-        b: 0.16,
-        a: 0.88 * punch,
-      })
-    }
+  const show = punch > 0.2
+  if (!show) {
+    if (core) core.visible = false
+    flames.forEach((sprite) => {
+      if (sprite) sprite.visible = false
+    })
+    streaks.forEach((sprite) => {
+      if (sprite) sprite.visible = false
+    })
+    return
   }
-  paint(geom, v)
+
+  kartAxes(kart.yaw, _fwd, _right)
+  kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.42, -1.16, _mouth)
+  _view.copy(camera.position).sub(_mouth)
+  if (_view.lengthSq() < 1e-4) _view.set(0, 0.2, 1)
+  _view.normalize()
+  _camRight.crossVectors(_up, _view)
+  if (_camRight.lengthSq() < 1e-4) _camRight.copy(_right)
+  _camRight.normalize()
+  _camUp.crossVectors(_view, _camRight).normalize()
+
+  if (core) {
+    const mat = core.material as THREE.SpriteMaterial
+    core.visible = true
+    core.position.copy(_mouth)
+    core.scale.set(0.48, 0.52, 1)
+    mat.rotation = Math.PI
+    mat.opacity = 0.9 * punch
+  }
+
+  flames.forEach((sprite, i) => {
+    if (!sprite) return
+    const mat = sprite.material as THREE.SpriteMaterial
+    const len = i === 0 ? 1.15 : 0.92
+    const side = i === 0 ? -0.1 : 0.12
+    sprite.visible = true
+    sprite.position.copy(_mouth).addScaledVector(_camRight, side).addScaledVector(_camUp, -len * 0.42)
+    sprite.scale.set(i === 0 ? 0.4 : 0.3, len, 1)
+    mat.rotation = Math.PI + (i === 0 ? -0.08 : 0.1)
+    mat.opacity = 0.82 * punch
+  })
+
+  streaks.forEach((sprite, i) => {
+    if (!sprite) return
+    const mat = sprite.material as THREE.SpriteMaterial
+    const side = i - (STREAKS - 1) / 2
+    const angle = side * 0.22
+    const len = 0.95 + Math.abs(side) * 0.16
+    const sx = Math.sin(angle)
+    const sy = -Math.cos(angle)
+    sprite.visible = true
+    sprite.position
+      .copy(_mouth)
+      .addScaledVector(_camRight, sx * len * 0.55)
+      .addScaledVector(_camUp, sy * len * 0.55)
+    if (sprite.position.y < 0.22) sprite.position.y = 0.22
+    sprite.scale.set(0.1, len, 1)
+    mat.rotation = angle
+    mat.opacity = 0.78 * punch
+  })
 }
