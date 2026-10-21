@@ -9,7 +9,7 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, width, height of the crown, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, number, string]> = [
-  [0, 1.26, 0.92, 0.74, 1, '#ffffff'],
+  [0, 1.22, 0.9, 0.48, 1, '#ffffff'],
 ]
 
 /**
@@ -194,10 +194,10 @@ function placePlume(
     const spec = RIBBONS[i]
     if (!mesh || !spec) return
     const [roll, length, width, height, opacity, color] = spec
-    _side.crossVectors(_up, _aft)
+    _side.crossVectors(_aft, _up)
     if (_side.lengthSq() < 1e-4) _side.copy(_right)
     _side.normalize().applyAxisAngle(_aft, roll)
-    _normal.crossVectors(_aft, _side).normalize()
+    _normal.crossVectors(_side, _aft).normalize()
     _basis.makeBasis(_side, _aft, _normal)
     mesh.quaternion.setFromRotationMatrix(_basis)
     mesh.scale.set(width, length, height)
