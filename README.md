@@ -69,7 +69,7 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
   server/index.ts          # /api/stylize + /api/health
   src/vision/              # camera, MediaPipe, wheel GestureMapper, debug overlay
   src/game/                # ControlState, arcade kart, race loop stub
-  src/scene/               # R3F track, kart, follow camera
+  src/scene/               # R3F Mario Kart–style track, kart, props, follow camera
   src/avatar/              # stylize client + local filter fallback
   src/ui/                  # menu, avatar studio, calibrate, HUD
 ```
@@ -80,7 +80,7 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 | --- | --- |
 | Webcam + MediaPipe Hands (2 hands) + skeleton / wheel overlay | **Real** |
 | Wheel-angle `ControlState` + keyboard merge | **Real** |
-| Three.js oval track, kart, chase camera, arcade move | **Real** (minimal art) |
+| Three.js oval track, kart, chase camera, arcade move | **Real** (Mario Kart–style bright low-poly art) |
 | Countdown → drive → finish (checkpoint laps) | **Stub / minimal** (2 laps, no AI opponent) |
 | Avatar capture → `POST /api/stylize` → driver texture | **Real path**; placeholder SVG if no `FAL_KEY`; local posterize on error |
 | Items / SFX / dummy AI / polish | **Stubbed / deferred** |
