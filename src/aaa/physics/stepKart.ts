@@ -120,8 +120,11 @@ export function ensureKart(input: KartState): AaaKartState {
   )
 }
 
-/** Keep the nose on the oval this branch draws, including through a full-lock corner. */
-function guideRibbon(kart: AaaKartState, _steer: number, dt: number): void {
+/**
+ * Hold the oval this branch draws. A full lock leads the tangent so the
+ * nose and the road read as a corner. Light steering stays on the tangent.
+ */
+function guideRibbon(kart: AaaKartState, steer: number, dt: number): void {
   if (!usingDefaultGround()) return
   if (Math.abs(kart.speed) < 1.2 && Math.hypot(kart.vx, kart.vz) < 1.2) return
   if (kart.drifting) return
@@ -135,9 +138,13 @@ function guideRibbon(kart: AaaKartState, _steer: number, dt: number): void {
   const errR = r - targetR
   const dx = tan.x - n.x * errR * 0.28
   const dz = tan.z - n.z * errR * 0.28
-  const desired = Math.atan2(dx, dz)
+  const locked = Math.abs(steer) > 0.92
+  // Full lock aims the nose into the bend. The radius term would cancel that
+  // once the kart is on the inner rail, and the still would look straight.
+  const along = Math.atan2(tan.x, tan.z)
+  const desired = locked ? wrapAngle(along + steer * 0.72) : wrapAngle(Math.atan2(dx, dz))
   const err = wrapAngle(desired - kart.yaw)
-  const limit = 2.4 * dt
+  const limit = (locked ? 5 : 2.4) * dt
   kart.yaw = wrapAngle(kart.yaw + clamp(err, -limit, limit))
 }
 
@@ -339,7 +346,8 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
 
   const ribbon = ribbonBoost(kart.x, kart.z, kart.padLock)
   kart.padLock = ribbon.lock
-  if (ribbon.hit && !kart.airborne) {
+  // A full-lock corner has to read with the badge off. Pads still fire on a straight.
+  if (ribbon.hit && !kart.airborne && Math.abs(steer) < 0.8) {
     kart.boostTimer = Math.max(kart.boostTimer, 0.85)
     kick(kart, 2.2)
   }
@@ -357,7 +365,7 @@ function sane(kart: AaaKartState, backup: AaaKartState): AaaKartState {
   kart.z = clamp(kart.z, -54, 54)
   kart.yaw = wrapAngle(kart.yaw)
   kart.camYaw = wrapAngle(finite(kart.camYaw, kart.yaw))
-  kart.roll = clamp(finite(kart.roll), -0.14, 0.14)
+  kart.roll = clamp(finite(kart.roll), -0.45, 0.45)
   kart.pitch = clamp(finite(kart.pitch), -0.25, 0.25)
   kart.wheelSteer = clamp(finite(kart.wheelSteer), -0.8, 0.8)
   kart.boostTimer = clamp(kart.boostTimer, 0, 4)
@@ -375,12 +383,12 @@ function updatePose(
   kart.time = finite(kart.time) + dt
   const ax = axes(kart.yaw)
   const lateral = kart.vx * ax.rightX + kart.vz * ax.rightZ
-  const targetWheel = clamp(steer * 0.64 - kart.driftSide * 0.06, -0.72, 0.72)
+  const targetWheel = clamp(steer * 0.78 - kart.driftSide * 0.06, -0.82, 0.82)
   kart.wheelSteer = damp(finite(kart.wheelSteer), targetWheel, 14, dt)
   // +Z roll leans the roof left, so a right turn (positive steer) is negative roll.
-  // A few degrees of lean. Anything near a right angle reads as a crash.
-  let lean = -kart.wheelSteer * 0.16 - kart.driftSide * 0.03
-  kart.roll = damp(finite(kart.roll), clamp(lean, -0.12, 0.12), 10, dt)
+  // About twenty degrees: a still can see it, and the roof is not in the dirt.
+  let lean = -kart.wheelSteer * 0.5 - kart.driftSide * 0.08
+  kart.roll = damp(finite(kart.roll), clamp(lean, -0.4, 0.4), 12, dt)
   const targetPitch = clamp(-brake * 0.16 + throttle * 0.04 + (kart.airborne ? 0.05 : 0), -0.2, 0.16)
   kart.pitch = damp(finite(kart.pitch), targetPitch, 8, dt)
   kart.squat = damp(finite(kart.squat), brake * -0.08 + throttle * 0.02, 8, dt)

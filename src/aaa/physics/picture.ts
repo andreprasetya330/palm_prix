@@ -107,20 +107,40 @@ function bankChassis(matrix: THREE.Matrix4, roll: number, pitch: number): void {
 
 function steerWheel(wheel: THREE.Object3D): void {
   const spin = wheel.rotation.x
-  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.7, 0.7)
+  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.85, 0.85)
   _euler.set(spin, 0, Math.PI / 2, 'XYZ')
   _qStock.setFromEuler(_euler)
   _qYaw.setFromAxisAngle(_up, steer)
   wheel.quaternion.copy(_qYaw).multiply(_qStock)
 }
 
-function stretchPlume(root: THREE.Object3D): void {
+/**
+ * The stock flame's pale core, stretched, reads as a white lump on the asphalt.
+ * Keep that group at exhaust scale and paint the core orange so the draw is a flame.
+ */
+function tameStockFlame(root: THREE.Object3D): void {
   for (const child of root.children) {
     const aft = child.position.z < -0.8 && child.position.y > 0.15 && child.position.y < 0.7
-    if (!aft) continue
-    if (picture.boostPull > 0) child.scale.set(1.2, 2.8, 1.2)
-    else child.scale.set(1, 1, 1)
+    if (!aft || child.name === SURFACE) continue
+    child.scale.set(1, 1, 1)
+    // The stock cone's emissive blows out to a white lump. The exhaust flame is ours.
+    child.visible = false
   }
+}
+
+/** Faceted cloud puffs sit on the chase line and read as a ball in the sky. */
+function hideSkyBalls(root: THREE.Object3D): void {
+  let scene: THREE.Object3D = root
+  while (scene.parent) scene = scene.parent
+  scene.traverse((obj) => {
+    if (obj.position.y < 8 || obj.children.length < 3) return
+    let spheres = 0
+    for (const child of obj.children) {
+      const mesh = child as THREE.Mesh
+      if (mesh.isMesh && mesh.geometry?.type === 'SphereGeometry') spheres += 1
+    }
+    if (spheres >= 3 && spheres === obj.children.length) obj.visible = false
+  })
 }
 
 function ensureSurfaceBits(root: THREE.Object3D): void {
@@ -135,7 +155,7 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
       depthWrite: false,
     })
     for (let i = 0; i < 5; i++) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), dustMat)
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), dustMat)
       puff.position.set((i - 2) * 0.22, 0.22, -1.15 - i * 0.28)
       puff.name = 'dust'
       group.add(puff)
@@ -155,18 +175,19 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     spray.name = 'spray'
     group.add(spray)
     const plume = new THREE.Group()
-    plume.position.set(0, 0.42, -1.15)
+    // Aft of the chassis, exhaust height. Cone +Y, rolled to point along −Z.
+    plume.position.set(0, 0.4, -1.05)
     plume.rotation.set(Math.PI / 2, 0, 0)
     plume.name = 'plume'
     const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.32, 1.45, 8),
-      new THREE.MeshBasicMaterial({ color: '#ff7a1a' }),
+      new THREE.ConeGeometry(0.22, 1.25, 12),
+      new THREE.MeshBasicMaterial({ color: '#ff3d0a' }),
     )
     const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.16, 0.9, 8),
-      new THREE.MeshBasicMaterial({ color: '#ffe08a' }),
+      new THREE.ConeGeometry(0.1, 0.7, 10),
+      new THREE.MeshBasicMaterial({ color: '#ff7a18' }),
     )
-    core.position.y = 0.2
+    core.position.y = 0.12
     plume.add(flame)
     plume.add(core)
     group.add(plume)
@@ -187,9 +208,10 @@ function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => vo
   kartRoot = root
   root.position.y = 0.05 + picture.y + picture.squat
   origUpdate.call(root)
-  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.14, 0.14), picture.pitch)
-  stretchPlume(root)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.45, 0.45), picture.pitch)
+  tameStockFlame(root)
   ensureSurfaceBits(root)
+  hideSkyBalls(root)
 }
 
 function chaseTarget(args: unknown[]): THREE.Vector3 {
@@ -206,7 +228,8 @@ const _look = new THREE.Vector3()
 /**
  * Chase from behind, low enough that the kart sits in the lower third.
  * Distance is absolute so a boost cannot walk the camera overhead.
- * A small shoulder clears the gate post without becoming a side view.
+ * Shoulder is wide enough that neither arch post (x = ±3.4) covers the kart.
+ * Distance and height stay a chase: 6.6 m behind, 2.45 m up.
  */
 function frameChase(
   cam: THREE.Object3D,
@@ -219,7 +242,12 @@ function frameChase(
   const rx = Math.cos(yaw)
   const rz = -Math.sin(yaw)
   const back = 6.6 + (picture.boostPull > 0 ? picture.boostPull : 0)
-  const shoulder = 1.45
+  const shoulder = 7.2
+  const persp = cam as THREE.PerspectiveCamera
+  if (persp.isPerspectiveCamera && Math.abs(persp.fov - 42) > 0.4) {
+    persp.fov = 42
+    persp.updateProjectionMatrix()
+  }
   cam.position.set(
     target.x - fx * back + rx * shoulder,
     2.45,

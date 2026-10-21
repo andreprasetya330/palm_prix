@@ -290,6 +290,33 @@ function testLaps(): void {
   check('laps finite', finiteKart(k))
 }
 
+/** Smallest horizontal NDC gap between the kart box and either arch post. */
+function gateGap(cam: THREE.PerspectiveCamera, x: number, z: number): number {
+  cam.updateMatrixWorld()
+  const ndc = (v: THREE.Vector3) => v.clone().project(cam).x
+  const yaw = Math.PI / 2
+  const fx = Math.sin(yaw)
+  const fz = Math.cos(yaw)
+  const rx = Math.cos(yaw)
+  const rz = -Math.sin(yaw)
+  const xs: number[] = []
+  for (const sx of [-0.75, 0.75]) {
+    for (const sz of [-1.05, 0.95]) xs.push(ndc(new THREE.Vector3(x + rx * sx + fx * sz, 0.8, z + rz * sx + fz * sz)))
+  }
+  const kart = [Math.min(...xs), Math.max(...xs)]
+  let gap = 99
+  for (const px of [-3.4, 3.4]) {
+    const posts: number[] = []
+    for (const dx of [-0.3, 0.3]) {
+      for (const dz of [-0.3, 0.3]) posts.push(ndc(new THREE.Vector3(px + dx, 2, z + dz)))
+    }
+    const post = [Math.min(...posts), Math.max(...posts)]
+    const sep = kart[1] < post[0] ? post[0] - kart[1] : post[1] < kart[0] ? kart[0] - post[1] : -1
+    gap = Math.min(gap, sep)
+  }
+  return gap
+}
+
 function clampSteer(v: number): number {
   return Math.max(-1, Math.min(1, v))
 }
@@ -300,8 +327,8 @@ function testPoseAndBoost(): void {
 
   let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
   k = hold(k, ctrl({ throttle: 1, steer: 1 }), 0.5)
-  check('full lock rolls a few degrees', k.roll < -0.05 && k.roll > -0.14, `roll=${k.roll.toFixed(3)}`)
-  check('front wheels turn', k.wheelSteer > 0.35, `wheel=${k.wheelSteer.toFixed(3)}`)
+  check('full lock rolls enough to see', k.roll < -0.22 && k.roll > -0.45, `roll=${k.roll.toFixed(3)}`)
+  check('front wheels turn', k.wheelSteer > 0.55, `wheel=${k.wheelSteer.toFixed(3)}`)
   check('corner leaves a skid read', k.skid > 0.4, `skid=${k.skid.toFixed(2)}`)
   check('edge kicks up dust', k.dust > 0.4 || k.skid > 0.4, `dust=${k.dust.toFixed(2)}`)
 
@@ -318,6 +345,7 @@ function testPoseAndBoost(): void {
 
 function testChaseAndPlume(): void {
   const grid = gridPose()
+  stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
   const cam = new THREE.PerspectiveCamera()
   cam.position.set(0, 12, 0)
   cam.lookAt(grid.x, 1, grid.z)
@@ -329,6 +357,9 @@ function testChaseAndPlume(): void {
   const behind = -(behindX * fwdX + behindZ * fwdZ)
   check('countdown chase is behind the kart', behind > 5 && flat > behind * 0.8, `behind=${behind.toFixed(2)} flat=${flat.toFixed(2)}`)
   check('countdown chase is not overhead', cam.position.y < 3.2 && cam.position.y > 1.6, `y=${cam.position.y.toFixed(2)}`)
+  check('chase distance stays put', behind < 7.2, `behind=${behind.toFixed(2)}`)
+  const postGap = gateGap(cam, grid.x, grid.z)
+  check('arch posts clear the kart', postGap > 0.04, `gap=${postGap.toFixed(3)}`)
 
   let posed = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
   posed = hold(posed, ctrl({ throttle: 1, steer: 1 }), 0.45)
@@ -347,16 +378,33 @@ function testChaseAndPlume(): void {
   }
   root.updateMatrixWorld(true)
   const up = new THREE.Vector3().setFromMatrixColumn(root.matrix, 1)
-  check('drawn roll is only a few degrees', up.y > 0.98 && up.y < 0.999, `up=${up.y.toFixed(3)} roll=${posed.roll.toFixed(3)}`)
+  check('drawn roll is a visible lean', up.y < 0.97 && up.y > 0.88, `up=${up.y.toFixed(3)} roll=${posed.roll.toFixed(3)}`)
   const stock = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, Math.PI / 2))
   const drawn = new THREE.Quaternion().setFromRotationMatrix(root.children[0].matrix)
-  check('front wheel is steered', drawn.angleTo(stock) > 0.2, `ang=${drawn.angleTo(stock).toFixed(3)}`)
+  check('front wheel is steered', drawn.angleTo(stock) > 0.45, `ang=${drawn.angleTo(stock).toFixed(3)}`)
   const bits = root.getObjectByName('palm-prix-surface-read')
   const spar = !!bits && bits.children.some((child) => child.name === 'skid')
   check('no black spar on the body', !spar)
 
   const r = ovalRadius(posed.x, posed.z)
   check('corner tires stay on the asphalt', r > 14.5 && r < 22 && !overlapsAnyCurb(posed.x, posed.z), `r=${r.toFixed(2)}`)
+
+  const corner = hold({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 3)
+  const tan = ovalTangent(corner.x, corner.z)
+  const lead = Math.abs(wrapAngle(Math.atan2(tan.x, tan.z) - corner.yaw))
+  const ang = ovalAngle(corner.x, corner.z)
+  const offStraight = Math.min(Math.abs(wrapAngle(ang)), Math.abs(wrapAngle(ang - Math.PI)))
+  check('three seconds of full lock is still a corner', lead > 0.4 && offStraight > 0.45, `lead=${lead.toFixed(2)} ang=${ang.toFixed(2)}`)
+  check('corner badge is off', corner.boostTimer === 0, `boost=${corner.boostTimer.toFixed(2)}`)
+  check(
+    'corner tires stay on asphalt after three seconds',
+    ovalRadius(corner.x, corner.z) > 14.5 &&
+      ovalRadius(corner.x, corner.z) < 22 &&
+      !overlapsAnyCurb(corner.x, corner.z) &&
+      surfaceAt(corner.x, corner.z).kind === 'asphalt',
+    `r=${ovalRadius(corner.x, corner.z).toFixed(2)} ${surfaceAt(corner.x, corner.z).kind}`,
+  )
+  check('corner still leans', corner.roll < -0.22, `roll=${corner.roll.toFixed(3)}`)
 
   const boosted = stepKart(
     { x: grid.x, z: grid.z, yaw: grid.yaw, speed: 18, boostTimer: 1.1 },
@@ -366,6 +414,22 @@ function testChaseAndPlume(): void {
   root.updateMatrixWorld(true)
   const plume = root.getObjectByName('plume')
   check('boost shows a plume', !!plume && plume.visible, `boost=${boosted.boostTimer.toFixed(2)}`)
+  const plumeMesh = plume?.children[0] as THREE.Mesh | undefined
+  const plumeColor = (plumeMesh?.material as THREE.MeshBasicMaterial | undefined)?.color
+  check(
+    'plume is an orange exhaust flame',
+    !!plume &&
+      plume.position.y > 0.3 &&
+      plume.position.z < -0.9 &&
+      plumeMesh?.geometry?.type === 'ConeGeometry' &&
+      !!plumeColor &&
+      plumeColor.r > 0.8 &&
+      plumeColor.g < 0.55 &&
+      plumeColor.b < 0.2,
+    `y=${plume?.position.y.toFixed(2)} z=${plume?.position.z.toFixed(2)} ${plumeMesh?.geometry?.type}`,
+  )
+  const skyBall = !!bits && bits.children.some((child) => child.name === 'dust' && child.position.y > 1.2)
+  check('no dust ball above the kart', !skyBall)
   const camB = new THREE.PerspectiveCamera()
   camB.position.set(boosted.x, 8, boosted.z)
   camB.lookAt(boosted.x, 1, boosted.z)
