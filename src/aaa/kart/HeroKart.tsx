@@ -42,7 +42,9 @@ const SHOT =
 function poseOnOval(x: number, z: number, yaw: number) {
   const radius = Math.hypot(x / 1.15, z)
   if (radius >= 13.8 && radius <= 22.4) return { x, z, yaw, planted: false }
-  const t = Math.atan2(x / 1.15, z || 1e-4) + 1.2
+  // Back straight. The start arch is t = 0 and the item boxes sit at
+  // t = 0.35, 1.05, 1.75, 2.45, so a plant near the spawn angle lands on a box.
+  const t = Math.PI
   const tx = Math.cos(t) * 1.15
   const tz = -Math.sin(t)
   const len = Math.hypot(tx, tz) || 1
