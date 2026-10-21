@@ -197,7 +197,7 @@ function placePlume(
     _side.crossVectors(_up, _aft)
     if (_side.lengthSq() < 1e-4) _side.copy(_right)
     _side.normalize().applyAxisAngle(_aft, roll)
-    _normal.crossVectors(_side, _aft).normalize()
+    _normal.crossVectors(_aft, _side).normalize()
     _basis.makeBasis(_side, _aft, _normal)
     mesh.quaternion.setFromRotationMatrix(_basis)
     mesh.scale.set(width, length, height)
