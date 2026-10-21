@@ -126,6 +126,10 @@ const _mouth = new THREE.Vector3()
 const _view = new THREE.Vector3()
 const _camRight = new THREE.Vector3()
 const _camUp = new THREE.Vector3()
+const _tip = new THREE.Vector3()
+const _dir = new THREE.Vector3()
+const _ndcA = new THREE.Vector3()
+const _ndcB = new THREE.Vector3()
 
 function placePlume(
   kart: KartState,
@@ -169,31 +173,36 @@ function placePlume(
   flames.forEach((sprite, i) => {
     if (!sprite) return
     const mat = sprite.material as THREE.SpriteMaterial
-    const len = i === 0 ? 1.15 : 0.92
+    const len = i === 0 ? 1.28 : 1.02
     const side = i === 0 ? -0.1 : 0.12
     sprite.visible = true
-    sprite.position.copy(_mouth).addScaledVector(_camRight, side).addScaledVector(_camUp, -len * 0.42)
-    sprite.scale.set(i === 0 ? 0.4 : 0.3, len, 1)
-    mat.rotation = Math.PI + (i === 0 ? -0.08 : 0.1)
-    mat.opacity = 0.82 * punch
+    sprite.position.copy(_mouth).addScaledVector(_camRight, side).addScaledVector(_fwd, -len * 0.28)
+    sprite.position.y += 0.02
+    sprite.scale.set(i === 0 ? 0.46 : 0.34, len * 0.72, 1)
+    mat.rotation = Math.PI + (i === 0 ? -0.12 : 0.14)
+    mat.opacity = 0.88 * punch
   })
 
   streaks.forEach((sprite, i) => {
     if (!sprite) return
     const mat = sprite.material as THREE.SpriteMaterial
     const side = i - (STREAKS - 1) / 2
-    const angle = side * 0.22
-    const len = 0.95 + Math.abs(side) * 0.16
-    const sx = Math.sin(angle)
-    const sy = -Math.cos(angle)
+    const along = 0.9 + Math.abs(side) * 0.14
+    const lateral = side * 0.3
+    _tip.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, lateral)
+    _tip.y += 0.04
+    _dir.copy(_tip).sub(_mouth)
+    const worldLen = _dir.length()
+    if (worldLen < 1e-4) return
+    _dir.multiplyScalar(1 / worldLen)
+    const facing = Math.abs(_dir.dot(_view))
+    const visLen = worldLen * Math.sqrt(Math.max(0.08, 1 - facing * facing))
+    _ndcA.copy(_mouth).project(camera)
+    _ndcB.copy(_tip).project(camera)
     sprite.visible = true
-    sprite.position
-      .copy(_mouth)
-      .addScaledVector(_camRight, sx * len * 0.55)
-      .addScaledVector(_camUp, sy * len * 0.55)
-    if (sprite.position.y < 0.22) sprite.position.y = 0.22
-    sprite.scale.set(0.1, len, 1)
-    mat.rotation = angle
-    mat.opacity = 0.78 * punch
+    sprite.position.copy(_mouth).lerp(_tip, 0.5)
+    sprite.scale.set(0.1, visLen, 1)
+    mat.rotation = Math.atan2(_ndcB.x - _ndcA.x, _ndcB.y - _ndcA.y)
+    mat.opacity = 0.9 * punch
   })
 }
