@@ -87,7 +87,7 @@ function Palm({
   )
 }
 
-function Grass() {
+function Grass({ fiber }: { fiber: THREE.Texture }) {
   const geo = useMemo(() => {
     const g = new THREE.PlaneGeometry(210, 210, 80, 80)
     g.rotateX(-Math.PI / 2)
@@ -95,7 +95,6 @@ function Grass() {
     const colors = new Float32Array(pos.count * 3)
     const inside = new THREE.Color(palette.grassInside)
     const outside = new THREE.Color(palette.grassOutside)
-    const fairway = new THREE.Color(palette.grassFairway)
     const far = new THREE.Color(palette.grassFar)
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
@@ -104,11 +103,7 @@ function Grass() {
       const lat = lateralOf(x, z)
       const horizon = THREE.MathUtils.clamp((Math.hypot(x + 16, z - 7) - 26) / 52, 0, 1)
       const edge = THREE.MathUtils.clamp((lat + 3) / 6, 0, 1)
-      // Yellow fairway in the middle of the first-corner lawn, emerald around it.
-      const pocket = ((x + 8.5) / 8) ** 2 + ((z + 2.5) / 7) ** 2
-      const fair = lat < -3.2 ? 1 - THREE.MathUtils.smoothstep(pocket, 0.62, 0.92) : 0
       c.copy(inside).lerp(outside, edge)
-      c.lerp(fairway, fair)
       c.lerp(far, horizon * horizon)
       colors[i * 3] = c.r
       colors[i * 3 + 1] = c.g
@@ -120,7 +115,7 @@ function Grass() {
 
   return (
     <mesh geometry={geo} position={[-16, -0.05, 2]} receiveShadow>
-      <meshStandardMaterial vertexColors roughness={1} />
+      <meshStandardMaterial map={fiber} vertexColors roughness={1} />
     </mesh>
   )
 }
@@ -279,7 +274,30 @@ function Crowd() {
   )
 }
 
-function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture }) {
+/** Straw fairway in the first-corner infield. The ring around it stays emerald. */
+function Fairway({ map }: { map: THREE.Texture }) {
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0.4]}
+      scale={[16, 12, 1]}
+      position={[-12, -0.02, -6]}
+      receiveShadow
+    >
+      <circleGeometry args={[1, 48]} />
+      <meshStandardMaterial map={map} color="#fff8ea" roughness={0.94} />
+    </mesh>
+  )
+}
+
+function CoralBank({
+  sign,
+  grain,
+  grainNormal,
+}: {
+  sign: THREE.Texture
+  grain: THREE.Texture
+  grainNormal: THREE.Texture
+}) {
   return (
     <group position={[12.4, 0, -8.4]} rotation={[0, -0.48, 0]}>
       {[
@@ -290,12 +308,24 @@ function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture 
       ].map((tier) => (
         <mesh key={tier.y} position={[tier.x, tier.y, 0]} castShadow receiveShadow>
           <boxGeometry args={[tier.w, tier.h, 14.2]} />
-          <meshStandardMaterial map={grain} color={tier.color} roughness={0.72} />
+          <meshStandardMaterial
+            map={grain}
+            normalMap={grainNormal}
+            normalScale={new THREE.Vector2(1.3, 1.3)}
+            color={tier.color}
+            roughness={0.72}
+          />
         </mesh>
       ))}
       <mesh position={[3.15, 2.95, 0]} castShadow>
         <boxGeometry args={[6.6, 0.18, 14.8]} />
-        <meshStandardMaterial map={grain} color={palette.roof} roughness={0.55} />
+        <meshStandardMaterial
+          map={grain}
+          normalMap={grainNormal}
+          normalScale={new THREE.Vector2(1.3, 1.3)}
+          color={palette.roof}
+          roughness={0.55}
+        />
       </mesh>
       <mesh position={[2.3, 2.7, 0]}>
         <boxGeometry args={[5.5, 0.08, 14.7]} />
@@ -332,7 +362,7 @@ function BankKey() {
         target={target}
         position={[34, 12, 8]}
         color="#fff0c4"
-        intensity={1600}
+        intensity={700}
         distance={48}
         angle={0.4}
         penumbra={0.15}
@@ -348,23 +378,25 @@ function BankKey() {
   )
 }
 
-/** Slabs on the outside sand so the gate's sun cuts a shadow across the bank. */
-function BankPosts() {
-  const slabs = [-4, -7.2, -10.2, -13].map((z) => {
-    const radius = 21.6
-    const dz = z + 2
-    const x = -16 + Math.sqrt(Math.max(0, radius * radius - dz * dz))
-    return [x, z] as const
-  })
+/** Outer face of the first-corner sand. The gate sun lights one side and shades the other. */
+function BankFace({
+  grain,
+  grainNormal,
+}: {
+  grain: THREE.Texture
+  grainNormal: THREE.Texture
+}) {
   return (
-    <group>
-      {slabs.map(([x, z]) => (
-        <mesh key={z} position={[x, 1.7, z]} rotation={[0, 0.62, 0]} castShadow>
-          <boxGeometry args={[0.42, 3.4, 1.35]} />
-          <meshStandardMaterial color={palette.archDeep} roughness={0.5} />
-        </mesh>
-      ))}
-    </group>
+    <mesh position={[6.5, 0.9, -7.4]} rotation={[0, 0.18, 0]} castShadow receiveShadow>
+      <boxGeometry args={[0.8, 1.8, 7.2]} />
+      <meshStandardMaterial
+        map={grain}
+        normalMap={grainNormal}
+        normalScale={new THREE.Vector2(1.3, 1.3)}
+        color="#f4d7a4"
+        roughness={0.76}
+      />
+    </mesh>
   )
 }
 
@@ -398,17 +430,17 @@ function TideCrown({ sign }: { sign: THREE.Texture }) {
 /** Outside the first corner. One board, facing the chase, clear of the lens. */
 function ApexLantern({ sign }: { sign: THREE.Texture }) {
   return (
-    <group position={[6.4, 0, -13.6]}>
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.35, 1.6, 0.8, 12]} />
+    <group position={[2.4, 0, -16.2]}>
+      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.2, 1.45, 0.7, 12]} />
         <meshStandardMaterial color={palette.stone} roughness={0.72} />
       </mesh>
-      <mesh position={[0, 3.3, 0]} castShadow>
-        <cylinderGeometry args={[0.32, 0.5, 5.2, 10]} />
+      <mesh position={[0, 4.3, 0]} castShadow>
+        <cylinderGeometry args={[0.26, 0.42, 7.2, 10]} />
         <meshStandardMaterial color={palette.arch} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 6.3, 0]} castShadow>
-        <sphereGeometry args={[0.62, 14, 12]} />
+      <mesh position={[0, 8.2, 0]} castShadow>
+        <sphereGeometry args={[0.55, 14, 12]} />
         <meshStandardMaterial
           color={palette.gold}
           emissive={palette.gold}
@@ -416,9 +448,9 @@ function ApexLantern({ sign }: { sign: THREE.Texture }) {
           roughness={0.22}
         />
       </mesh>
-      <pointLight position={[0, 6.1, 0.4]} color={palette.gold} intensity={12} distance={8} decay={2} />
-      <mesh position={[0, 5.5, 0.55]}>
-        <planeGeometry args={[8.2, 2.15]} />
+      <pointLight position={[0, 8, 0.4]} color={palette.gold} intensity={10} distance={7} decay={2} />
+      <mesh position={[0, 6.7, 0.45]}>
+        <planeGeometry args={[7.2, 1.9]} />
         <meshStandardMaterial map={sign} roughness={0.4} />
       </mesh>
     </group>
@@ -510,11 +542,12 @@ function ShellBeach({
 export function World({ textures }: { textures: TrackTextures }) {
   return (
     <group>
-      <Grass />
+      <Grass fiber={textures.grass} />
+      <Fairway map={textures.fairway} />
       <ShellBeach textures={textures} />
-      <CoralBank sign={textures.signBank} grain={textures.bank} />
+      <CoralBank sign={textures.signBank} grain={textures.bank} grainNormal={textures.bankNormal} />
+      <BankFace grain={textures.bank} grainNormal={textures.bankNormal} />
       <BankKey />
-      <BankPosts />
       <TideCrown sign={textures.signCrown} />
       <ApexLantern sign={textures.signApex} />
       <ReefBell sign={textures.signReef} />
