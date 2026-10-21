@@ -1,5 +1,5 @@
 import type { KartState } from '../../game/kartPhysics'
-import { damp, dampAngle, finite } from './math'
+import { clamp, damp, dampAngle, finite } from './math'
 import type { AaaKartState, CameraFollowSample } from './types'
 
 /**
@@ -11,21 +11,15 @@ export function updateCameraRig(kart: AaaKartState, dt: number): void {
   const speed = Math.hypot(finite(kart.vx), finite(kart.vz))
   const travelYaw = speed > 3.5 ? Math.atan2(kart.vx, kart.vz) : kart.yaw
   kart.camYaw = dampAngle(finite(kart.camYaw, kart.yaw), travelYaw, 5.2, dt)
-  const targetBack = 6.35 + Math.min(2.3, speed * 0.065)
+  const boosting = kart.boostTimer > 0
+  const targetBack = 6.1 + Math.min(1.5, speed * 0.045) + (boosting ? 3.8 : 0)
   const targetHeight =
-    3.45 + Math.min(1.05, speed * 0.032) + Math.min(1.1, Math.max(0, kart.y) * 0.8)
-  const targetLook = 2.15 + Math.min(3.4, speed * 0.095)
-  kart.camBack = damp(kart.camBack, targetBack, 4.5, dt)
-  kart.camHeight = damp(kart.camHeight, targetHeight, 4.5, dt)
+    3.45 + Math.min(1.05, speed * 0.032) + Math.min(1.1, Math.max(0, kart.y) * 0.8) + (boosting ? 0.45 : 0)
+  const targetLook = 2.15 + Math.min(3.4, speed * 0.095) + (boosting ? 1.4 : 0)
+  kart.camBack = damp(kart.camBack, targetBack, boosting ? 9 : 4.2, dt)
+  kart.camHeight = damp(kart.camHeight, targetHeight, boosting ? 8 : 4.5, dt)
   kart.lookAhead = damp(kart.lookAhead, targetLook, 4.5, dt)
-  const rightX = Math.cos(kart.yaw)
-  const rightZ = -Math.sin(kart.yaw)
-  const lateral = kart.vx * rightX + kart.vz * rightZ
-  const targetRoll = Math.max(
-    -0.07,
-    Math.min(0.07, -kart.driftSide * 0.045 - lateral * 0.0032),
-  )
-  kart.roll = damp(kart.roll, targetRoll, 7, dt)
+  kart.camRoll = damp(finite(kart.camRoll), clamp(-finite(kart.roll) * 0.22, -0.08, 0.08), 6, dt)
 }
 
 export function sampleCameraFollow(input: KartState): CameraFollowSample {

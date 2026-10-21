@@ -21,7 +21,23 @@ export type AaaKartState = KartState & {
   camBack: number
   camHeight: number
   lookAhead: number
+  /** Chassis roll, radians. Negative leans right (into a positive steer). */
   roll: number
+  /** Nose-up pitch, radians. Brake dips the nose. */
+  pitch: number
+  /** Suspension squash, meters. Negative on brake. */
+  squat: number
+  /** Front-wheel steer, radians, same sign as the steer input. */
+  wheelSteer: number
+  /** 0–1 cornering load for a skid or spark read. */
+  skid: number
+  /** 0–1 loose surface (grass, sand, curb edge). */
+  dust: number
+  /** 0–1 water contact. Hard reject still raises this for a splash. */
+  spray: number
+  /** Small camera dutch angle so the horizon agrees with the body. */
+  camRoll: number
+  time: number
   landing: number
   lipLock: number
   ground: number

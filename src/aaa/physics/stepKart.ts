@@ -1,7 +1,8 @@
 import type { ControlState } from '../../game/controlState'
 import type { KartState } from '../../game/kartPhysics'
 import { updateCameraRig } from './cameraFollow'
-import { clamp, finite, wrapAngle } from './math'
+import { clamp, damp, finite, wrapAngle } from './math'
+import { publishPicture } from './picture'
 import {
   containKart,
   groundHeight,
@@ -68,6 +69,14 @@ function fresh(x: number, z: number, yaw: number, speed: number, boostTimer: num
     camHeight: 3.55,
     lookAhead: 2.3,
     roll: 0,
+    pitch: 0,
+    squat: 0,
+    wheelSteer: 0,
+    skid: 0,
+    dust: 0,
+    spray: 0,
+    camRoll: 0,
+    time: 0,
     landing: 0,
     lipLock: 0,
     ground,
@@ -292,6 +301,7 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
   } else if (contained.pond) {
     kart.vx *= 0.55
     kart.vz *= 0.55
+    kart.spray = 1
   }
 
   const ground = groundHeight(kart.x, kart.z)
@@ -347,9 +357,46 @@ function sane(kart: AaaKartState, backup: AaaKartState): AaaKartState {
   kart.z = clamp(kart.z, -54, 54)
   kart.yaw = wrapAngle(kart.yaw)
   kart.camYaw = wrapAngle(finite(kart.camYaw, kart.yaw))
-  kart.roll = clamp(kart.roll, -0.1, 0.1)
+  kart.roll = clamp(finite(kart.roll), -0.5, 0.5)
+  kart.pitch = clamp(finite(kart.pitch), -0.25, 0.25)
+  kart.wheelSteer = clamp(finite(kart.wheelSteer), -0.8, 0.8)
   kart.boostTimer = clamp(kart.boostTimer, 0, 4)
   return kart
+}
+
+/** Body attitude the still can read: roll, turned wheels, skid, dust, spray. */
+function updatePose(
+  kart: AaaKartState,
+  steer: number,
+  throttle: number,
+  brake: number,
+  dt: number,
+): void {
+  kart.time = finite(kart.time) + dt
+  const ax = axes(kart.yaw)
+  const lateral = kart.vx * ax.rightX + kart.vz * ax.rightZ
+  const targetWheel = clamp(steer * 0.64 - kart.driftSide * 0.06, -0.72, 0.72)
+  kart.wheelSteer = damp(finite(kart.wheelSteer), targetWheel, 14, dt)
+  // +Z roll leans the roof left, so a right turn (positive steer) is negative roll.
+  let lean = -kart.wheelSteer * 0.74 - kart.driftSide * 0.22 - lateral * 0.012
+  if (kart.surface === 'grass' || kart.surface === 'sand') lean += Math.sin(kart.time * 28) * 0.09
+  if (kart.surface === 'curb') lean += Math.sin(kart.time * 48) * 0.05
+  kart.roll = damp(finite(kart.roll), clamp(lean, -0.46, 0.46), 10, dt)
+  const targetPitch = clamp(-brake * 0.16 + throttle * 0.04 + (kart.airborne ? 0.05 : 0), -0.2, 0.16)
+  kart.pitch = damp(finite(kart.pitch), targetPitch, 8, dt)
+  kart.squat = damp(finite(kart.squat), brake * -0.08 + throttle * 0.02, 8, dt)
+  const load = Math.abs(steer) * clamp(Math.abs(kart.speed) / 16, 0, 1)
+  kart.skid = clamp(Math.max(kart.drifting ? 0.85 : 0, Math.abs(lateral) / 6, load * 0.85), 0, 1)
+  const r = ovalRadius(kart.x, kart.z)
+  const loose =
+    kart.surface === 'grass' ||
+    kart.surface === 'sand' ||
+    kart.surface === 'curb' ||
+    r > 20.15 ||
+    r < 15.35
+  kart.dust = loose ? clamp(0.55 + Math.abs(kart.speed) / 26, 0, 1) : damp(finite(kart.dust), 0, 6, dt)
+  const sprayTarget = kart.surface === 'water' ? 1 : 0
+  kart.spray = kart.spray > sprayTarget ? Math.max(sprayTarget, kart.spray - dt * 0.8) : sprayTarget
 }
 
 /**
@@ -399,6 +446,8 @@ export function stepKart(input: KartState, control: ControlState, dt: number): A
     kart.vz *= 0.5
   }
 
+  updatePose(kart, steer, throttle, brake, frame)
   updateCameraRig(kart, frame)
+  publishPicture(kart)
   return sane(kart, ensureKart(input))
 }

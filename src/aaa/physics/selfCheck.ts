@@ -6,6 +6,7 @@ import { DEFAULT_KART } from '../../game/kartPhysics'
 import { sampleCameraFollow } from './cameraFollow'
 import { wrapAngle } from './math'
 import { stepKart } from './stepKart'
+import './index'
 import {
   groundHeight,
   gridPose,
@@ -292,6 +293,28 @@ function clampSteer(v: number): number {
   return Math.max(-1, Math.min(1, v))
 }
 
+function testPoseAndBoost(): void {
+  const grid = gridPose()
+  check('module parks the countdown spawn on the grid', Math.abs(DEFAULT_KART.x - grid.x) < 1e-6 && Math.abs(DEFAULT_KART.z - grid.z) < 1e-6)
+
+  let k = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1, steer: 1 }), 0.5)
+  check('full lock rolls into the turn', k.roll < -0.2, `roll=${k.roll.toFixed(3)}`)
+  check('front wheels turn', k.wheelSteer > 0.35, `wheel=${k.wheelSteer.toFixed(3)}`)
+  check('corner leaves a skid read', k.skid > 0.4, `skid=${k.skid.toFixed(2)}`)
+  check('edge kicks up dust', k.dust > 0.4 || k.skid > 0.4, `dust=${k.dust.toFixed(2)}`)
+
+  k = stepKart({ x: grid.x, z: grid.z, yaw: grid.yaw, speed: 18, boostTimer: 0 }, ctrl({ throttle: 1, item: true }), 1 / 60)
+  k = hold(k, ctrl({ throttle: 1 }), 0.45)
+  check('boost widens the chase rig', k.camBack > 8.6, `back=${k.camBack.toFixed(2)} boost=${k.boostTimer.toFixed(2)}`)
+
+  k = stepKart({ x: 0, z: 1, yaw: 0, speed: 12, boostTimer: 0 }, ctrl({ throttle: 1 }), 1 / 60)
+  check('pond reject throws spray', k.spray > 0.5, `spray=${k.spray.toFixed(2)} d=${Math.hypot(k.x, k.z).toFixed(2)}`)
+  let braked = stepKart({ x: grid.x, z: grid.z, yaw: grid.yaw, speed: 22, boostTimer: 0 }, ctrl({}), 1 / 60)
+  braked = hold(braked, ctrl({ brake: 1 }), 0.25)
+  check('brake dips the nose', braked.pitch < -0.05, `pitch=${braked.pitch.toFixed(3)}`)
+}
+
 function testNaN(): void {
   const k = stepKart(
     { x: Number.NaN, z: 0, yaw: 0, speed: 0, boostTimer: 0 },
@@ -314,6 +337,7 @@ testAir()
 testElevationHook()
 testStorm()
 testLaps()
+testPoseAndBoost()
 testNaN()
 
 if (failures.length) {
