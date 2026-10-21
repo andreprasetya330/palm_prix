@@ -596,9 +596,8 @@ def sidewall_mark(name, center, mat):
     obj = bpy.context.active_object
     obj.name = name
     select_only(obj)
-    # Stem toward +X, which is the viewer's left from behind the kart.
-    obj.scale = (-1.0, 1.0, 1.0)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    # Blender text runs toward +X. From behind the kart, +X is the viewer's left,
+    # so the stem of an unmirrored P already sits on the left.
     # Face up-and-back, about 29 degrees above the rear axis.
     obj.rotation_euler = (math.radians(-61.0), 0.0, 0.0)
     obj.location = center + Vector((0.0, 0.34, 0.18))
