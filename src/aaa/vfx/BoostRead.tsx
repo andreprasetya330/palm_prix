@@ -9,8 +9,8 @@ const CHASE_HEIGHT = 3.6
 
 /** roll, length along the road, cross-section width, opacity, color */
 const RIBBONS: ReadonlyArray<readonly [number, number, number, number, string]> = [
-  [0.22, 1.5, 0.9, 0.94, '#ff6e24'],
-  [-0.48, 1.16, 0.56, 0.76, '#ffb25a'],
+  [0.18, 1.26, 0.94, 0.96, '#ffffff'],
+  [-0.42, 1.02, 0.6, 0.82, '#fff6ea'],
 ]
 
 /**
@@ -64,6 +64,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
         >
           <meshBasicMaterial
             map={flameTex}
+            vertexColors
             transparent
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -114,21 +115,33 @@ const FLAME_EDGE: ReadonlyArray<readonly [number, number, number, number, number
   [-0.319, -0.16, 0.5, 0.44727, 0.47656, 0.75781],
 ]
 
+/** Hot center, darker rim. t is 0 at the exhaust and 1 at the lick. */
+function flameRgb(t: number, rim: boolean): [number, number, number] {
+  if (rim) return [0.72 + (1 - t) * 0.22, 0.08 + (1 - t) * 0.22, 0.02]
+  return [1, 0.9 * (1 - t) + 0.16 * t, 0.55 * (1 - t) * (1 - t) + 0.03]
+}
+
 function makeFlameGeometry() {
   const positions: number[] = []
   const uvs: number[] = []
+  const colors: number[] = []
   const indices: number[] = []
   FLAME_EDGE.forEach(([lx, rx, ly, lu, ru, v], row) => {
-    positions.push(lx, ly, 0, rx, ly, 0)
-    uvs.push(lu, v, ru, v)
+    const t = ly + 0.5
+    const rim = flameRgb(t, true)
+    const hot = flameRgb(t, false)
+    positions.push(lx, ly, 0, (lx + rx) * 0.5, ly, 0, rx, ly, 0)
+    uvs.push(lu, v, (lu + ru) * 0.5, v, ru, v)
+    colors.push(...rim, ...hot, ...rim)
     if (row === 0) return
-    const a = (row - 1) * 2
-    const c = row * 2
-    indices.push(a, a + 1, c + 1, a, c + 1, c)
+    const a = (row - 1) * 3
+    const c = row * 3
+    indices.push(a, a + 1, c + 1, a, c + 1, c, a + 1, a + 2, c + 2, a + 1, c + 2, c + 1)
   })
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
   geo.setIndex(indices)
   return geo
 }
