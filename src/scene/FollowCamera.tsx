@@ -5,20 +5,23 @@ import type { KartState } from '../game/kartPhysics'
 
 type Props = { kart: KartState }
 
+/** Arcade chase cam — a bit higher and snappier for Mario Kart energy. */
 export function FollowCamera({ kart }: Props) {
   const { camera } = useThree()
   const look = useRef(new THREE.Vector3())
+  const desired = useRef(new THREE.Vector3())
 
   useFrame(() => {
-    const back = 7
-    const height = 4
-    const targetX = kart.x - Math.sin(kart.yaw) * back
-    const targetZ = kart.z - Math.cos(kart.yaw) * back
-    camera.position.lerp(
-      new THREE.Vector3(targetX, height, targetZ),
-      0.08,
+    const speedFactor = Math.min(1, Math.abs(kart.speed) / 28)
+    const back = 6.5 + speedFactor * 1.4
+    const height = 3.6 + speedFactor * 0.6
+    desired.current.set(
+      kart.x - Math.sin(kart.yaw) * back,
+      height,
+      kart.z - Math.cos(kart.yaw) * back,
     )
-    look.current.set(kart.x, 0.8, kart.z)
+    camera.position.lerp(desired.current, 0.1)
+    look.current.set(kart.x, 1.0 + speedFactor * 0.2, kart.z)
     camera.lookAt(look.current)
   })
 
