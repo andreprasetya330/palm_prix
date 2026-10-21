@@ -3,7 +3,7 @@ import { Sky } from '@react-three/drei'
 import type { KartState } from '../game/kartPhysics'
 import { FollowCamera } from './FollowCamera'
 import { Kart } from './Kart'
-import { Track } from './Track'
+import { AaaTrackScene } from '../aaa/track'
 
 type Props = {
   kart: KartState
@@ -44,7 +44,7 @@ export function RaceScene({ kart, driverTextureUrl }: Props) {
         mieDirectionalG={0.9}
       />
       <fog attach="fog" args={['#b8e8ff', 60, 120]} />
-      <Track />
+      <AaaTrackScene />
       <Kart kart={kart} driverTextureUrl={driverTextureUrl} />
       <FollowCamera kart={kart} />
     </Canvas>
