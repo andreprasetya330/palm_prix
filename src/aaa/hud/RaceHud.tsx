@@ -3,15 +3,19 @@ import type { RaceStatus } from '../../game/raceLoop'
 import { ITEM_BOXES, POND, SAND, ovalRadius } from '../vfx/world'
 import './hud.css'
 
+export type Rival = { x: number; z: number }
+
 type Props = {
   race: RaceStatus
   kart: KartState
+  rivals?: Rival[]
 }
 
 const BOOST_TOP = 28 * 1.45
 
-export function RaceHud({ race, kart }: Props) {
+export function RaceHud({ race, kart, rivals = [] }: Props) {
   const boosting = kart.boostTimer > 0
+  const place = placeWhenContested(kart, rivals)
   const pace = Math.min(100, Math.round((Math.abs(kart.speed) / BOOST_TOP) * 100))
   const fill = pace
   const count = Math.max(1, Math.ceil(race.countdown))
@@ -20,6 +24,15 @@ export function RaceHud({ race, kart }: Props) {
 
   return (
     <div className={`pp-race${boosting ? ' is-boost' : ''}`}>
+      {place != null && (
+        <div className="pp-place">
+          <span>Place</span>
+          <strong>
+            {place}
+            <sup>{ordinal(place)}</sup>
+          </strong>
+        </div>
+      )}
       <div className="pp-ticket">
         <div className="pp-laps">
           <span>Lap</span>
@@ -197,6 +210,28 @@ function ZephyrIcon() {
       <path d="M40 16c2 7-1 12-7 14 7 0 12-3 14-10-2 2-5 2-7-4z" fill="#1f9e45" />
     </svg>
   )
+}
+
+/** A solo heat has nobody to pass, so it does not claim a place. */
+function placeWhenContested(kart: KartState, rivals: Rival[]): number | null {
+  if (rivals.length === 0) return null
+  const mine = trackAngle(kart.x, kart.z)
+  let ahead = 0
+  for (const rival of rivals) {
+    if (trackAngle(rival.x, rival.z) > mine) ahead += 1
+  }
+  return ahead + 1
+}
+
+function trackAngle(x: number, z: number): number {
+  const ang = Math.atan2(x / 1.15, z)
+  return ang < 0 ? ang + Math.PI * 2 : ang
+}
+
+function ordinal(n: number): string {
+  const teen = n % 100
+  if (teen >= 11 && teen <= 13) return 'th'
+  return ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'
 }
 
 function formatTime(seconds: number): string {
