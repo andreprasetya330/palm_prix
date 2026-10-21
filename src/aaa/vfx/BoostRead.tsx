@@ -130,12 +130,16 @@ function makeFlameGeometry() {
   for (const [t, sign] of ring) {
     const y = -0.5 + t
     const width = flameProfile(t)
-    const lick = 1 + 0.11 * Math.sin(t * Math.PI * 6)
-    const rise = Math.pow(1 - t, 0.72)
-    const lip: [number, number, number] = [1, 0.72 + 0.2 * (1 - t), 0.16]
-    const face: [number, number, number] = [1, 0.42 + 0.28 * (1 - t), 0.05]
-    back.push(pushVert(positions, colors, sign * 0.5 * width * lick, y, 0, lip))
-    front.push(pushVert(positions, colors, sign * 0.5 * width * 0.62, y, rise, face))
+    const rise = Math.pow(1 - t, 0.65)
+    const lick = 1 + 0.09 * Math.sin(t * Math.PI * 5)
+    const lip: [number, number, number] = [1, 0.38 + 0.16 * (1 - t), 0.02]
+    const face: [number, number, number] = [1, 0.9 - 0.25 * t, 0.28]
+    back.push(
+      pushVert(positions, colors, sign * 0.5 * width * lick, y - 0.1 * rise, 0, lip),
+    )
+    front.push(
+      pushVert(positions, colors, sign * 0.5 * width * 0.64, y, 0.55 * rise, face),
+    )
   }
 
   const n = back.length
