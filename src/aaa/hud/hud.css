@@ -247,10 +247,11 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 .pp-map {
   left: 14px;
   bottom: 14px;
-  width: 210px;
-  height: 132px;
-  padding: 6px 8px;
+  width: 460px;
+  height: 168px;
+  padding: 0;
   border-radius: 18px;
+  overflow: hidden;
   z-index: 6;
 }
 
@@ -263,9 +264,14 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 .pp-map-grass { fill: #3ecf5a; }
 .pp-map-asphalt { fill: #2c3142; }
 .pp-map-infield { fill: #67d86a; }
-.pp-map-pond { fill: #3db8ff; stroke: #e8f7ff; stroke-width: 0.6; }
-.pp-map-box { fill: #ffc83d; stroke: #10241c; stroke-width: 0.6; }
-.pp-map-kart { fill: #ff4b32; stroke: #10241c; stroke-width: 0.8; }
+.pp-map-pond { fill: #3db8ff; stroke: #e8f7ff; stroke-width: 1.2; }
+.pp-map-sand { fill: #e6c36a; }
+.pp-map-start { fill: #fffdf8; }
+.pp-map-curb-red { fill: #ff4b32; }
+.pp-map-curb-white { fill: #fffdf8; }
+.pp-map-box { fill: #ffc83d; stroke: #10241c; stroke-width: 0.8; }
+.pp-map-kart { fill: #ff4b32; stroke: #fffdf8; stroke-width: 1.6; }
+.pp-map-heading { fill: none; stroke: #10241c; stroke-width: 2.4; stroke-linecap: round; }
 
 .pp-pace {
   left: 50%;
@@ -377,7 +383,7 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 }
 
 @media (max-width: 800px) {
-  .pp-map { width: 164px; height: 104px; }
+  .pp-map { width: min(460px, 58vw); height: auto; aspect-ratio: 460 / 156; }
   .pp-slot-frame { width: 64px; height: 64px; }
   .pp-slot-frame svg { width: 46px; height: 46px; }
   .pp-place strong { font-size: 2.2rem; }
