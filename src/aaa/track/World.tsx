@@ -5,25 +5,24 @@ import { palette } from './palette'
 import { LAGOON, lateralOf } from './spline'
 import type { TrackTextures } from './textures'
 
+/** West bank of the lagoon only. The east shore sat on the chase line. */
 const palms: [number, number, number, number, number][] = [
-  [-8.2, 0, 2.2, 1.02, 0.28],
-  [-8.6, 0, 6.8, 0.9, -0.2],
-  [-9.1, 0, 10.2, 1.1, 0.16],
-  [-17.4, 0, 7.6, 1.05, 0.32],
-  [-16.8, 0, 2.4, 0.92, -0.18],
-  [-15.6, 0, 11.2, 1.0, 0.12],
+  [-19.2, 0, 1.4, 0.62, 0.18],
+  [-19.8, 0, 5.6, 0.7, -0.12],
+  [-18.8, 0, 9.4, 0.58, 0.1],
+  [-19.4, 0, 13.0, 0.66, 0.16],
 ]
 
 function frondGeometry(): THREE.BufferGeometry {
   const shape = new THREE.Shape()
   shape.moveTo(0, 0)
-  shape.bezierCurveTo(0.32, 0.45, 0.24, 1.1, 0.02, 1.7)
-  shape.bezierCurveTo(-0.1, 1.05, -0.32, 0.45, 0, 0)
-  const geo = new THREE.ShapeGeometry(shape, 5)
+  shape.bezierCurveTo(0.16, 0.22, 0.12, 0.48, 0.01, 0.68)
+  shape.bezierCurveTo(-0.06, 0.46, -0.16, 0.2, 0, 0)
+  const geo = new THREE.ShapeGeometry(shape, 4)
   const pos = geo.attributes.position
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i)
-    pos.setZ(i, y * y * 0.16)
+    pos.setZ(i, y * y * 0.05)
   }
   geo.computeVertexNormals()
   return geo
@@ -65,15 +64,15 @@ function Palm({
       <mesh geometry={trunk} castShadow>
         <meshStandardMaterial map={bark} color={palette.trunk} roughness={0.86} />
       </mesh>
-      {Array.from({ length: 7 }, (_, i) => {
-        const a = (i / 7) * Math.PI * 2
+      {Array.from({ length: 5 }, (_, i) => {
+        const a = (i / 5) * Math.PI * 2
         const lite = i % 2 === 0
         return (
           <mesh
             key={i}
             geometry={frond}
-            position={[Math.sin(a) * 0.08, 3.35, Math.cos(a) * 0.08]}
-            rotation={[0.85, a, 0.15]}
+            position={[Math.sin(a) * 0.06, 3.35, Math.cos(a) * 0.06]}
+            rotation={[0.38, a, 0.08]}
             castShadow
           >
             <meshStandardMaterial
