@@ -173,6 +173,10 @@ function Brow({ x }: { x: number }) {
   const side = Math.sign(x) || 1
   return (
     <group position={[x, 0.055, 0.055]} rotation={[0.35, 0, side * -0.35]}>
+      <mesh position={[0, -0.032, 0.036]} rotation={[0.35, side * 0.1, side * -0.2]}>
+        <planeGeometry args={[0.09, 0.03]} />
+        <meshBasicMaterial color="#2a1812" side={THREE.DoubleSide} />
+      </mesh>
       <mesh castShadow scale={[1, 0.55, 0.7]}>
         <sphereGeometry args={[0.038, 16, 12]} />
         <meshStandardMaterial color="#3a2a22" roughness={0.55} />
@@ -188,19 +192,23 @@ function Brow({ x }: { x: number }) {
 function Mouth() {
   return (
     <group position={[0, -0.05, 0.068]}>
-      <mesh position={[0, 0.018, 0.028]} scale={[1.7, 0.48, 0.85]} castShadow>
+      <mesh position={[0, 0.004, 0.016]} rotation={[0.15, 0, 0]}>
+        <planeGeometry args={[0.1, 0.036]} />
+        <meshBasicMaterial color="#3a1418" side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.028, 0.032]} scale={[1.7, 0.4, 0.75]} castShadow>
         <sphereGeometry args={[0.032, 18, 14]} />
         <meshStandardMaterial color="#c45b58" roughness={0.48} />
       </mesh>
-      <mesh position={[0, -0.012, 0.034]} scale={[1.5, 0.55, 0.9]} castShadow>
+      <mesh position={[0, -0.02, 0.036]} scale={[1.5, 0.46, 0.8]} castShadow>
         <sphereGeometry args={[0.03, 18, 14]} />
         <meshStandardMaterial color="#d4706c" roughness={0.5} />
       </mesh>
-      <mesh position={[-0.05, 0.026, 0.02]} scale={[0.6, 0.45, 0.55]} castShadow>
+      <mesh position={[-0.05, 0.032, 0.022]} scale={[0.6, 0.45, 0.55]} castShadow>
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshStandardMaterial color="#c45b58" roughness={0.5} />
       </mesh>
-      <mesh position={[0.05, 0.026, 0.02]} scale={[0.6, 0.45, 0.55]} castShadow>
+      <mesh position={[0.05, 0.032, 0.022]} scale={[0.6, 0.45, 0.55]} castShadow>
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshStandardMaterial color="#c45b58" roughness={0.5} />
       </mesh>
