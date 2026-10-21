@@ -566,8 +566,9 @@ def build_wheel(name, center, mats, nut):
     badge.rotation_euler = (0, math.pi / 2 if outer > 0 else -math.pi / 2, 0.4)
     made.append(badge)
 
-    # One mark on the outer sidewall, turned to face the chase.
-    made.append(sidewall_mark(f"SidewallMark{name}", center, outer, mats["blue"]))
+    # One mark on each rear outer sidewall, faced at the chase. Front wheels stay clear.
+    if center.y > 0:
+        made.append(sidewall_mark(f"SidewallMark{name}", center, outer, mats["blue"]))
     return made
 
 
@@ -579,16 +580,16 @@ def sidewall_mark(name, center, outer, mat):
     the viewer's left from behind the kart.
     """
     facing = 1.0 if center.y > 0 else -1.0
-    depth = 0.06
-    y = facing * 0.40
-    x0 = outer * 0.12
-    z0 = 0.20
-    # Stem toward -X. The rear workbench view showed the +X stem as the right side of the letter.
+    depth = 0.07
+    y = facing * 0.36
+    x0 = outer * 0.02
+    z0 = 0.22
+    # Stem toward -X so the chase, looking at the tail, sees a P.
     parts = [
-        box(f"{name}Stem", center + Vector((x0 - 0.08, y, z0)), (0.08, depth, 0.38), mat, bevel=0.004),
-        box(f"{name}Top", center + Vector((x0 + 0.01, y, z0 + 0.15)), (0.26, depth, 0.08), mat, bevel=0.004),
-        box(f"{name}Bar", center + Vector((x0, y, z0)), (0.22, depth, 0.075), mat, bevel=0.004),
-        box(f"{name}Bowl", center + Vector((x0 + 0.09, y, z0 + 0.075)), (0.08, depth, 0.23), mat, bevel=0.004),
+        box(f"{name}Stem", center + Vector((x0 - 0.10, y, z0)), (0.11, depth, 0.52), mat, bevel=0.005),
+        box(f"{name}Top", center + Vector((x0 + 0.02, y, z0 + 0.20)), (0.36, depth, 0.11), mat, bevel=0.005),
+        box(f"{name}Bar", center + Vector((x0 + 0.01, y, z0)), (0.30, depth, 0.10), mat, bevel=0.005),
+        box(f"{name}Bowl", center + Vector((x0 + 0.13, y, z0 + 0.10)), (0.11, depth, 0.32), mat, bevel=0.005),
     ]
     select_only(parts[0])
     for part in parts[1:]:
