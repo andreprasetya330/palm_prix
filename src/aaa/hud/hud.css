@@ -143,9 +143,11 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
 .pp-count {
   position: absolute;
   top: 0;
-  left: 16%;
-  right: 16%;
-  height: 28vh;
+  left: 24%;
+  right: 24%;
+  height: 15vh;
+  min-height: 96px;
+  max-height: 132px;
   z-index: 4;
   display: flex;
   align-items: flex-end;
@@ -153,39 +155,44 @@ body:has(.pp-race):not(:has(.pp-cam-live)) .pip-dock {
   overflow: hidden;
 }
 
+.pp-count.is-2 { align-items: center; }
+.pp-count.is-1,
 .pp-count.is-go {
-  height: 15vh;
   align-items: flex-start;
+  height: 12vh;
+  min-height: 78px;
+  max-height: 104px;
 }
 
 .pp-count-burst {
-  width: min(34vh, 240px);
-  aspect-ratio: 1;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle, #fffdf8 0 26%, #ffd15a 48%, rgba(255, 209, 90, 0) 70%);
+  background: radial-gradient(circle, #fffdf8 0 22%, #ffd15a 46%, rgba(255, 209, 90, 0) 68%);
   animation: pp-pop 0.34s cubic-bezier(0.16, 0.9, 0.2, 1) both;
 }
 
 .pp-count-burst b {
   font-family: 'Fredoka', 'Outfit', sans-serif;
-  font-size: clamp(4rem, 10vh, 6.2rem);
+  font-size: 4.4rem;
   line-height: 0.8;
   font-weight: 700;
   color: #ff4b32;
-  -webkit-text-stroke: 8px #10241c;
+  -webkit-text-stroke: 7px #10241c;
   paint-order: stroke fill;
 }
 
 .pp-count.is-go .pp-count-burst {
-  width: min(28vh, 200px);
-  background: radial-gradient(circle, #fffdf8 0 22%, #7dffc3 50%, rgba(125, 255, 195, 0) 72%);
+  width: 92px;
+  height: 92px;
+  background: radial-gradient(circle, #fffdf8 0 18%, #7dffc3 46%, rgba(125, 255, 195, 0) 68%);
 }
 
 .pp-count.is-go .pp-count-burst b {
   color: #0d8f6e;
-  font-size: clamp(2.8rem, 7vh, 4.4rem);
+  font-size: 2.8rem;
   letter-spacing: 0.04em;
 }
 

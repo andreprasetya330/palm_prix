@@ -47,7 +47,7 @@ export function RaceHud({ race, kart }: Props) {
       </div>
 
       {showCount && (
-        <div className={`pp-count${go ? ' is-go' : ''}`}>
+        <div className={`pp-count${go ? ' is-go' : ` is-${count}`}`}>
           <div className="pp-count-burst" key={go ? 'go' : count}>
             <b>{go ? 'GO' : count}</b>
           </div>
