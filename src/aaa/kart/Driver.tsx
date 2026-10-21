@@ -69,46 +69,68 @@ export function Driver({ texture, envMap }: Props) {
 
       <group position={[0, 0.56, 0.04]}>
         <mesh castShadow>
-          <sphereGeometry args={[0.25, 40, 28]} />
+          <sphereGeometry args={[0.26, 48, 36]} />
           <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.85} />
+        </mesh>
+        <mesh position={[0, 0.02, 0.06]} scale={[0.95, 0.78, 0.55]}>
+          <sphereGeometry args={[0.2, 28, 20]} />
+          <meshStandardMaterial color="#1a1024" roughness={0.92} />
         </mesh>
         <mesh position={[0, 0.06, -0.16]} scale={[1.15, 0.72, 0.5]}>
           <sphereGeometry args={[0.16, 18, 14]} />
           <meshPhysicalMaterial color="#ff3d66" roughness={0.35} clearcoat={0.5} />
         </mesh>
-        <mesh position={[-0.22, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <sphereGeometry args={[0.07, 16, 12]} />
+        <mesh position={[-0.23, 0.0, 0.02]}>
+          <sphereGeometry args={[0.07, 20, 16]} />
           <meshPhysicalMaterial color="#2f6bff" roughness={0.35} clearcoat={0.4} />
         </mesh>
-        <mesh position={[0.22, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <sphereGeometry args={[0.07, 16, 12]} />
+        <mesh position={[0.23, 0.0, 0.02]}>
+          <sphereGeometry args={[0.07, 20, 16]} />
           <meshPhysicalMaterial color="#2f6bff" roughness={0.35} clearcoat={0.4} />
         </mesh>
 
+        <mesh position={[0, 0.11, 0.14]} rotation={[0.55, 0, 0]} castShadow>
+          <torusGeometry args={[0.15, 0.032, 12, 24, Math.PI]} />
+          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} />
+        </mesh>
+        <mesh position={[0, -0.11, 0.12]} rotation={[0.2, 0, Math.PI]} castShadow>
+          <torusGeometry args={[0.13, 0.03, 12, 22, Math.PI]} />
+          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} />
+        </mesh>
+
         {texture ? (
-          <mesh position={[0, -0.01, 0.2]}>
-            <circleGeometry args={[0.13, 24]} />
+          <mesh position={[0, -0.01, 0.14]}>
+            <circleGeometry args={[0.12, 24]} />
             <meshStandardMaterial map={texture} roughness={0.5} />
           </mesh>
         ) : (
           <Face />
         )}
 
-        <mesh position={[0, 0.01, 0.04]}>
-          <cylinderGeometry args={[0.29, 0.29, 0.12, 28, 1, true, Math.PI / 2 - 0.62, 1.24]} />
+        <mesh>
+          <sphereGeometry
+            args={[0.3, 48, 32, Math.PI / 2 - 0.66, 1.32, Math.PI / 2 - 0.5, 0.82]}
+          />
           <meshPhysicalMaterial
-            color="#c9f6ff"
+            color="#b7e4f2"
             transparent
-            opacity={0.16}
+            opacity={0.42}
             roughness={0.04}
             metalness={0}
             clearcoat={1}
-            clearcoatRoughness={0.04}
+            clearcoatRoughness={0.06}
+            transmission={0.35}
+            thickness={0.06}
+            ior={1.4}
             envMap={envMap ?? undefined}
-            envMapIntensity={0.2}
+            envMapIntensity={0.12}
             side={THREE.DoubleSide}
             depthWrite={false}
           />
+        </mesh>
+        <mesh position={[0, -0.01, 0.08]} rotation={[0.08, 0, 0]}>
+          <torusGeometry args={[0.175, 0.018, 12, 36, Math.PI * 1.35]} />
+          <meshStandardMaterial color="#1c1e26" roughness={0.72} metalness={0.05} />
         </mesh>
       </group>
     </group>
@@ -117,7 +139,7 @@ export function Driver({ texture, envMap }: Props) {
 
 function Face() {
   return (
-    <group position={[0, -0.015, 0.16]}>
+    <group position={[0, -0.02, 0.1]}>
       <mesh scale={[1.05, 0.92, 0.62]}>
         <sphereGeometry args={[0.13, 24, 16]} />
         <meshStandardMaterial color="#f3c2a4" roughness={0.58} />
