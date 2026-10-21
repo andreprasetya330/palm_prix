@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { palette } from './palette'
@@ -82,8 +82,7 @@ function CloudPuff({
 export function Atmosphere({ textures }: { textures: TrackTextures }) {
   const { scene } = useThree()
 
-  useFrame(() => {
-    // one-shot style guard stored on the scene
+  useLayoutEffect(() => {
     if (scene.userData.palmPrixLight) return
     scene.userData.palmPrixLight = true
     scene.traverse((obj) => {
@@ -127,7 +126,7 @@ export function Atmosphere({ textures }: { textures: TrackTextures }) {
       scene.fog.far = 170
     }
     scene.background = new THREE.Color('#8ec8ff')
-  })
+  }, [scene])
 
   return (
     <group>
