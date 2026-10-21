@@ -204,10 +204,6 @@ function Mouth() {
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshStandardMaterial color="#c45b58" roughness={0.5} />
       </mesh>
-      <mesh position={[0, 0.004, 0.01]} scale={[1.15, 0.28, 0.4]}>
-        <sphereGeometry args={[0.026, 12, 8]} />
-        <meshStandardMaterial color="#6a2430" roughness={0.75} />
-      </mesh>
     </group>
   )
 }
