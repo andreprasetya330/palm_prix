@@ -23,6 +23,8 @@ export type PictureState = {
   skid: number
   boostPull: number
   camRoll: number
+  /** Chassis yaw. The chase rig is rebuilt from this so it cannot walk outward. */
+  yaw: number
 }
 
 export const picture: PictureState = {
@@ -39,6 +41,7 @@ export const picture: PictureState = {
   skid: 0,
   boostPull: 0,
   camRoll: 0,
+  yaw: Math.PI,
 }
 
 const SURFACE = 'palm-prix-surface-read'
@@ -51,8 +54,6 @@ const _qYaw = new THREE.Quaternion()
 const _qStock = new THREE.Quaternion()
 const _up = new THREE.Vector3(0, 1, 0)
 const _aim = new THREE.Vector3()
-const _camOff = new THREE.Vector3()
-const _shoulder = new THREE.Vector3()
 
 let kartRoot: THREE.Object3D | null = null
 
@@ -70,6 +71,7 @@ export function publishPicture(kart: AaaKartState): void {
   picture.skid = kart.skid
   picture.boostPull = kart.boostTimer > 0 ? 4.8 : 0
   picture.camRoll = kart.camRoll
+  picture.yaw = kart.yaw
 }
 
 function looksLikeKart(obj: THREE.Object3D): boolean {
@@ -228,26 +230,27 @@ function chaseTarget(args: unknown[]): THREE.Vector3 {
 }
 
 /**
- * Pull the chase off the centerline (gate posts sit there) and, while boosting,
- * step it back so the framing is a different shot. The kart stays the look target.
+ * Place the chase from the chassis yaw every time. Adding to the current
+ * distance ratchets, because the stock camera only eases partway back.
+ * The shoulder keeps a gate post on the centerline from covering the kart.
  */
 function frameChase(
   cam: THREE.Object3D,
   target: THREE.Vector3,
   origLook: (this: THREE.Object3D, ...args: unknown[]) => void,
 ): void {
-  _camOff.copy(cam.position).sub(target)
-  const dist = _camOff.length()
-  if (dist < 0.5 || dist > 30) return
-  const extra = picture.boostPull > 0 ? picture.boostPull : 0
-  const want = dist + extra
-  _camOff.multiplyScalar(want / dist)
-  _shoulder.crossVectors(_camOff, _up)
-  if (_shoulder.lengthSq() < 1e-8) _shoulder.set(1, 0, 0)
-  _shoulder.normalize().multiplyScalar(1.9)
-  _camOff.add(_shoulder)
-  _camOff.y += 0.7
-  cam.position.copy(target).add(_camOff)
+  const back = 7.4 + (picture.boostPull > 0 ? picture.boostPull : 0)
+  const yaw = picture.yaw
+  const sx = -Math.sin(yaw)
+  const sz = -Math.cos(yaw)
+  const rx = Math.cos(yaw)
+  const rz = -Math.sin(yaw)
+  const shoulder = 2.15
+  cam.position.set(
+    target.x + sx * back + rx * shoulder,
+    target.y + 4.15,
+    target.z + sz * back + rz * shoulder,
+  )
   origLook.call(cam, target)
   if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(picture.camRoll)
 }

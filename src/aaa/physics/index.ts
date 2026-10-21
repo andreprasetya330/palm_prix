@@ -5,11 +5,15 @@
  *   import { stepKart } from './aaa/physics'
  *
  * The scaffold pose (0, 8, yaw π) is the center grid slot under the gate.
- * Importing this module does not move it. It installs the pose hooks.
+ * Importing this module does not move it. It installs the pose hooks and
+ * publishes that resting pose so the countdown chase is already off the post.
  */
-import { installPictureHooks } from './picture'
+import { DEFAULT_KART } from '../../game/kartPhysics'
+import { installPictureHooks, publishPicture } from './picture'
+import { ensureKart } from './stepKart'
 
 installPictureHooks()
+publishPicture(ensureKart({ ...DEFAULT_KART }))
 
 export { sampleCameraFollow } from './cameraFollow'
 export { stepKart, ensureKart } from './stepKart'
