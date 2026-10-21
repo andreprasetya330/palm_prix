@@ -66,10 +66,10 @@ export function Driver({ texture, envMap }: Props) {
         <meshStandardMaterial color="#f6efe4" roughness={0.92} />
       </mesh>
 
-      <Limb from={[-0.22, 0.34, 0.04]} to={[-0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
-      <Limb from={[0.22, 0.34, 0.04]} to={[0.16, 0.22, 0.28]} radius={0.055} color="#2a4fd0" />
-      <Glove x={-0.16} />
-      <Glove x={0.16} />
+      <Limb from={[-0.22, 0.36, 0.02]} to={[-0.18, 0.28, 0.18]} radius={0.05} color="#2a4fd0" />
+      <Limb from={[0.22, 0.36, 0.02]} to={[0.18, 0.28, 0.18]} radius={0.05} color="#2a4fd0" />
+      <Glove x={-0.2} />
+      <Glove x={0.2} />
 
       <group position={[0, 0.56, 0.04]}>
         <mesh castShadow>
@@ -219,19 +219,18 @@ function Mouth() {
 function Glove({ x }: { x: number }) {
   const side = Math.sign(x) || 1
   return (
-    <group position={[x, 0.2, 0.3]} rotation={[0.5, side * 0.2, side * -0.2]}>
-      <mesh scale={[1.2, 0.62, 0.9]} castShadow>
-        <sphereGeometry args={[0.06, 16, 12]} />
-        <meshStandardMaterial color="#f3e6d4" roughness={0.94} />
+    <group position={[x, 0.3, 0.4]} rotation={[0.35, side * -0.4, 0]}>
+      <mesh scale={[1.05, 0.62, 0.85]} castShadow>
+        <sphereGeometry args={[0.078, 18, 14]} />
+        <meshStandardMaterial color="#f4ead8" roughness={0.9} />
       </mesh>
-      <mesh
-        position={[side * 0.048, 0.03, 0.012]}
-        rotation={[0.15, 0, side * 0.85]}
-        scale={[0.55, 0.95, 0.5]}
-        castShadow
-      >
-        <sphereGeometry args={[0.03, 12, 10]} />
-        <meshStandardMaterial color="#efe2cf" roughness={0.94} />
+      <mesh position={[side * 0.02, 0.01, 0.02]} scale={[0.7, 0.35, 0.45]}>
+        <sphereGeometry args={[0.04, 12, 10]} />
+        <meshStandardMaterial color="#d8c4ae" roughness={0.95} />
+      </mesh>
+      <mesh position={[side * 0.07, 0.07, 0.02]} rotation={[0.15, 0, side * 1.05]} castShadow>
+        <capsuleGeometry args={[0.026, 0.055, 8, 12]} />
+        <meshStandardMaterial color="#fff6ea" roughness={0.86} />
       </mesh>
     </group>
   )
