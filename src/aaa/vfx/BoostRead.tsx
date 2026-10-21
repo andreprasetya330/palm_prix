@@ -94,7 +94,7 @@ export function BoostRead({ kart }: { kart: KartState }) {
       <sprite ref={coreRef} visible={false} renderOrder={8} frustumCulled={false}>
         <spriteMaterial
           map={coreTex}
-          color="#fff6c2"
+          color="#fffef8"
           transparent
           depthWrite={false}
           toneMapped={false}
@@ -122,17 +122,16 @@ function hideKartBoostFlame(scene: THREE.Scene) {
 
 const _fwd = new THREE.Vector3()
 const _right = new THREE.Vector3()
-const _up = new THREE.Vector3(0, 1, 0)
 const _mouth = new THREE.Vector3()
-const _view = new THREE.Vector3()
-const _camRight = new THREE.Vector3()
-const _camUp = new THREE.Vector3()
+const _tip = new THREE.Vector3()
+const _ndcA = new THREE.Vector3()
+const _ndcB = new THREE.Vector3()
 
 const FLAME_LAYERS: ReadonlyArray<readonly [number, number, number, number, number]> = [
-  [0.02, 0, 0.26, 0.48, 0],
-  [0.22, -0.06, 0.38, 0.72, -0.16],
-  [0.42, 0.07, 0.5, 0.9, 0.14],
-  [0.16, 0.02, 0.2, 0.36, 0.05],
+  [0.55, 0, 0.62, 1.35, 0],
+  [1.05, -0.1, 0.86, 1.75, -0.1],
+  [1.6, 0.12, 1.05, 2.05, 0.12],
+  [0.75, 0.04, 0.48, 1.15, 0.04],
 ]
 
 function placePlume(
@@ -157,13 +156,6 @@ function placePlume(
 
   kartAxes(kart.yaw, _fwd, _right)
   kartToWorld(kart.x, kart.z, kart.yaw, 0, 0.42, -1.16, _mouth)
-  _view.copy(camera.position).sub(_mouth)
-  if (_view.lengthSq() < 1e-4) _view.set(0, 0.2, 1)
-  _view.normalize()
-  _camRight.crossVectors(_up, _view)
-  if (_camRight.lengthSq() < 1e-4) _camRight.copy(_right)
-  _camRight.normalize()
-  _camUp.crossVectors(_view, _camRight).normalize()
 
   flames.forEach((sprite, i) => {
     const layer = FLAME_LAYERS[i]
@@ -171,40 +163,35 @@ function placePlume(
     const [along, side, width, length, twist] = layer
     const mat = sprite.material as THREE.SpriteMaterial
     sprite.visible = true
-    sprite.position
-      .copy(_mouth)
-      .addScaledVector(_fwd, -along)
-      .addScaledVector(_camRight, side)
-    sprite.position.y += along * 0.04
+    sprite.position.copy(_mouth).addScaledVector(_fwd, -along).addScaledVector(_right, side)
+    sprite.position.y += 0.04
     sprite.scale.set(width, length, 1)
     mat.rotation = Math.PI + twist
-    mat.opacity = (i === 0 ? 0.95 : 0.72) * punch
+    mat.opacity = (i === 3 ? 0.95 : 0.78) * punch
   })
 
   streaks.forEach((sprite, i) => {
     if (!sprite) return
     const mat = sprite.material as THREE.SpriteMaterial
     const side = i - (STREAKS - 1) / 2
-    const angle = side * 0.16
-    const len = 1.05 + Math.abs(side) * 0.12
-    const sx = Math.sin(angle)
-    const sy = -Math.cos(angle)
+    const len = 2.05 + Math.abs(side) * 0.12
+    const lateral = side * 0.14
+    _tip.copy(_mouth).addScaledVector(_fwd, -len).addScaledVector(_right, lateral)
+    _tip.y = _mouth.y
+    _ndcA.copy(_mouth).project(camera)
+    _ndcB.copy(_tip).project(camera)
     sprite.visible = true
-    sprite.position
-      .copy(_mouth)
-      .addScaledVector(_camRight, sx * len * 0.38)
-      .addScaledVector(_camUp, sy * len * 0.38)
-    if (sprite.position.y < 0.3) sprite.position.y = 0.3
-    sprite.scale.set(0.1, len, 1)
-    mat.rotation = angle
-    mat.opacity = 0.92 * punch
+    sprite.position.copy(_mouth).lerp(_tip, 0.46)
+    sprite.scale.set(0.1, 1.65, 1)
+    mat.rotation = Math.atan2(_ndcB.x - _ndcA.x, _ndcB.y - _ndcA.y)
+    mat.opacity = 0.95 * punch
   })
 
   if (core) {
     const mat = core.material as THREE.SpriteMaterial
     core.visible = true
     core.position.copy(_mouth)
-    core.scale.set(0.34, 0.34, 1)
+    core.scale.set(0.52, 0.52, 1)
     mat.rotation = 0
     mat.opacity = punch
   }
