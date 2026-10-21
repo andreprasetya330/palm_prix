@@ -119,8 +119,8 @@ function Grass({
       if (infield && Math.abs(along) < half) {
         c.copy(along >= 0 ? strawTone : lawn)
         let rise = 1.15 * Math.max(0, 1 - Math.abs(along) / half)
-        const pond = Math.hypot((x + 12.2) / 7.4, (z - 4.6) / 6.4)
-        if (pond < 1) rise *= pond * pond
+        const shore = Math.hypot((x + 12.2) / 10, (z - 4.6) / 8.5)
+        if (shore < 1) rise = 0
         if (lat < -8.35) rise = 0
         pos.setY(i, pos.getY(i) + rise)
       }
@@ -162,7 +162,7 @@ function Grass({
           '#include <map_fragment>',
           `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
            float blade = smoothstep(0.02, 0.28, lawnPhoto.g - lawnPhoto.r * 0.35);
-           vec3 fiber = mix(vec3(0.12, 0.36, 0.13), vec3(0.58, 0.9, 0.34), blade);
+           vec3 fiber = mix(vec3(0.07, 0.26, 0.08), vec3(0.78, 1.0, 0.46), blade);
            vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.18).rgb;
            diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
         )

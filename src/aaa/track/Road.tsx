@@ -29,8 +29,11 @@ function buildApron(): THREE.BufferGeometry {
     for (let i = 0; i <= nx; i++) {
       const x = x0 + ((x1 - x0) * i) / nx
       const z = z0 + ((z1 - z0) * j) / nz
-      const pond = Math.hypot((x + 12.2) / 7.8, (z - 4.6) / 6.6)
-      keep[j * stride + i] = lateralOf(x, z) < -8.45 && pond > 1 ? 1 : 0
+      const lat = lateralOf(x, z)
+      const water = Math.hypot((x + 12.2) / 5.6, (z - 4.6) / 4.5)
+      const shore = Math.hypot((x + 12.2) / 10, (z - 4.6) / 8.5)
+      const paved = (lat < -8.5 || (lat < -6.55 && shore < 1)) && water > 1
+      keep[j * stride + i] = paved ? 1 : 0
       positions.push(x, 0.045, z)
       uvs.push(x / 3.5, z / 3.5)
     }
