@@ -1,8 +1,10 @@
 /**
  * Paints physics onto the live mesh.
- * The stock kart only copies x/z and yaw. Roll, hop, wheel steer, dust, spray,
- * skid, and the boost camera widen have to land in the frame or the still
- * does not change. This hooks the render matrices after that copy.
+ * The stock kart only copies x/z and yaw, and it does that a frame apart from
+ * the sim, so a position match drops the pose as soon as the kart is moving.
+ * The kart is recognized by its four wheel pivots. Roll, pitch, and hop are
+ * written into the draw matrix. Front wheels get a yaw on top of their spin.
+ * Chase `lookAt` lives on Object3D, not Camera, so the widen hooks that.
  */
 import * as THREE from 'three'
 import type { AaaKartState } from './types'
@@ -41,6 +43,19 @@ export const picture: PictureState = {
 
 const SURFACE = 'palm-prix-surface-read'
 
+const _euler = new THREE.Euler(0, 0, 0, 'XYZ')
+const _bank = new THREE.Matrix4()
+const _rz = new THREE.Matrix4()
+const _rx = new THREE.Matrix4()
+const _qYaw = new THREE.Quaternion()
+const _qStock = new THREE.Quaternion()
+const _up = new THREE.Vector3(0, 1, 0)
+const _aim = new THREE.Vector3()
+const _camOff = new THREE.Vector3()
+const _shoulder = new THREE.Vector3()
+
+let kartRoot: THREE.Object3D | null = null
+
 export function publishPicture(kart: AaaKartState): void {
   picture.active = true
   picture.x = kart.x
@@ -53,8 +68,57 @@ export function publishPicture(kart: AaaKartState): void {
   picture.dust = kart.dust
   picture.spray = kart.spray
   picture.skid = kart.skid
-  picture.boostPull = kart.boostTimer > 0 ? 3.8 : 0
+  picture.boostPull = kart.boostTimer > 0 ? 4.8 : 0
   picture.camRoll = kart.camRoll
+}
+
+function looksLikeKart(obj: THREE.Object3D): boolean {
+  if (obj.type !== 'Group') return false
+  let fronts = 0
+  let rears = 0
+  for (const child of obj.children) {
+    const x = Math.abs(child.position.x)
+    if (Math.abs(child.position.y - 0.28) > 0.08 || Math.abs(x - 0.58) > 0.08) continue
+    if (Math.abs(child.position.z - 0.62) < 0.08) fronts += 1
+    else if (Math.abs(child.position.z + 0.62) < 0.08) rears += 1
+  }
+  return fronts >= 2 && rears >= 2
+}
+
+function isFrontWheel(obj: THREE.Object3D): boolean {
+  return (
+    kartRoot !== null &&
+    obj.parent === kartRoot &&
+    obj.position.z > 0.4 &&
+    Math.abs(Math.abs(obj.position.x) - 0.58) < 0.08 &&
+    Math.abs(obj.position.y - 0.28) < 0.08
+  )
+}
+
+/** Roll about forward, then a nose-down pitch. Right-multiply so yaw stays put. */
+function bankChassis(matrix: THREE.Matrix4, roll: number, pitch: number): void {
+  _rz.makeRotationZ(roll)
+  _rx.makeRotationX(-pitch)
+  _bank.multiplyMatrices(_rx, _rz)
+  matrix.multiply(_bank)
+}
+
+function steerWheel(wheel: THREE.Object3D): void {
+  const spin = wheel.rotation.x
+  const steer = THREE.MathUtils.clamp(picture.wheelSteer * 1.15, -0.9, 0.9)
+  _euler.set(spin, 0, Math.PI / 2, 'XYZ')
+  _qStock.setFromEuler(_euler)
+  _qYaw.setFromAxisAngle(_up, steer)
+  wheel.quaternion.copy(_qYaw).multiply(_qStock)
+}
+
+function stretchPlume(root: THREE.Object3D): void {
+  for (const child of root.children) {
+    const aft = child.position.z < -0.8 && child.position.y > 0.15 && child.position.y < 0.7
+    if (!aft) continue
+    if (picture.boostPull > 0) child.scale.set(1.2, 2.8, 1.2)
+    else child.scale.set(1, 1, 1)
+  }
 }
 
 function ensureSurfaceBits(root: THREE.Object3D): void {
@@ -63,71 +127,129 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     group = new THREE.Group()
     group.name = SURFACE
     const dustMat = new THREE.MeshBasicMaterial({
-      color: '#d2b07a',
+      color: '#c4a46a',
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.8,
+      depthWrite: false,
     })
-    for (let i = 0; i < 4; i++) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), dustMat)
-      puff.position.set((i - 1.5) * 0.24, 0.28, -1.05 - i * 0.18)
+    for (let i = 0; i < 5; i++) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), dustMat)
+      puff.position.set((i - 2) * 0.22, 0.22, -1.15 - i * 0.28)
       puff.name = 'dust'
       group.add(puff)
     }
     const spray = new THREE.Mesh(
-      new THREE.CircleGeometry(1.05, 16),
+      new THREE.CircleGeometry(1.35, 18),
       new THREE.MeshBasicMaterial({
-        color: '#8fd4ff',
+        color: '#9ad7ff',
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.55,
         side: THREE.DoubleSide,
+        depthWrite: false,
       }),
     )
     spray.rotation.x = -Math.PI / 2
-    spray.position.set(0, 0.1, 0.1)
+    spray.position.set(0, 0.08, 0.05)
     spray.name = 'spray'
     group.add(spray)
     const skidMat = new THREE.MeshBasicMaterial({
-      color: '#141418',
+      color: '#1a1a1e',
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.88,
+      depthWrite: false,
     })
-    for (const side of [-0.46, 0.46]) {
-      const mark = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 1.5), skidMat)
-      mark.position.set(side, 0.05, -0.35)
+    for (const side of [-0.5, 0.5]) {
+      const mark = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 2.6), skidMat)
+      mark.position.set(side, 0.07, -0.85)
       mark.name = 'skid'
       group.add(mark)
+    }
+    const sparkMat = new THREE.MeshBasicMaterial({
+      color: '#ffb03a',
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    })
+    const sparks: [number, number, number][] = [
+      [-0.52, 0.22, -0.55],
+      [0.48, 0.28, -0.95],
+      [-0.3, 0.18, -1.35],
+      [0.62, 0.34, -1.15],
+    ]
+    for (const [x, y, z] of sparks) {
+      const spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), sparkMat)
+      spark.position.set(x, y, z)
+      spark.name = 'skid'
+      group.add(spark)
+    }
+    const streakMat = new THREE.MeshBasicMaterial({
+      color: '#fff4c4',
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    })
+    for (let i = 0; i < 4; i++) {
+      const streak = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.8), streakMat)
+      streak.position.set((i - 1.5) * 0.34, 0.45 + (i % 2) * 0.18, -1.7 - i * 0.35)
+      streak.name = 'streak'
+      group.add(streak)
     }
     root.add(group)
   }
   const showDust = picture.dust > 0.2
   const showSpray = picture.spray > 0.25
-  const showSkid = picture.skid > 0.35
+  const showSkid = picture.skid > 0.3
+  const showStreak = picture.boostPull > 0
   for (const child of group.children) {
     if (child.name === 'dust') child.visible = showDust
     else if (child.name === 'spray') child.visible = showSpray
     else if (child.name === 'skid') child.visible = showSkid
+    else if (child.name === 'streak') child.visible = showStreak
   }
-  group.visible = showDust || showSpray || showSkid
+  group.visible = showDust || showSpray || showSkid || showStreak
 }
 
-function isKartRoot(obj: THREE.Object3D): boolean {
-  return (
-    picture.active &&
-    obj.type === 'Group' &&
-    Math.abs(obj.position.x - picture.x) < 0.3 &&
-    Math.abs(obj.position.z - picture.z) < 0.3 &&
-    obj.position.y < 0.55 &&
-    obj.position.y > -0.15
-  )
+function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => void): void {
+  kartRoot = root
+  root.position.y = 0.05 + picture.y + picture.squat
+  origUpdate.call(root)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll * 1.25, -0.62, 0.62), picture.pitch)
+  stretchPlume(root)
+  ensureSurfaceBits(root)
 }
 
-function lookTarget(args: unknown[]): THREE.Vector3 {
+function chaseTarget(args: unknown[]): THREE.Vector3 {
   const first = args[0]
   if (first && typeof first === 'object' && 'isVector3' in first) {
     const v = first as THREE.Vector3
-    return new THREE.Vector3(v.x, v.y, v.z)
+    return _aim.set(v.x, v.y, v.z)
   }
-  return new THREE.Vector3(Number(args[0]) || 0, Number(args[1]) || 0, Number(args[2]) || 0)
+  return _aim.set(Number(args[0]) || 0, Number(args[1]) || 0, Number(args[2]) || 0)
+}
+
+/**
+ * Pull the chase off the centerline (gate posts sit there) and, while boosting,
+ * step it back so the framing is a different shot. The kart stays the look target.
+ */
+function frameChase(
+  cam: THREE.Object3D,
+  target: THREE.Vector3,
+  origLook: (this: THREE.Object3D, ...args: unknown[]) => void,
+): void {
+  _camOff.copy(cam.position).sub(target)
+  const dist = _camOff.length()
+  if (dist < 0.5 || dist > 30) return
+  const extra = picture.boostPull > 0 ? picture.boostPull : 0
+  const want = dist + extra
+  _camOff.multiplyScalar(want / dist)
+  _shoulder.crossVectors(_camOff, _up)
+  if (_shoulder.lengthSq() < 1e-8) _shoulder.set(1, 0, 0)
+  _shoulder.normalize().multiplyScalar(1.9)
+  _camOff.add(_shoulder)
+  _camOff.y += 0.7
+  cam.position.copy(target).add(_camOff)
+  origLook.call(cam, target)
+  if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(picture.camRoll)
 }
 
 let installed = false
@@ -139,34 +261,37 @@ export function installPictureHooks(): void {
 
   const origUpdate = THREE.Object3D.prototype.updateMatrix
   THREE.Object3D.prototype.updateMatrix = function updateMatrixWithPose() {
-    if (isKartRoot(this)) {
-      this.position.y = 0.05 + picture.y + picture.squat
-      this.rotation.z = picture.roll
-      this.rotation.x = picture.pitch
-      for (const child of this.children) {
-        const front = child.position.z > 0.35
-        const laidFlat = Math.abs(Math.abs(child.rotation.z) - Math.PI / 2) < 0.45
-        if (front && laidFlat) child.rotation.y = picture.wheelSteer
-      }
-      ensureSurfaceBits(this)
+    if (picture.active && (this === kartRoot || looksLikeKart(this))) {
+      poseKart(this, origUpdate)
+      return
+    }
+    if (picture.active && isFrontWheel(this)) {
+      const spin = this.rotation.x
+      steerWheel(this)
+      origUpdate.call(this)
+      // The draw matrix already has the steer. Put the axle euler back so the
+      // kart's spin (`rotation.x += speed`) does not tumble the tire.
+      this.rotation.set(spin, 0, Math.PI / 2)
+      return
     }
     origUpdate.call(this)
   }
 
-  const origLook = THREE.Camera.prototype.lookAt
-  THREE.Camera.prototype.lookAt = function lookAtWithBoost(this: THREE.Camera, ...args: unknown[]) {
+  const origLook = THREE.Object3D.prototype.lookAt
+  THREE.Object3D.prototype.lookAt = function lookAtWithChase(this: THREE.Object3D, ...args: unknown[]) {
+    const cam = this as THREE.Object3D & { isCamera?: boolean }
+    if (!picture.active || !cam.isCamera) {
+      origLook.apply(this, args as never)
+      return
+    }
+    const target = chaseTarget(args)
+    const dx = target.x - picture.x
+    const dz = target.z - picture.z
+    if (dx * dx + dz * dz > 25) {
+      origLook.apply(this, args as never)
+      return
+    }
     origLook.apply(this, args as never)
-    if (!picture.active) return
-    if (Math.abs(picture.camRoll) > 0.001) this.rotateZ(picture.camRoll)
-    if (picture.boostPull <= 0) return
-    const target = lookTarget(args)
-    const offset = new THREE.Vector3().copy(this.position).sub(target)
-    const dist = offset.length()
-    if (dist < 0.5 || dist > 18) return
-    const want = 6.8 + picture.boostPull
-    offset.multiplyScalar(want / dist)
-    this.position.copy(target).add(offset)
-    origLook.apply(this, args as never)
-    if (Math.abs(picture.camRoll) > 0.001) this.rotateZ(picture.camRoll)
+    frameChase(this, target, origLook as (this: THREE.Object3D, ...a: unknown[]) => void)
   }
 }

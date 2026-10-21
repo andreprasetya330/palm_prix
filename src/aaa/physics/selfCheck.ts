@@ -1,6 +1,7 @@
 /**
  * Headless feel checks. Run: npx tsx src/aaa/physics/selfCheck.ts
  */
+import * as THREE from 'three'
 import type { ControlState } from '../../game/controlState'
 import { DEFAULT_KART } from '../../game/kartPhysics'
 import { createRaceStatus, updateCheckpoints, type RaceStatus } from '../../game/raceLoop'
@@ -318,6 +319,90 @@ function testPoseAndBoost(): void {
   check('brake dips the nose', braked.pitch < -0.05, `pitch=${braked.pitch.toFixed(3)}`)
 }
 
+function testPictureHook(): void {
+  let posed = stepKart({ ...DEFAULT_KART }, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
+  posed = hold(posed, ctrl({ throttle: 1, steer: 1 }), 0.45)
+  const root = new THREE.Group()
+  // A frame behind the published pose. The old position match missed this.
+  root.position.set(posed.x + 4, 0.05, posed.z - 3)
+  const plume = new THREE.Group()
+  plume.position.set(0, 0.35, -1.05)
+  root.add(plume)
+  const wheels: THREE.Object3D[] = []
+  for (const [x, y, z] of [
+    [-0.58, 0.28, 0.62],
+    [0.58, 0.28, 0.62],
+    [-0.58, 0.28, -0.62],
+    [0.58, 0.28, -0.62],
+  ] as const) {
+    const wheel = new THREE.Group()
+    wheel.position.set(x, y, z)
+    wheel.rotation.set(0.4, 0, Math.PI / 2)
+    root.add(wheel)
+    wheels.push(wheel)
+  }
+  root.updateMatrixWorld(true)
+  const up = new THREE.Vector3().setFromMatrixColumn(root.matrix, 1)
+  check('roll tilts the chassis', Math.abs(up.y) < 0.97, `up=${up.y.toFixed(3)} roll=${posed.roll.toFixed(3)}`)
+  const stock = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, 0, Math.PI / 2))
+  const drawn = new THREE.Quaternion().setFromRotationMatrix(wheels[0].matrix)
+  const steerAng = drawn.angleTo(stock)
+  check('front wheel steered', steerAng > 0.25, `ang=${steerAng.toFixed(3)} wheel=${posed.wheelSteer.toFixed(3)}`)
+  check(
+    'wheel spin stays on the axle',
+    Math.abs(wheels[0].rotation.z - Math.PI / 2) < 1e-3 && Math.abs(wheels[0].rotation.y) < 1e-3,
+    `euler ${wheels[0].rotation.x.toFixed(2)},${wheels[0].rotation.y.toFixed(2)},${wheels[0].rotation.z.toFixed(2)}`,
+  )
+  const bits = root.getObjectByName('palm-prix-surface-read')
+  const skidOn = !!bits && bits.children.some((child) => child.name === 'skid' && child.visible)
+  check('corner plants a skid', skidOn, `skid=${posed.skid.toFixed(2)}`)
+
+  const aim = new THREE.Vector3(posed.x, 1, posed.z)
+  const cam = new THREE.PerspectiveCamera()
+  cam.position.set(posed.x, 3.6, posed.z + 7.2)
+  cam.lookAt(aim)
+  const plain = cam.position.distanceTo(aim)
+  const side = Math.hypot(cam.position.x - posed.x, cam.position.z - (posed.z + 7.2))
+  check('chase steps off the gate line', side > 1.2, `side=${side.toFixed(2)} dist=${plain.toFixed(2)}`)
+
+  const boosted = stepKart(
+    { ...posed, boostTimer: 1.2, speed: Math.max(posed.speed, 18) },
+    ctrl({ throttle: 1 }),
+    1 / 60,
+  )
+  const camB = new THREE.PerspectiveCamera()
+  const aimB = new THREE.Vector3(boosted.x, 1, boosted.z)
+  camB.position.set(boosted.x, 3.6, boosted.z + 7.2)
+  camB.lookAt(aimB)
+  const wide = camB.position.distanceTo(aimB)
+  check('boost pulls the camera wider', wide > plain + 3, `plain=${plain.toFixed(2)} wide=${wide.toFixed(2)}`)
+  root.updateMatrixWorld(true)
+  const streaks = root.getObjectByName('palm-prix-surface-read')
+  const streakOn = !!streaks && streaks.children.some((child) => child.name === 'streak' && child.visible)
+  check('boost leaves streaks', streakOn && boosted.boostTimer > 0.5, `boost=${boosted.boostTimer.toFixed(2)}`)
+  check('boost stretches the plume', plume.scale.y > 2, `sy=${plume.scale.y.toFixed(2)}`)
+
+  let grass = stepKart({ x: 8.4, z: 8, yaw: Math.PI, speed: 12, boostTimer: 0 }, ctrl({}), 1 / 60)
+  grass = hold(grass, ctrl({ throttle: 1, steer: 0 }), 0.25)
+  root.updateMatrixWorld(true)
+  const dustBits = root.getObjectByName('palm-prix-surface-read')
+  const dustOn = !!dustBits && dustBits.children.some((child) => child.name === 'dust' && child.visible)
+  check('grass throws dust', grass.surface === 'grass' && dustOn, `surf=${grass.surface} dust=${grass.dust.toFixed(2)}`)
+
+  let hopper = stepKart({ ...DEFAULT_KART }, ctrl({}), 1 / 60)
+  hopper = stepKart(
+    { ...hopper, x: 3.1, z: 10, yaw: Math.PI / 2, speed: 22, vx: 22, vz: 0, y: 0 },
+    ctrl({ throttle: 1, steer: 1 }),
+    1 / 60,
+  )
+  root.updateMatrixWorld(true)
+  check(
+    'curb hop lifts the chassis',
+    root.position.y > 0.28 || hopper.y > 0.28,
+    `mesh=${root.position.y.toFixed(2)} sim=${hopper.y.toFixed(2)}`,
+  )
+}
+
 function testNaN(): void {
   const k = stepKart(
     { x: Number.NaN, z: 0, yaw: 0, speed: 0, boostTimer: 0 },
@@ -342,6 +427,7 @@ testElevationHook()
 testStorm()
 testLaps()
 testPoseAndBoost()
+testPictureHook()
 testNaN()
 
 if (failures.length) {
