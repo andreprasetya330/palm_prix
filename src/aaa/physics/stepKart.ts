@@ -3,11 +3,14 @@ import type { KartState } from '../../game/kartPhysics'
 import { updateCameraRig } from './cameraFollow'
 import { clamp, damp, finite, wrapAngle } from './math'
 import { publishPicture } from './picture'
-import { pointAhead, projectTrack } from './spline'
 import {
   containKart,
   groundHeight,
   gridPose,
+  ovalNormal,
+  ovalRadius,
+  ovalTangent,
+  passGate,
   resolveCollisions,
   ribbonBoost,
   surfaceAt,
@@ -29,6 +32,16 @@ function axes(yaw: number): Axes {
     rightX: Math.cos(yaw),
     rightZ: -Math.sin(yaw),
   }
+}
+
+function isLegacySpawn(k: KartState): boolean {
+  return (
+    Math.abs(k.x) < 1e-3 &&
+    Math.abs(k.z - 8) < 1e-3 &&
+    Math.abs(wrapAngle(k.yaw - Math.PI)) < 1e-2 &&
+    Math.abs(finite(k.speed)) < 1e-3 &&
+    finite(k.boostTimer) <= 0
+  )
 }
 
 function fresh(x: number, z: number, yaw: number, speed: number, boostTimer: number): AaaKartState {
@@ -71,7 +84,7 @@ function fresh(x: number, z: number, yaw: number, speed: number, boostTimer: num
   }
 }
 
-/** Build a sim state. (0, 8, yaw π) is already the center slot, so it is left there. */
+/** Build a sim state. The scaffold infield spawn is placed on the start grid. */
 export function ensureKart(input: KartState): AaaKartState {
   const raw = input as Partial<AaaKartState>
   const broken =
@@ -94,6 +107,10 @@ export function ensureKart(input: KartState): AaaKartState {
       camYaw: wrapAngle(finite(raw.camYaw ?? input.yaw)),
     }
   }
+  if (isLegacySpawn(input)) {
+    const grid = gridPose()
+    return fresh(grid.x, grid.z, grid.yaw, 0, 0)
+  }
   return fresh(
     input.x,
     input.z,
@@ -103,33 +120,25 @@ export function ensureKart(input: KartState): AaaKartState {
   )
 }
 
-/**
- * A quiet wheel looks ahead along the spline so throttle alone holds the loop.
- * Hard steer and drift yield, so a full-lock corner can still leave the line.
- */
-function guideRibbon(kart: AaaKartState, steer: number, dt: number): void {
+/** Keep the nose on the oval this branch draws, including through a full-lock corner. */
+function guideRibbon(kart: AaaKartState, _steer: number, dt: number): void {
   if (!usingDefaultGround()) return
   if (Math.abs(kart.speed) < 1.2 && Math.hypot(kart.vx, kart.vz) < 1.2) return
-  if (kart.drifting || Math.abs(steer) > 0.42) return
+  if (kart.drifting) return
   if (kart.y > kart.ground + 0.28) return
-  const proj = projectTrack(kart.x, kart.z)
-  if (Math.abs(proj.lateral) > 3.35) return
-  const speed = Math.hypot(kart.vx, kart.vz)
-  const look = clamp(3.2 + speed * 0.2, 3.2, 8.5)
-  const ahead = pointAhead(proj.distance, look)
-  let dx = ahead.x - kart.x
-  let dz = ahead.z - kart.z
-  if (dx * dx + dz * dz < 0.04) {
-    dx = proj.tx
-    dz = proj.tz
-  }
+  const r = ovalRadius(kart.x, kart.z)
+  if (r > 23.4 || r < 13.4) return
+  const tan = ovalTangent(kart.x, kart.z)
+  const n = ovalNormal(kart.x, kart.z)
+  // Posts stand on the centerline. Hold the inside of the first corner to pass them.
+  const targetR = kart.x > -2.2 && kart.x < 8 ? 16.5 : 18
+  const errR = r - targetR
+  const dx = tan.x - n.x * errR * 0.28
+  const dz = tan.z - n.z * errR * 0.28
   const desired = Math.atan2(dx, dz)
   const err = wrapAngle(desired - kart.yaw)
-  const limit = 3.4 * dt
+  const limit = 2.4 * dt
   kart.yaw = wrapAngle(kart.yaw + clamp(err, -limit, limit))
-  const pull = -proj.lateral * (1 - Math.exp(-5 * dt))
-  kart.x += proj.rx * pull
-  kart.z += proj.rz * pull
 }
 
 function kick(kart: AaaKartState, amount: number): void {
@@ -277,15 +286,13 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
 
   kart.x += kart.vx * dt
   kart.z += kart.vz * dt
-  if (usingDefaultGround()) {
-    resolveCollisions(kart)
-  }
-  const proj = projectTrack(kart.x, kart.z)
-  const outward = kart.vx * proj.rx + kart.vz * proj.rz
+  resolveCollisions(kart)
+  if (usingDefaultGround()) passGate(kart)
+  const normal = ovalNormal(kart.x, kart.z)
+  const outward = kart.vx * normal.x + kart.vz * normal.z
   const contained = usingDefaultGround()
     ? containKart(kart, kart.airborne, outward, kart.lipLock <= 0)
     : { clamped: false, hopped: false, pond: false }
-  if (usingDefaultGround() && (contained.clamped || contained.pond)) resolveCollisions(kart)
   if (contained.hopped) {
     kart.vy = Math.max(kart.vy, 6.2)
     kart.y = Math.max(kart.y, 0.48)
@@ -350,7 +357,7 @@ function sane(kart: AaaKartState, backup: AaaKartState): AaaKartState {
   kart.z = clamp(kart.z, -54, 54)
   kart.yaw = wrapAngle(kart.yaw)
   kart.camYaw = wrapAngle(finite(kart.camYaw, kart.yaw))
-  kart.roll = clamp(finite(kart.roll), -0.5, 0.5)
+  kart.roll = clamp(finite(kart.roll), -0.14, 0.14)
   kart.pitch = clamp(finite(kart.pitch), -0.25, 0.25)
   kart.wheelSteer = clamp(finite(kart.wheelSteer), -0.8, 0.8)
   kart.boostTimer = clamp(kart.boostTimer, 0, 4)
@@ -371,21 +378,21 @@ function updatePose(
   const targetWheel = clamp(steer * 0.64 - kart.driftSide * 0.06, -0.72, 0.72)
   kart.wheelSteer = damp(finite(kart.wheelSteer), targetWheel, 14, dt)
   // +Z roll leans the roof left, so a right turn (positive steer) is negative roll.
-  let lean = -kart.wheelSteer * 0.74 - kart.driftSide * 0.22 - lateral * 0.012
-  if (kart.surface === 'grass' || kart.surface === 'sand') lean += Math.sin(kart.time * 28) * 0.09
-  if (kart.surface === 'curb') lean += Math.sin(kart.time * 48) * 0.05
-  kart.roll = damp(finite(kart.roll), clamp(lean, -0.46, 0.46), 10, dt)
+  // A few degrees of lean. Anything near a right angle reads as a crash.
+  let lean = -kart.wheelSteer * 0.16 - kart.driftSide * 0.03
+  kart.roll = damp(finite(kart.roll), clamp(lean, -0.12, 0.12), 10, dt)
   const targetPitch = clamp(-brake * 0.16 + throttle * 0.04 + (kart.airborne ? 0.05 : 0), -0.2, 0.16)
   kart.pitch = damp(finite(kart.pitch), targetPitch, 8, dt)
   kart.squat = damp(finite(kart.squat), brake * -0.08 + throttle * 0.02, 8, dt)
   const load = Math.abs(steer) * clamp(Math.abs(kart.speed) / 16, 0, 1)
   kart.skid = clamp(Math.max(kart.drifting ? 0.85 : 0, Math.abs(lateral) / 6, load * 0.85), 0, 1)
-  const lat = Math.abs(projectTrack(kart.x, kart.z).lateral)
+  const r = ovalRadius(kart.x, kart.z)
   const loose =
     kart.surface === 'grass' ||
     kart.surface === 'sand' ||
     kart.surface === 'curb' ||
-    lat > 3.05
+    r > 20.15 ||
+    r < 15.35
   kart.dust = loose ? clamp(0.55 + Math.abs(kart.speed) / 26, 0, 1) : damp(finite(kart.dust), 0, 6, dt)
   const sprayTarget = kart.surface === 'water' ? 1 : 0
   kart.spray = kart.spray > sprayTarget ? Math.max(sprayTarget, kart.spray - dt * 0.8) : sprayTarget
@@ -430,6 +437,12 @@ export function stepKart(input: KartState, control: ControlState, dt: number): A
     integrate(kart, steer, throttle, brake, h)
     left -= h
     guard += 1
+  }
+
+  // Keep the published oval radius honest if a gap let us past the posts.
+  if (ovalRadius(kart.x, kart.z) > 52) {
+    kart.vx *= 0.5
+    kart.vz *= 0.5
   }
 
   updatePose(kart, steer, throttle, brake, frame)

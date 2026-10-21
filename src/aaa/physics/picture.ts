@@ -69,7 +69,7 @@ export function publishPicture(kart: AaaKartState): void {
   picture.dust = kart.dust
   picture.spray = kart.spray
   picture.skid = kart.skid
-  picture.boostPull = kart.boostTimer > 0 ? 4.8 : 0
+  picture.boostPull = kart.boostTimer > 0 ? 2.6 : 0
   picture.camRoll = kart.camRoll
   picture.yaw = kart.yaw
 }
@@ -107,7 +107,7 @@ function bankChassis(matrix: THREE.Matrix4, roll: number, pitch: number): void {
 
 function steerWheel(wheel: THREE.Object3D): void {
   const spin = wheel.rotation.x
-  const steer = THREE.MathUtils.clamp(picture.wheelSteer * 1.15, -0.9, 0.9)
+  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.7, 0.7)
   _euler.set(spin, 0, Math.PI / 2, 'XYZ')
   _qStock.setFromEuler(_euler)
   _qYaw.setFromAxisAngle(_up, steer)
@@ -154,68 +154,40 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     spray.position.set(0, 0.08, 0.05)
     spray.name = 'spray'
     group.add(spray)
-    const skidMat = new THREE.MeshBasicMaterial({
-      color: '#1a1a1e',
-      transparent: true,
-      opacity: 0.88,
-      depthWrite: false,
-    })
-    for (const side of [-0.5, 0.5]) {
-      const mark = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 2.6), skidMat)
-      mark.position.set(side, 0.07, -0.85)
-      mark.name = 'skid'
-      group.add(mark)
-    }
-    const sparkMat = new THREE.MeshBasicMaterial({
-      color: '#ffb03a',
-      transparent: true,
-      opacity: 0.95,
-      depthWrite: false,
-    })
-    const sparks: [number, number, number][] = [
-      [-0.52, 0.22, -0.55],
-      [0.48, 0.28, -0.95],
-      [-0.3, 0.18, -1.35],
-      [0.62, 0.34, -1.15],
-    ]
-    for (const [x, y, z] of sparks) {
-      const spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), sparkMat)
-      spark.position.set(x, y, z)
-      spark.name = 'skid'
-      group.add(spark)
-    }
-    const streakMat = new THREE.MeshBasicMaterial({
-      color: '#fff4c4',
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    })
-    for (let i = 0; i < 4; i++) {
-      const streak = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.8), streakMat)
-      streak.position.set((i - 1.5) * 0.34, 0.45 + (i % 2) * 0.18, -1.7 - i * 0.35)
-      streak.name = 'streak'
-      group.add(streak)
-    }
+    const plume = new THREE.Group()
+    plume.position.set(0, 0.42, -1.15)
+    plume.rotation.set(Math.PI / 2, 0, 0)
+    plume.name = 'plume'
+    const flame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.32, 1.45, 8),
+      new THREE.MeshBasicMaterial({ color: '#ff7a1a' }),
+    )
+    const core = new THREE.Mesh(
+      new THREE.ConeGeometry(0.16, 0.9, 8),
+      new THREE.MeshBasicMaterial({ color: '#ffe08a' }),
+    )
+    core.position.y = 0.2
+    plume.add(flame)
+    plume.add(core)
+    group.add(plume)
     root.add(group)
   }
   const showDust = picture.dust > 0.2
   const showSpray = picture.spray > 0.25
-  const showSkid = picture.skid > 0.3
-  const showStreak = picture.boostPull > 0
+  const showPlume = picture.boostPull > 0
   for (const child of group.children) {
     if (child.name === 'dust') child.visible = showDust
     else if (child.name === 'spray') child.visible = showSpray
-    else if (child.name === 'skid') child.visible = showSkid
-    else if (child.name === 'streak') child.visible = showStreak
+    else if (child.name === 'plume') child.visible = showPlume
   }
-  group.visible = showDust || showSpray || showSkid || showStreak
+  group.visible = showDust || showSpray || showPlume
 }
 
 function poseKart(root: THREE.Object3D, origUpdate: (this: THREE.Object3D) => void): void {
   kartRoot = root
   root.position.y = 0.05 + picture.y + picture.squat
   origUpdate.call(root)
-  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll * 1.25, -0.62, 0.62), picture.pitch)
+  bankChassis(root.matrix, THREE.MathUtils.clamp(picture.roll, -0.14, 0.14), picture.pitch)
   stretchPlume(root)
   ensureSurfaceBits(root)
 }
@@ -229,30 +201,33 @@ function chaseTarget(args: unknown[]): THREE.Vector3 {
   return _aim.set(Number(args[0]) || 0, Number(args[1]) || 0, Number(args[2]) || 0)
 }
 
+const _look = new THREE.Vector3()
+
 /**
- * Place the chase from the chassis yaw every time. Adding to the current
- * distance ratchets, because the stock camera only eases partway back.
- * The shoulder keeps a gate post on the centerline from covering the kart.
+ * Chase from behind, low enough that the kart sits in the lower third.
+ * Distance is absolute so a boost cannot walk the camera overhead.
+ * A small shoulder clears the gate post without becoming a side view.
  */
 function frameChase(
   cam: THREE.Object3D,
   target: THREE.Vector3,
   origLook: (this: THREE.Object3D, ...args: unknown[]) => void,
 ): void {
-  const back = 7.4 + (picture.boostPull > 0 ? picture.boostPull : 0)
   const yaw = picture.yaw
-  const sx = -Math.sin(yaw)
-  const sz = -Math.cos(yaw)
+  const fx = Math.sin(yaw)
+  const fz = Math.cos(yaw)
   const rx = Math.cos(yaw)
   const rz = -Math.sin(yaw)
-  const shoulder = 2.15
+  const back = 6.6 + (picture.boostPull > 0 ? picture.boostPull : 0)
+  const shoulder = 1.45
   cam.position.set(
-    target.x + sx * back + rx * shoulder,
-    target.y + 4.15,
-    target.z + sz * back + rz * shoulder,
+    target.x - fx * back + rx * shoulder,
+    2.45,
+    target.z - fz * back + rz * shoulder,
   )
-  origLook.call(cam, target)
-  if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(picture.camRoll)
+  _look.set(target.x + fx * 5.2, 1.2, target.z + fz * 5.2)
+  origLook.call(cam, _look)
+  if (Math.abs(picture.camRoll) > 0.001) cam.rotateZ(THREE.MathUtils.clamp(picture.camRoll, -0.04, 0.04))
 }
 
 let installed = false
