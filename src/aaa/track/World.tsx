@@ -141,6 +141,49 @@ function buildRidge(): THREE.BufferGeometry {
   return geo
 }
 
+function lawnMaterial(
+  fiber: THREE.Texture,
+  fiberNormal: THREE.Texture,
+  straw: THREE.Texture,
+  repeat: number,
+) {
+  const map = fiber.clone()
+  map.repeat.set(repeat, repeat)
+  map.anisotropy = 16
+  const normalMap = fiberNormal.clone()
+  normalMap.repeat.set(repeat, repeat)
+  normalMap.anisotropy = 16
+  const mat = new THREE.MeshStandardMaterial({
+    map,
+    normalMap,
+    normalScale: new THREE.Vector2(0.7, 0.7),
+    vertexColors: true,
+    roughness: 0.78,
+  })
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uStraw = { value: straw }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vStraw;')
+      .replace(
+        '#include <color_vertex>',
+        '#include <color_vertex>\nvStraw = vColor.r > vColor.g * 1.05 ? 1.0 : 0.0;',
+      )
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uStraw;\nvarying float vStraw;')
+      .replace(
+        '#include <map_fragment>',
+        `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
+         float blade = smoothstep(-0.004, 0.028, lawnPhoto.g - lawnPhoto.r);
+         vec3 gap = vec3(0.015, 0.11, 0.02);
+         vec3 leaf = vec3(0.78, 1.05, 0.34);
+         vec3 fiber = mix(gap, leaf, blade);
+         vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.55).rgb;
+         diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
+      )
+  }
+  return mat
+}
+
 function Grass({
   fiber,
   fiberNormal,
@@ -181,42 +224,14 @@ function Grass({
 
   const ridge = useMemo(() => buildRidge(), [])
 
-  const material = useMemo(() => {
-    const mat = new THREE.MeshStandardMaterial({
-      map: fiber,
-      normalMap: fiberNormal,
-      normalScale: new THREE.Vector2(0.7, 0.7),
-      vertexColors: true,
-      roughness: 0.78,
-    })
-    mat.onBeforeCompile = (shader) => {
-      shader.uniforms.uStraw = { value: straw }
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying float vStraw;')
-        .replace(
-          '#include <color_vertex>',
-          '#include <color_vertex>\nvStraw = vColor.r > vColor.g * 1.05 ? 1.0 : 0.0;',
-        )
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform sampler2D uStraw;\nvarying float vStraw;')
-        .replace(
-          '#include <map_fragment>',
-          `vec3 lawnPhoto = texture2D(map, vMapUv).rgb;
-           float blade = smoothstep(-0.004, 0.028, lawnPhoto.g - lawnPhoto.r);
-           vec3 gap = vec3(0.015, 0.11, 0.02);
-           vec3 leaf = vec3(0.78, 1.05, 0.34);
-           vec3 fiber = mix(gap, leaf, blade);
-           vec3 strawPhoto = texture2D(uStraw, vMapUv * 0.55).rgb;
-           diffuseColor.rgb *= mix(fiber, strawPhoto, vStraw);`,
-        )
-    }
-    return mat
-  }, [fiber, fiberNormal, straw])
+  // The bank already reads at repeat 12. The flat lawn is grazed by the chase, so its strokes are larger.
+  const field = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 3), [fiber, fiberNormal, straw])
+  const bank = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 12), [fiber, fiberNormal, straw])
 
   return (
     <group>
-      <mesh geometry={geo} material={material} position={[-16, -0.05, 2]} receiveShadow />
-      <mesh geometry={ridge} material={material} receiveShadow />
+      <mesh geometry={geo} material={field} position={[-16, -0.05, 2]} receiveShadow />
+      <mesh geometry={ridge} material={bank} receiveShadow />
     </group>
   )
 }
