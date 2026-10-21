@@ -230,18 +230,23 @@ function pointMat(splash: boolean) {
     transparent: true,
     depthWrite: false,
     toneMapped: false,
-    uniforms: { uScale: { value: splash ? 64 : 110 } },
+    uniforms: {
+      uScale: { value: splash ? 52 : 18 },
+      uCap: { value: splash ? 48 : 22 },
+    },
     vertexShader: /* glsl */ `
       attribute float aLife;
       attribute vec3 aColor;
       varying float vLife;
       varying vec3 vColor;
       uniform float uScale;
+      uniform float uCap;
       void main() {
         vLife = aLife;
         vColor = aColor;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = uScale * aLife * (9.0 / max(1.2, -mv.z));
+        float dist = max(4.5, -mv.z);
+        gl_PointSize = min(uCap, uScale * aLife * (7.0 / dist));
         gl_Position = projectionMatrix * mv;
       }
     `,
@@ -289,16 +294,16 @@ function writePoints(geom: THREE.BufferGeometry, pool: DustP[]) {
 }
 
 function spawnDust(p: DustP, k: KartState, sand: boolean, forward: THREE.Vector3) {
-  const side = Math.random() < 0.5 ? -0.55 : 0.55
-  kartToWorld(k.x, k.z, k.yaw, side, 0.12, -0.85, _p)
-  p.x = _p.x + (Math.random() - 0.5) * 0.3
-  p.y = 0.1 + Math.random() * 0.15
-  p.z = _p.z + (Math.random() - 0.5) * 0.3
-  const back = 1.5 + Math.random() * 2.2
-  p.vx = -forward.x * back + (Math.random() - 0.5) * 1.4
-  p.vy = 1.4 + Math.random() * 2.2
-  p.vz = -forward.z * back + (Math.random() - 0.5) * 1.4
-  p.life = 0.7 + Math.random() * 0.4
+  const side = Math.random() < 0.5 ? -0.46 : 0.46
+  kartToWorld(k.x, k.z, k.yaw, side, 0.05, -0.42, _p)
+  p.x = _p.x + (Math.random() - 0.5) * 0.08
+  p.y = 0.05 + Math.random() * 0.06
+  p.z = _p.z + (Math.random() - 0.5) * 0.08
+  const back = 0.35 + Math.random() * 0.45
+  p.vx = -forward.x * back + (Math.random() - 0.5) * 0.35
+  p.vy = 0.22 + Math.random() * 0.28
+  p.vz = -forward.z * back + (Math.random() - 0.5) * 0.35
+  p.life = 0.22 + Math.random() * 0.16
   p.max = p.life
   if (sand) {
     p.cr = 1.15
@@ -323,7 +328,7 @@ function stepDust(
     if (emit) {
     let spawned = 0
     for (const p of pool) {
-      if (spawned >= 7) break
+      if (spawned >= 2) break
       if (p.life > 0) continue
       spawnDust(p, k, sand, forward)
       spawned += 1
