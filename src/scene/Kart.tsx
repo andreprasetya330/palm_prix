@@ -174,11 +174,11 @@ export function Kart({ kart, driverTextureUrl }: Props) {
         </group>
       )}
 
-      {/* boost trail / flame */}
+      {/* boost trail / flame (cone default +Y → rotate to face aft −Z) */}
       {boosting && (
-        <group position={[0, 0.35, -1.15]}>
+        <group position={[0, 0.35, -1.05]} rotation={[Math.PI / 2, 0, 0]}>
           <mesh>
-            <coneGeometry args={[0.28, 0.9, 8]} />
+            <coneGeometry args={[0.28, 0.95, 8]} />
             <meshStandardMaterial
               color={palette.boost}
               emissive={palette.boost}
@@ -187,7 +187,7 @@ export function Kart({ kart, driverTextureUrl }: Props) {
               opacity={0.9}
             />
           </mesh>
-          <mesh position={[0, 0, -0.35]} scale={0.65}>
+          <mesh position={[0, 0.35, 0]} scale={0.65}>
             <coneGeometry args={[0.22, 0.7, 8]} />
             <meshStandardMaterial
               color="#fff59a"

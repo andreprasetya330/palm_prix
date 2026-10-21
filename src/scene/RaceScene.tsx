@@ -4,7 +4,6 @@ import type { KartState } from '../game/kartPhysics'
 import { FollowCamera } from './FollowCamera'
 import { Kart } from './Kart'
 import { Track } from './Track'
-import { palette } from './palette'
 
 type Props = {
   kart: KartState
@@ -20,17 +19,15 @@ export function RaceScene({ kart, driverTextureUrl }: Props) {
       style={{ width: '100%', height: '100%' }}
       gl={{ antialias: true, toneMappingExposure: 1.15 }}
     >
-      <color attach="background" args={[palette.skyNear]} />
+      <color attach="background" args={['#5ec8ff']} />
       {/* bright, playful lighting — not photoreal */}
-      <hemisphereLight
-        args={[palette.skyNear, palette.grass, 0.85]}
-      />
-      <ambientLight intensity={0.55} />
+      <hemisphereLight args={['#9adcff', '#3ecf5a', 0.95]} />
+      <ambientLight intensity={0.65} color="#fff8e8" />
       <directionalLight
         castShadow
         position={[24, 36, 12]}
-        intensity={1.45}
-        color="#fff4d6"
+        intensity={1.55}
+        color="#fff1c2"
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={90}
         shadow-camera-left={-40}
@@ -38,15 +35,15 @@ export function RaceScene({ kart, driverTextureUrl }: Props) {
         shadow-camera-top={40}
         shadow-camera-bottom={-40}
       />
-      <directionalLight position={[-18, 12, -10]} intensity={0.35} color="#a8d8ff" />
+      <directionalLight position={[-18, 12, -10]} intensity={0.4} color="#a8d8ff" />
       <Sky
-        sunPosition={[50, 28, 20]}
-        turbidity={3.5}
-        rayleigh={0.65}
-        mieCoefficient={0.004}
-        mieDirectionalG={0.85}
+        sunPosition={[80, 40, 30]}
+        turbidity={2.2}
+        rayleigh={0.45}
+        mieCoefficient={0.003}
+        mieDirectionalG={0.9}
       />
-      <fog attach="fog" args={[palette.fog, 55, 110]} />
+      <fog attach="fog" args={['#b8e8ff', 60, 120]} />
       <Track />
       <Kart kart={kart} driverTextureUrl={driverTextureUrl} />
       <FollowCamera kart={kart} />
