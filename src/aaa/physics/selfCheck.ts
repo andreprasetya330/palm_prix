@@ -9,6 +9,7 @@ import { wrapAngle } from './math'
 import { stepKart } from './stepKart'
 import './index'
 import {
+  BOOST_PADS,
   groundHeight,
   gridPose,
   ovalAngle,
@@ -379,6 +380,19 @@ function testChaseAndPlume(): void {
     `r=${ovalRadius(corner.x, corner.z).toFixed(2)} ${surfaceAt(corner.x, corner.z).kind}`,
   )
   check('corner leans a few degrees', corner.roll < -0.2 && corner.roll > -0.32, `roll=${corner.roll.toFixed(3)}`)
+  let noseClear = 99
+  let sample = { ...DEFAULT_KART }
+  for (let i = 0; i < 180; i++) {
+    sample = stepKart(sample, ctrl({ throttle: 1, steer: 1 }), 1 / 60)
+    const fx = Math.sin(sample.yaw)
+    const fz = Math.cos(sample.yaw)
+    const nx = sample.x + fx * 0.9
+    const nz = sample.z + fz * 0.9
+    for (const pad of BOOST_PADS) {
+      noseClear = Math.min(noseClear, Math.hypot(nx - pad.x, nz - pad.z))
+    }
+  }
+  check('full lock keeps the item box off the nose', noseClear > 1.45, `nose=${noseClear.toFixed(2)}`)
 
   const boosted = stepKart(
     { x: grid.x, z: grid.z, yaw: grid.yaw, speed: 18, boostTimer: 1.1 },
@@ -396,6 +410,7 @@ function testChaseAndPlume(): void {
       plume.position.y > 0.3 &&
       plume.position.z < -0.9 &&
       plumeMesh?.geometry?.type === 'ConeGeometry' &&
+      ((plumeMesh?.geometry as THREE.ConeGeometry | undefined)?.parameters?.height ?? 0) > 2 &&
       !!plumeColor &&
       plumeColor.r > 0.8 &&
       plumeColor.g < 0.55 &&

@@ -121,7 +121,7 @@ export function ensureKart(input: KartState): AaaKartState {
 }
 
 /** Hold the nose on the oval so the exhaust points back along the road. */
-function guideRibbon(kart: AaaKartState, _steer: number, dt: number): void {
+function guideRibbon(kart: AaaKartState, steer: number, dt: number): void {
   if (!usingDefaultGround()) return
   if (Math.abs(kart.speed) < 1.2 && Math.hypot(kart.vx, kart.vz) < 1.2) return
   if (kart.drifting) return
@@ -130,11 +130,14 @@ function guideRibbon(kart: AaaKartState, _steer: number, dt: number): void {
   if (r > 23.4 || r < 13.4) return
   const tan = ovalTangent(kart.x, kart.z)
   const n = ovalNormal(kart.x, kart.z)
-  // Posts stand on the centerline. Hold the inside of the first corner to pass them.
-  const targetR = kart.x > -2.2 && kart.x < 8 ? 16.5 : 18
+  // Item boxes sit on r = 18 and cover the nose in a full-lock still.
+  // A turned wheel rides the inside asphalt. A straight run keeps the old line.
+  const turning = Math.abs(steer) > 0.45
+  const targetR = turning ? 16.15 : kart.x > -2.2 && kart.x < 8 ? 16.5 : 18
   const errR = r - targetR
-  const dx = tan.x - n.x * errR * 0.28
-  const dz = tan.z - n.z * errR * 0.28
+  const pull = turning ? 0.55 : 0.28
+  const dx = tan.x - n.x * errR * pull
+  const dz = tan.z - n.z * errR * pull
   const desired = Math.atan2(dx, dz)
   const err = wrapAngle(desired - kart.yaw)
   const limit = 2.4 * dt
@@ -340,7 +343,7 @@ function integrate(kart: AaaKartState, steer: number, throttle: number, brake: n
   const ribbon = ribbonBoost(kart.x, kart.z, kart.padLock)
   kart.padLock = ribbon.lock
   // A full-lock corner has to read with the badge off. Pads still fire on a straight.
-  if (ribbon.hit && !kart.airborne && Math.abs(steer) < 0.8) {
+  if (ribbon.hit && !kart.airborne && Math.abs(steer) < 0.8 && brake < 0.4) {
     kart.boostTimer = Math.max(kart.boostTimer, 0.85)
     kick(kart, 2.2)
   }
@@ -360,7 +363,7 @@ function sane(kart: AaaKartState, backup: AaaKartState): AaaKartState {
   kart.camYaw = wrapAngle(finite(kart.camYaw, kart.yaw))
   kart.roll = clamp(finite(kart.roll), -0.32, 0.32)
   kart.pitch = clamp(finite(kart.pitch), -0.25, 0.25)
-  kart.wheelSteer = clamp(finite(kart.wheelSteer), -0.8, 0.8)
+  kart.wheelSteer = clamp(finite(kart.wheelSteer), -1.05, 1.05)
   kart.boostTimer = clamp(kart.boostTimer, 0, 4)
   return kart
 }
@@ -376,7 +379,7 @@ function updatePose(
   kart.time = finite(kart.time) + dt
   const ax = axes(kart.yaw)
   const lateral = kart.vx * ax.rightX + kart.vz * ax.rightZ
-  const targetWheel = clamp(steer * 0.85 - kart.driftSide * 0.06, -0.9, 0.9)
+  const targetWheel = clamp(steer * 1.05 - kart.driftSide * 0.06, -1.05, 1.05)
   kart.wheelSteer = damp(finite(kart.wheelSteer), targetWheel, 14, dt)
   // +Z roll leans the roof left, so a right turn (positive steer) is negative roll.
   // About sixteen degrees from behind: the roof tilts, both tires stay on the asphalt.

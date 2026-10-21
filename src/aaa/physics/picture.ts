@@ -89,13 +89,16 @@ function looksLikeKart(obj: THREE.Object3D): boolean {
 }
 
 function isFrontWheel(obj: THREE.Object3D): boolean {
-  return (
+  const marked = obj.userData.palmFront === true
+  if (marked) return kartRoot !== null && obj.parent === kartRoot
+  const hit =
     kartRoot !== null &&
     obj.parent === kartRoot &&
     obj.position.z > 0.4 &&
     Math.abs(Math.abs(obj.position.x) - 0.58) < 0.08 &&
     Math.abs(obj.position.y - 0.28) < 0.08
-  )
+  if (hit) obj.userData.palmFront = true
+  return hit
 }
 
 /** Roll about forward, then a nose-down pitch. Right-multiply so yaw stays put. */
@@ -108,7 +111,14 @@ function bankChassis(matrix: THREE.Matrix4, roll: number, pitch: number): void {
 
 function steerWheel(wheel: THREE.Object3D): void {
   const spin = wheel.rotation.x
-  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -0.9, 0.9)
+  const steer = THREE.MathUtils.clamp(picture.wheelSteer, -1.05, 1.05)
+  const data = wheel.userData as { palmBase?: THREE.Vector3 }
+  if (!data.palmBase) data.palmBase = wheel.position.clone()
+  const base = data.palmBase
+  // Swing the tire out past the nose scoop so a chase still can see the yaw.
+  const mag = Math.abs(steer)
+  const side = Math.sign(base.x) || 1
+  wheel.position.set(base.x + side * mag * 0.34, base.y, base.z + mag * 0.48)
   _euler.set(spin, 0, Math.PI / 2, 'XYZ')
   _qStock.setFromEuler(_euler)
   _qYaw.setFromAxisAngle(_up, steer)
@@ -175,19 +185,21 @@ function ensureSurfaceBits(root: THREE.Object3D): void {
     spray.name = 'spray'
     group.add(spray)
     const plume = new THREE.Group()
-    // Exhaust height, aft. Cone +Y rolled onto −Z so the flame points back along the road.
-    plume.position.set(0, 0.38, -1.02)
-    plume.rotation.set(Math.PI / 2, 0, 0)
+    // Exhaust mouth. Cone +Y is rolled onto −Z so the tip trails back down the road.
+    plume.position.set(0, 0.42, -0.98)
+    plume.rotation.set(-Math.PI / 2, 0, 0)
     plume.name = 'plume'
+    const flameLen = 2.7
     const flame = new THREE.Mesh(
-      new THREE.ConeGeometry(0.16, 0.85, 12),
+      new THREE.ConeGeometry(0.32, flameLen, 12),
       new THREE.MeshBasicMaterial({ color: '#ff3d0a' }),
     )
+    flame.position.y = flameLen / 2
     const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.08, 0.48, 10),
+      new THREE.ConeGeometry(0.14, 1.6, 10),
       new THREE.MeshBasicMaterial({ color: '#ff7a18' }),
     )
-    core.position.y = 0.12
+    core.position.y = 0.85
     plume.add(flame)
     plume.add(core)
     group.add(plume)
