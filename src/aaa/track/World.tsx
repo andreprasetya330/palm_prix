@@ -146,6 +146,7 @@ function lawnMaterial(
   fiberNormal: THREE.Texture,
   straw: THREE.Texture,
   repeat: number,
+  sharp: boolean,
 ) {
   const map = fiber.clone()
   map.repeat.set(repeat, repeat)
@@ -153,6 +154,15 @@ function lawnMaterial(
   const normalMap = fiberNormal.clone()
   normalMap.repeat.set(repeat, repeat)
   normalMap.anisotropy = 16
+  // The flat lawn is seen at a grazing angle. Mips turn its strokes into speckle.
+  if (sharp) {
+    map.generateMipmaps = false
+    map.minFilter = THREE.LinearFilter
+    map.magFilter = THREE.LinearFilter
+    normalMap.generateMipmaps = false
+    normalMap.minFilter = THREE.LinearFilter
+    normalMap.magFilter = THREE.LinearFilter
+  }
   const mat = new THREE.MeshStandardMaterial({
     map,
     normalMap,
@@ -225,8 +235,8 @@ function Grass({
   const ridge = useMemo(() => buildRidge(), [])
 
   // The bank already reads at repeat 12. The flat lawn is grazed by the chase, so its strokes are larger.
-  const field = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 3), [fiber, fiberNormal, straw])
-  const bank = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 12), [fiber, fiberNormal, straw])
+  const field = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 3, true), [fiber, fiberNormal, straw])
+  const bank = useMemo(() => lawnMaterial(fiber, fiberNormal, straw, 12, false), [fiber, fiberNormal, straw])
 
   return (
     <group>
