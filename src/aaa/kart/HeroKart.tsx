@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
 import { Driver } from './Driver'
-import { createGlassShade, createShadowTexture } from './decals'
+import { createGlassShade, createPalmTexture, createShadowTexture } from './decals'
 import {
   anchors,
   capGeo,
@@ -134,6 +134,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
 
   const shadowTex = useMemo(() => createShadowTexture(), [])
   const glassShade = useMemo(() => createGlassShade(), [])
+  const palmTex = useMemo(() => createPalmTexture(), [])
   const avatar = useMemo(() => {
     if (!driverTextureUrl) return null
     const t = new THREE.TextureLoader().load(driverTextureUrl)
@@ -144,16 +145,15 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
     const mk = (x: number) =>
       new THREE.TubeGeometry(
         new THREE.CatmullRomCurve3([
-          new THREE.Vector3(x, 0.58, -0.7),
-          new THREE.Vector3(x * 1.2, 0.86, -0.9),
-          new THREE.Vector3(x * 1.35, 1.08, -1.02),
+          new THREE.Vector3(x, 0.58, -0.92),
+          new THREE.Vector3(x, 1.38, -1.28),
         ]),
-        18,
-        0.032,
+        6,
+        0.026,
         8,
         false,
       )
-    return [mk(-0.42), mk(0.42)]
+    return [mk(-0.38), mk(0.38)]
   }, [])
   const wing = useMemo(() => {
     const g = wingGeo.clone()
@@ -333,7 +333,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <Headlight x={-0.2} z={noseZ - 0.02} />
             <Headlight x={0.2} z={noseZ - 0.02} />
 
-            <group position={[0, 1.18, -1.02]} rotation={[-0.32, 0, 0]}>
+            <group position={[0, 1.52, -1.36]} rotation={[-0.16, 0, 0]}>
               <mesh geometry={wing} castShadow>
                 <meshPhysicalMaterial
                   color="#ff3d66"
@@ -345,21 +345,33 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                   envMapIntensity={0.8}
                 />
               </mesh>
-              <mesh geometry={endplateGeo} position={[0.8, -0.02, -0.02]} scale={0.72} castShadow>
+              <mesh
+                position={[0, 0.07, 0.02]}
+                rotation={[-Math.PI / 2, 0, 0]}
+              >
+                <planeGeometry args={[0.7, 0.42]} />
+                <meshBasicMaterial
+                  map={palmTex}
+                  transparent
+                  depthWrite={false}
+                  polygonOffset
+                  polygonOffsetFactor={-4}
+                />
+              </mesh>
+              <mesh geometry={endplateGeo} position={[0.82, 0.02, 0]} scale={0.62} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
-              <mesh geometry={endplateGeo} position={[-0.8, -0.02, -0.02]} scale={0.72} castShadow>
+              <mesh geometry={endplateGeo} position={[-0.82, 0.02, 0]} scale={0.62} castShadow>
                 <meshStandardMaterial color="#2f6bff" roughness={0.35} />
               </mesh>
             </group>
             {struts.map((g, i) => (
               <mesh key={i} geometry={g} castShadow>
-                <meshStandardMaterial color="#fff3e4" roughness={0.4} />
+                <meshStandardMaterial color="#2f6bff" roughness={0.4} />
               </mesh>
             ))}
 
-            <NumberPlate position={[0, 0.78, -1.16]} />
-            <PalmMark position={[0.42, 1.02, -1.05]} scale={0.85} />
+            <NumberPlate position={[0, 0.72, -1.08]} />
             <TailLight x={-0.24} />
             <TailLight x={0.24} />
 
@@ -504,36 +516,3 @@ function NumberPlate({ position }: { position: [number, number, number] }) {
   )
 }
 
-function PalmMark({
-  position,
-  scale = 1,
-}: {
-  position: [number, number, number]
-  scale?: number
-}) {
-  return (
-    <group position={position} scale={scale}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.1, 0.1, 0.03, 20]} />
-        <meshStandardMaterial color="#ffc83d" metalness={0.45} roughness={0.32} />
-      </mesh>
-      {[
-        [-0.9, 0.85],
-        [-0.45, 1],
-        [0, 1.15],
-        [0.45, 1],
-        [0.9, 0.85],
-      ].map(([yaw, sc], i) => (
-        <mesh
-          key={i}
-          geometry={leafGeo}
-          position={[0, 0.02, 0]}
-          rotation={[0, 0, yaw]}
-          scale={[sc * 0.7, sc, sc]}
-        >
-          <meshStandardMaterial color={i % 2 === 0 ? '#14a35a' : '#0c7a40'} roughness={0.5} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
