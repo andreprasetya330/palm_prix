@@ -300,7 +300,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
     if (radial > 0.318 && Math.abs(y) < 0.07) {
       const row = y >= 0 ? 0 : Math.PI / blocks
       const wave = Math.sin(ang * blocks + row)
-      const bump = wave > 0.15 ? 0.012 : -0.008
+      const bump = wave > 0.15 ? 0.022 : -0.014
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -309,7 +309,7 @@ function displaceTread(geo: THREE.BufferGeometry) {
       b = paint.tire.b
     } else if (radial > 0.292 && Math.abs(y) >= 0.078 && Math.abs(y) < 0.112) {
       const wave = Math.sin(ang * blocks + 0.4)
-      const bump = wave > 0 ? 0.012 : -0.006
+      const bump = wave > 0 ? 0.016 : -0.01
       const k = (radial + bump) / radial
       x *= k
       z *= k
@@ -485,13 +485,14 @@ export function createWindshield(): THREE.BufferGeometry {
 
 export function createFlame(): THREE.BufferGeometry {
   const pts: THREE.Vector2[] = []
-  const n = 14
+  const n = 16
   for (let i = 0; i <= n; i++) {
     const t = i / n
-    const radius = 0.15 * Math.pow(1 - t, 0.62) * (0.82 + 0.18 * Math.sin(t * Math.PI))
-    pts.push(new THREE.Vector2(Math.max(0.001, radius), -t * 0.72))
+    const belly = Math.sin(t * Math.PI)
+    const radius = 0.2 * Math.pow(1 - t, 0.5) * (0.65 + 0.4 * belly)
+    pts.push(new THREE.Vector2(Math.max(0.008, radius), t * 0.4))
   }
-  const geo = new THREE.LatheGeometry(pts, 12)
+  const geo = new THREE.LatheGeometry(pts, 18)
   geo.computeVertexNormals()
   return geo
 }

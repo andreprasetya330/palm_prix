@@ -210,15 +210,15 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
       origin.current.set(kart.x, 0, kart.z)
       camera.position
         .copy(origin.current)
-        .addScaledVector(camRight.current, 2.15)
-        .addScaledVector(camFwd.current, -2.05)
-      camera.position.y += 1.25
-      camLook.current.copy(origin.current).addScaledVector(camFwd.current, -0.1)
-      camLook.current.y += 0.62
+        .addScaledVector(camRight.current, 1.72)
+        .addScaledVector(camFwd.current, 1.85)
+      camera.position.y += 1.02
+      camLook.current.copy(origin.current).addScaledVector(camFwd.current, 0.05)
+      camLook.current.y += 0.74
       camera.lookAt(camLook.current)
-      if (camera.fov !== 32 || camera.near !== 0.08) {
-        camera.fov = 32
-        camera.near = 0.08
+      if (camera.fov !== 30 || camera.near !== 0.06) {
+        camera.fov = 30
+        camera.near = 0.06
         camera.updateProjectionMatrix()
       }
     }
@@ -426,23 +426,18 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               <meshStandardMaterial color="#ff2d55" emissive="#ff2d55" emissiveIntensity={1.4} />
             </mesh>
 
-            <group
-              name="boost-flame"
-              ref={flame}
-              position={[0, 0.32, -1.42]}
-              visible={boosting}
-            >
-              <group rotation={[-Math.PI / 2, 0, 0]} scale={[1.35, -1.7, 1.35]}>
+            <group name="boost-flame" position={[0, 0.32, -1.36]} visible={boosting}>
+              <group ref={flame} rotation={[-Math.PI / 2, 0, 0]}>
                 <mesh geometry={flameGeo}>
                   <meshBasicMaterial
-                    color="#ff3d12"
+                    color="#ff4a16"
                     transparent
-                    opacity={0.94}
+                    opacity={0.95}
                     side={THREE.DoubleSide}
                     depthWrite={false}
                   />
                 </mesh>
-                <mesh geometry={flameGeo} scale={[0.42, 0.72, 0.42]}>
+                <mesh geometry={flameGeo} scale={[0.48, 0.62, 0.48]}>
                   <meshBasicMaterial
                     color="#fff6b0"
                     transparent
@@ -454,7 +449,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
                 </mesh>
               </group>
               {boosting && (
-                <pointLight color="#ffb15a" intensity={8} distance={6} decay={2} />
+                <pointLight color="#ffb15a" intensity={6} distance={4.5} decay={2} />
               )}
             </group>
           </group>
