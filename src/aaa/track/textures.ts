@@ -102,6 +102,7 @@ export type TrackTextures = {
   asphalt: THREE.CanvasTexture
   asphaltNormal: THREE.DataTexture
   sand: THREE.CanvasTexture
+  bank: THREE.CanvasTexture
   wood: THREE.CanvasTexture
   bark: THREE.CanvasTexture
   banner: THREE.CanvasTexture
@@ -112,6 +113,7 @@ export type TrackTextures = {
   signBank: THREE.CanvasTexture
   signBeach: THREE.CanvasTexture
   signApex: THREE.CanvasTexture
+  signReef: THREE.CanvasTexture
 }
 
 function roundRect(
@@ -169,21 +171,66 @@ export function createTrackTextures(): TrackTextures {
     ctx.putImageData(img, 0, 0)
   }, true)
 
+  const sandH = fillNoise(256, 256, 8, [
+    { scale: 1, amp: 0.45 },
+    { scale: 3, amp: 0.35 },
+    { scale: 7, amp: 0.2 },
+  ])
   const sand = canvasTexture(256, 256, (ctx) => {
     const img = ctx.createImageData(256, 256)
-    const h = fillNoise(256, 256, 6, [
-      { scale: 1, amp: 0.65 },
-      { scale: 4, amp: 0.35 },
-    ])
-    for (let i = 0; i < h.length; i++) {
-      const n = h[i]
-      img.data[i * 4] = 232 + n * 20
-      img.data[i * 4 + 1] = 186 + n * 30
-      img.data[i * 4 + 2] = 96 + n * 20
+    for (let i = 0; i < sandH.length; i++) {
+      const n = sandH[i]
+      const grit = hash(i % 256, Math.floor(i / 256))
+      let r = 196
+      let g = 142
+      let b = 62
+      if (grit > 0.93) {
+        r = 255
+        g = 236
+        b = 190
+      } else if (n < 0.32) {
+        r = 148
+        g = 88
+        b = 32
+      } else if (n > 0.7) {
+        r = 232
+        g = 186
+        b = 104
+      } else {
+        r = 176 + n * 70
+        g = 118 + n * 55
+        b = 42 + n * 40
+      }
+      img.data[i * 4] = r
+      img.data[i * 4 + 1] = g
+      img.data[i * 4 + 2] = b
       img.data[i * 4 + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
   }, true)
+  sand.repeat.set(6, 4)
+
+  const bank = canvasTexture(256, 256, (ctx) => {
+    const img = ctx.createImageData(256, 256)
+    const h = fillNoise(256, 256, 8, [
+      { scale: 1, amp: 0.4 },
+      { scale: 4, amp: 0.4 },
+      { scale: 8, amp: 0.2 },
+    ])
+    for (let i = 0; i < h.length; i++) {
+      const y = Math.floor(i / 256)
+      const n = h[i]
+      const seam = y % 28 < 3 ? 0.55 : 1
+      const v = (150 + n * 100) * seam
+      const byte = Math.max(70, Math.min(255, v))
+      img.data[i * 4] = byte
+      img.data[i * 4 + 1] = byte
+      img.data[i * 4 + 2] = byte
+      img.data[i * 4 + 3] = 255
+    }
+    ctx.putImageData(img, 0, 0)
+  }, true)
+  bank.repeat.set(3, 3)
 
   const wood = canvasTexture(256, 128, (ctx) => {
     ctx.fillStyle = palette.wood
@@ -277,6 +324,7 @@ export function createTrackTextures(): TrackTextures {
     asphalt,
     asphaltNormal: heightToNormal(asphaltH, 256, 256, 3.2),
     sand,
+    bank,
     wood,
     bark,
     banner,
@@ -286,7 +334,8 @@ export function createTrackTextures(): TrackTextures {
     signCrown: makeSign('TIDE CROWN', palette.archDeep, palette.gold),
     signBank: makeSign('CORAL BANK', palette.coral, palette.cream),
     signBeach: makeSign('SHELL BEACH', '#e7a04a', palette.ink),
-    signApex: makeSign('APEX LANTERN', '#143d3a', palette.gold, 48),
+    signApex: makeSign('APEX LANTERN', '#143d3a', palette.gold, 52),
+    signReef: makeSign('REEF BELL', '#143d3a', '#fff6ea', 58),
   }
 }
 

@@ -278,7 +278,7 @@ function Crowd() {
   )
 }
 
-function CoralBank({ sign }: { sign: THREE.Texture }) {
+function CoralBank({ sign, grain }: { sign: THREE.Texture; grain: THREE.Texture }) {
   return (
     <group position={[10.4, 0, -9.5]}>
       {[
@@ -289,12 +289,12 @@ function CoralBank({ sign }: { sign: THREE.Texture }) {
       ].map((tier) => (
         <mesh key={tier.y} position={[tier.x, tier.y, 0]} castShadow receiveShadow>
           <boxGeometry args={[tier.w, tier.h, 14.2]} />
-          <meshStandardMaterial color={tier.color} roughness={0.62} />
+          <meshStandardMaterial map={grain} color={tier.color} roughness={0.72} />
         </mesh>
       ))}
       <mesh position={[2.3, 2.85, 0]} castShadow>
         <boxGeometry args={[5.4, 0.16, 14.6]} />
-        <meshStandardMaterial color={palette.roof} roughness={0.45} />
+        <meshStandardMaterial map={grain} color={palette.roof} roughness={0.55} />
       </mesh>
       <mesh position={[2.3, 2.7, 0]}>
         <boxGeometry args={[5.5, 0.08, 14.7]} />
@@ -434,7 +434,7 @@ export function World({ textures }: { textures: TrackTextures }) {
     <group>
       <Grass />
       <ShellBeach textures={textures} />
-      <CoralBank sign={textures.signBank} />
+      <CoralBank sign={textures.signBank} grain={textures.bank} />
       <TideCrown sign={textures.signCrown} />
       <ApexLantern sign={textures.signApex} />
       <ItemCrate position={[6.5, 0.7, 1.6]} phase={0.2} question={textures.question} />

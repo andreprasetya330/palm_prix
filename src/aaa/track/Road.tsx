@@ -108,8 +108,8 @@ export function Road({ textures }: { textures: TrackTextures }) {
         <mesh key={i} geometry={geo} receiveShadow>
           <meshStandardMaterial
             map={textures.sand}
-            color={palette.sand}
-            roughness={0.95}
+            color="#ffffff"
+            roughness={0.92}
             vertexColors
           />
         </mesh>
