@@ -102,7 +102,7 @@ export class GestureMapper {
     } else if (fists.length === 1 || hands.length === 1) {
       this.lossMs = 0
       this.debug.mode = 'one-hand'
-        const h = fists[0] ?? hands[0]
+      const h = fists[0] ?? hands[0]
       this.debug.wheelAngle = h.yaw
       if (h.isFist) {
         steerTarget = mapAngleToSteer(h.yaw, cal.oneHandNeutral, cal)
@@ -116,7 +116,7 @@ export class GestureMapper {
       this.debug.wheelAngle = null
       this.lossMs += dtMs
       this.prevThumbUp = false
-        // decay toward 0 over ~200ms
+      // decay toward 0 over ~200ms
       const decay = Math.min(1, this.lossMs / 200)
       steerTarget = this.smoothedSteer * (1 - decay)
       throttleTarget = 0
@@ -181,6 +181,7 @@ export function mergeControls(
 }
 
 export { ZERO_CONTROL }
+
 
 
 
