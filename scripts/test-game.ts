@@ -106,5 +106,50 @@ test('brake holds a stopped kart without reversing', () => {
   for (let i = 0; i < 600; i++) kart = stepKart(kart, { ...idle, brake: 1 }, 1 / 60)
   assert(Math.abs(kart.speed) < 0.001)
 })
+test('launch reaches 90 km/h in under two seconds on the starting straight', () => {
+  let kart = { ...DEFAULT_KART }, seconds = 0
+  while (kart.speed < 25 && seconds < 2) { kart = stepKart(kart, drive, 1 / 120); seconds += 1 / 120 }
+  assert(kart.speed >= 25)
+  console.log(`  Measured 0–90 km/h: ${seconds.toFixed(3)} s`)
+})
+test('fixed simulation gives matching trajectories at 30, 60, 120 and 144 fps', () => {
+  const samples = [30, 60, 120, 144].map(fps => {
+    let kart = { ...DEFAULT_KART }
+    for (let i = 0; i < fps; i++) kart = stepKart(kart, { ...drive, steer: -0.2 }, 1 / fps)
+    return kart
+  })
+  for (const kart of samples) {
+    near(kart.x, samples[0].x, 1e-8); near(kart.z, samples[0].z, 1e-8)
+    near(kart.speed, samples[0].speed, 1e-8); near(kart.yaw, samples[0].yaw, 1e-8)
+  }
+})
+test('a sustained corner drift charges and releasing it awards a mini turbo', () => {
+  const s = getTrackSample(0.11)
+  let kart: KartState = { ...DEFAULT_KART, x: s.point.x, z: s.point.z, yaw: s.yaw, speed: 24 }
+  for (let i = 0; i < 90; i++) kart = stepKart(kart, { ...drive, steer: -0.65, drift: true }, 1 / 120)
+  assert(kart.drifting && kart.driftCharge! >= 0.65)
+  assert.equal(kart.boostTimer, 0)
+  kart = stepKart(kart, drive, 1 / 120)
+  assert.equal(kart.drifting, false); assert.equal(kart.driftCharge, 0)
+  assert(kart.boostTimer > 0.5)
+  assert.equal(kart.boostCooldown, 0, 'mini turbo must not consume the separate item boost')
+})
+test('stationary drift and grass cannot farm turbo; braking cancels charge', () => {
+  const stationary = stepKart(DEFAULT_KART, { ...idle, drift: true, steer: 1 }, 0.05)
+  assert(!stationary.drifting); assert.equal(stationary.boostTimer, 0)
+  const charged = { ...DEFAULT_KART, speed: 25, drifting: true, driftCharge: 2 }
+  const braked = stepKart(charged, { ...idle, brake: 1 }, 1 / 120)
+  assert(!braked.drifting); assert.equal(braked.boostTimer, 0)
+  const s = getTrackSample(0)
+  const grass = stepKart({ ...charged, x: s.point.x + s.normal.x * 5, z: s.point.z + s.normal.z * 5 }, drive, 1 / 120)
+  assert(!grass.drifting); assert.equal(grass.boostTimer, 0)
+})
+test('boost input survives a frame shorter than a fixed step', () => {
+  let kart = stepKart(DEFAULT_KART, { ...drive, item: true }, 1 / 1000)
+  assert.equal(kart.boostTimer, 0)
+  kart = stepKart(kart, drive, 1 / 120)
+  assert(kart.boostTimer > 1)
+})
 console.log(`${passed} game checks passed.`)
+
 
