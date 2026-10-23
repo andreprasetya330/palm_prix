@@ -1,10 +1,13 @@
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { DEFAULT_DRIVER_STYLE, type DriverStyle } from '../../avatar/driverStyle'
 import fabricNormalUrl from './assets/Fabric030_1K-JPG_NormalGL.jpg'
 import fabricRoughUrl from './assets/Fabric030_1K-JPG_Roughness.jpg'
 import { clothNormalScale, useLinearMap } from './textures'
 type Props = {
   texture: THREE.Texture | null
   envMap: THREE.Texture | null
+  style?: DriverStyle
 }
 
 const cream = {
@@ -15,12 +18,6 @@ const cream = {
   clearcoatRoughness: 0.18,
 }
 
-const cloth = {
-  color: '#c4254a',
-  roughness: 0.96,
-  metalness: 0,
-}
-
 /**
  * Original Palm Prix driver. Open-face cream helmet, eyes, coral team suit.
  * Not a Nintendo character — no cap, no mustache, no borrowed marks.
@@ -28,13 +25,15 @@ const cloth = {
 function SuitMaterial({
   normal,
   rough,
+  color,
 }: {
   normal: THREE.Texture
   rough: THREE.Texture
+  color: string
 }) {
   return (
     <meshStandardMaterial
-      color={cloth.color}
+      color={color}
       roughness={0.94}
       metalness={0}
       normalMap={normal}
@@ -44,18 +43,19 @@ function SuitMaterial({
   )
 }
 
-export function Driver({ texture, envMap }: Props) {
+export function Driver({ texture, envMap, style = DEFAULT_DRIVER_STYLE }: Props) {
+  const helmetMaterial = { ...cream, color: style.helmet }
   const clothNormal = useLinearMap(fabricNormalUrl, 3, 3)
   const clothRough = useLinearMap(fabricRoughUrl, 3, 3)
   return (
     <group position={[0, 0.5, -0.06]}>
       <mesh position={[0, 0.08, 0.02]} scale={[0.34, 0.16, 0.26]} castShadow>
         <sphereGeometry args={[1, 24, 16]} />
-        <SuitMaterial normal={clothNormal} rough={clothRough} />
+        <SuitMaterial normal={clothNormal} rough={clothRough} color={style.suit} />
       </mesh>
       <mesh position={[0, 0.28, 0.02]} scale={[0.32, 0.26, 0.22]} castShadow>
         <sphereGeometry args={[1, 28, 20]} />
-        <SuitMaterial normal={clothNormal} rough={clothRough} />
+        <SuitMaterial normal={clothNormal} rough={clothRough} color={style.suit} />
       </mesh>
       <mesh position={[0, 0.3, 0.16]} rotation={[0.15, 0, 0]}>
         <sphereGeometry args={[0.1, 16, 12]} />
@@ -74,15 +74,15 @@ export function Driver({ texture, envMap }: Props) {
       <group position={[0, 0.56, 0.04]}>
         <mesh castShadow>
           <sphereGeometry args={[0.26, 48, 32, Math.PI / 2 + 0.58, Math.PI * 2 - 1.16]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.85} />
+          <meshPhysicalMaterial {...helmetMaterial} envMap={envMap ?? undefined} envMapIntensity={0.85} />
         </mesh>
         <mesh castShadow>
           <sphereGeometry args={[0.26, 32, 16, Math.PI / 2 - 0.58, 1.16, 0, Math.PI / 2 - 0.4]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.85} />
+          <meshPhysicalMaterial {...helmetMaterial} envMap={envMap ?? undefined} envMapIntensity={0.85} />
         </mesh>
         <mesh castShadow>
           <sphereGeometry args={[0.26, 32, 16, Math.PI / 2 - 0.58, 1.16, Math.PI / 2 + 0.32, Math.PI / 2 - 0.32]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} envMapIntensity={0.85} />
+          <meshPhysicalMaterial {...helmetMaterial} envMap={envMap ?? undefined} envMapIntensity={0.85} />
         </mesh>
         <mesh position={[0, -0.01, 0.02]} scale={[0.85, 0.7, 0.45]}>
           <sphereGeometry args={[0.18, 24, 16]} />
@@ -103,18 +103,15 @@ export function Driver({ texture, envMap }: Props) {
 
         <mesh position={[0, 0.08, 0.16]} rotation={[1.15, 0, 0]} castShadow>
           <torusGeometry args={[0.16, 0.02, 10, 28, Math.PI]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} />
+          <meshPhysicalMaterial {...helmetMaterial} envMap={envMap ?? undefined} />
         </mesh>
         <mesh position={[0, -0.09, 0.14]} rotation={[0.35, 0, Math.PI]} castShadow>
           <torusGeometry args={[0.14, 0.02, 10, 24, Math.PI]} />
-          <meshPhysicalMaterial {...cream} envMap={envMap ?? undefined} />
+          <meshPhysicalMaterial {...helmetMaterial} envMap={envMap ?? undefined} />
         </mesh>
 
         {texture ? (
-          <mesh position={[0, -0.01, 0.14]}>
-            <circleGeometry args={[0.12, 24]} />
-            <meshStandardMaterial map={texture} roughness={0.5} />
-          </mesh>
+          <PortraitFace texture={texture} />
         ) : (
           <Face />
         )}
@@ -126,7 +123,7 @@ export function Driver({ texture, envMap }: Props) {
           <meshPhysicalMaterial
             color="#b7e4f2"
             transparent
-            opacity={0.42}
+            opacity={0.16}
             roughness={0.04}
             metalness={0}
             clearcoat={1}
@@ -147,6 +144,36 @@ export function Driver({ texture, envMap }: Props) {
       </group>
     </group>
   )
+}
+
+/** Project a portrait onto the rounded face surface inside the helmet. */
+function PortraitFace({ texture }: { texture: THREE.Texture }) {
+  const geometry = useMemo(() => {
+    const positions: number[] = [], uv: number[] = [], indices: number[] = []
+    const segments = 48, rings = 16
+    for (let ring = 0; ring <= rings; ring++) {
+      const radius = ring / rings
+      for (let i = 0; i <= segments; i++) {
+        const angle = i / segments * Math.PI * 2
+        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius
+        positions.push(x * 0.138, y * 0.132, Math.sqrt(Math.max(0, 1 - radius * radius)) * 0.075)
+        uv.push((x + 1) / 2, (y + 1) / 2)
+        if (ring < rings && i < segments) {
+          const a = ring * (segments + 1) + i, b = a + segments + 1
+          indices.push(a, b, a + 1, a + 1, b, b + 1)
+        }
+      }
+    }
+    const shape = new THREE.BufferGeometry()
+    shape.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    shape.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+    shape.setIndex(indices); shape.computeVertexNormals()
+    return shape
+  }, [])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return <mesh geometry={geometry} position={[0, -0.01, 0.14]} castShadow>
+    <meshStandardMaterial map={texture} roughness={0.8} side={THREE.DoubleSide} />
+  </mesh>
 }
 
 function Face() {

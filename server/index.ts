@@ -49,21 +49,6 @@ fal.config({
   credentials: process.env.FAL_KEY,
 })
 
-/** Simple SVG cartoon head when FAL_KEY is missing (dev placeholder). */
-function placeholderDataUrl(): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-  <stop stop-color="#ffd6a5"/><stop offset="1" stop-color="#f4a261"/></linearGradient></defs>
-  <rect width="256" height="256" fill="#264653"/>
-  <circle cx="128" cy="120" r="70" fill="url(#g)"/>
-  <circle cx="105" cy="110" r="8" fill="#1d3557"/>
-  <circle cx="151" cy="110" r="8" fill="#1d3557"/>
-  <path d="M100 145 Q128 165 156 145" stroke="#1d3557" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <text x="128" y="230" text-anchor="middle" fill="#e9c46a" font-family="sans-serif" font-size="14">dev placeholder</text>
-  </svg>`
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
-}
-
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -74,6 +59,10 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/stylize', upload.single('image'), async (req, res) => {
   try {
+    if (req.body?.consent !== 'cloud-still') {
+      res.status(400).json({ ok: false, error: 'Confirm cloud portrait consent before uploading a still.' })
+      return
+    }
     if (!req.file) {
       res.status(400).json({ ok: false, error: 'Expected multipart field "image"' })
       return
@@ -85,12 +74,7 @@ app.post('/api/stylize', upload.single('image'), async (req, res) => {
     }
 
     if (!process.env.FAL_KEY) {
-      res.json({
-        ok: true,
-        imageUrl: placeholderDataUrl(),
-        placeholder: true,
-        warning: 'FAL_KEY not set — returned placeholder cartoon head',
-      })
+      res.status(503).json({ ok: false, error: 'Cloud AI is not configured. Use Local portrait, or configure FAL_KEY on the server.' })
       return
     }
 
@@ -101,8 +85,8 @@ app.post('/api/stylize', upload.single('image'), async (req, res) => {
       input: {
         image_url: dataUri,
         prompt:
-          'cartoon anime character portrait, clean cel shading, big expressive eyes, vibrant colors, simple background, stylized face suitable as a racing game driver avatar',
-        strength: 0.75,
+          'A square front-facing stylized 3D racing game face portrait of this same person. Preserve recognizable facial features, skin tone, eye color and expression. Center the face and tightly crop forehead to chin; face fills the frame. Soft polished animation-film shading, warm daylight, friendly confident expression. No helmet, no text, no body, no accessories, no frame. Simple neutral background.',
+        strength: 0.45,
         num_images: 1,
         output_format: 'png',
       },
@@ -122,7 +106,7 @@ app.post('/api/stylize', upload.single('image'), async (req, res) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[stylize]', msg)
-    res.status(500).json({ ok: false, error: msg })
+    res.status(502).json({ ok: false, error: 'Cloud portrait generation failed. Retry, or choose Local portrait without AI.' })
   }
 })
 
@@ -131,3 +115,4 @@ app.listen(PORT, () => {
     `[stylize] http://localhost:${PORT}/api/stylize  model=${FAL_STYLIZE_MODEL} fal=${Boolean(process.env.FAL_KEY)}`,
   )
 })
+

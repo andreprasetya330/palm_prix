@@ -1,4 +1,5 @@
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { DriverStyle } from '../../avatar/driverStyle'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { KartState } from '../../game/kartPhysics'
@@ -35,6 +36,7 @@ import { rubberNormalScale, useLinearMap } from './textures'
 export type HeroKartProps = {
   kart: KartState
   driverTextureUrl: string | null
+  driverStyle?: DriverStyle
 }
 
 const SEARCH =
@@ -125,7 +127,7 @@ function useCandyEnv() {
   return tex
 }
 
-export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
+export function HeroKart({ kart, driverTextureUrl, driverStyle }: HeroKartProps) {
   const env = useCandyEnv()
   const root = useRef<THREE.Group>(null)
   const roll = useRef<THREE.Group>(null)
@@ -154,6 +156,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
     t.colorSpace = THREE.SRGBColorSpace
     return t
   }, [driverTextureUrl])
+  useEffect(() => () => avatar?.dispose(), [avatar])
   const struts = useMemo(() => {
     const mk = (x: number) =>
       new THREE.TubeGeometry(
@@ -300,6 +303,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
             <group ref={squat}>
               <Suspense fallback={null}>
                 <PalmDartModel speed={kart.speed} steerRef={steerAngle} />
+                <Driver texture={avatar} envMap={env} style={driverStyle} />
               </Suspense>
               {boostFlame}
             </group>
@@ -383,7 +387,7 @@ export function HeroKart({ kart, driverTextureUrl }: HeroKartProps) {
               ))}
             </group>
 
-            <Driver texture={avatar} envMap={env} />
+            <Driver texture={avatar} envMap={env} style={driverStyle} />
 
             <group position={[0, 0.76, 0.48]} rotation={[-0.18, 0, 0]}>
               <mesh geometry={glassGeo}>

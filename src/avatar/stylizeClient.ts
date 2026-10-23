@@ -1,102 +1,54 @@
 import { localCartoonFilter } from './localFilter'
 
 export type StylizeResult =
-  | { ok: true; imageUrl: string; source: 'fal' | 'local' | 'placeholder' }
+  | { ok: true; imageUrl: string; source: 'fal' | 'local' }
   | { ok: false; error: string }
-
 const AVATAR_KEY = 'palm-kart-avatar-v1'
-
 export function loadCachedAvatar(): string | null {
-  try {
-    return localStorage.getItem(AVATAR_KEY)
-  } catch {
-    return null
-  }
+  try { return localStorage.getItem(AVATAR_KEY) } catch { return null }
 }
-
-export function saveCachedAvatar(dataUrl: string): void {
-  localStorage.setItem(AVATAR_KEY, dataUrl)
+export function saveCachedAvatar(dataUrl: string): boolean {
+  try { localStorage.setItem(AVATAR_KEY, dataUrl); return true } catch { return false }
 }
-
 export function clearCachedAvatar(): void {
-  localStorage.removeItem(AVATAR_KEY)
+  try { localStorage.removeItem(AVATAR_KEY) } catch { /* Storage can be disabled. */ }
 }
-
-function blobToDataUrl(blob: Blob): Promise<string> {
+async function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(String(r.result))
-    r.onerror = () => reject(r.error)
-    r.readAsDataURL(blob)
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Could not read portrait'))
+    reader.readAsDataURL(blob)
   })
 }
-
-/** Resize still before upload (~512px). */
 export async function resizeSelfie(blob: Blob, max = 512): Promise<Blob> {
-  const bmp = await createImageBitmap(blob)
-  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
-  const w = Math.round(bmp.width * scale)
-  const h = Math.round(bmp.height * scale)
+  const bitmap = await createImageBitmap(blob)
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(bmp, 0, 0, w, h)
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
-      'image/jpeg',
-      0.9,
-    )
-  })
+  canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return new Promise((resolve, reject) => canvas.toBlob(
+    result => result ? resolve(result) : reject(new Error('Could not prepare portrait')), 'image/jpeg', 0.9))
 }
-
-export async function stylizeSelfie(blob: Blob): Promise<StylizeResult> {
-  const mode = import.meta.env.VITE_STYLIZE_MODE as string | undefined
-  if (mode === 'local') {
-    const url = await localCartoonFilter(blob)
-    return { ok: true, imageUrl: url, source: 'local' }
-  }
-
+/** Cloud is explicitly chosen by the caller. Local mode never sends the still. */
+export async function stylizeSelfie(blob: Blob, mode: 'cloud' | 'local' = 'cloud'): Promise<StylizeResult> {
   try {
-    const resized = await resizeSelfie(blob)
+    if (mode === 'local') return { ok: true, imageUrl: await localCartoonFilter(blob), source: 'local' }
     const form = new FormData()
-    form.append('image', resized, 'selfie.jpg')
-    const res = await fetch('/api/stylize', { method: 'POST', body: form })
-    const data = (await res.json()) as {
-      ok?: boolean
-      imageUrl?: string
-      error?: string
-      placeholder?: boolean
+    form.append('image', await resizeSelfie(blob), 'selfie.jpg')
+    form.append('consent', 'cloud-still')
+    const response = await fetch('/api/stylize', { method: 'POST', body: form, signal: AbortSignal.timeout(120_000) })
+    const data = await response.json() as { ok?: boolean; imageUrl?: string; placeholder?: boolean; error?: string }
+    if (!response.ok || !data.ok || !data.imageUrl || data.placeholder) {
+      return { ok: false, error: data.error ?? 'Cloud AI is unavailable. Choose Local portrait to continue without an upload.' }
     }
-    if (!res.ok || !data.ok || !data.imageUrl) {
-      // graceful: local filter fallback
-      const url = await localCartoonFilter(blob)
-      return {
-        ok: true,
-        imageUrl: url,
-        source: data.placeholder ? 'placeholder' : 'local',
-      }
-    }
-    // if server returned a remote URL, fetch → data URL for persistence
-    if (data.imageUrl.startsWith('data:')) {
-      return { ok: true, imageUrl: data.imageUrl, source: 'fal' }
-    }
-    try {
-      const imgRes = await fetch(data.imageUrl)
-      const imgBlob = await imgRes.blob()
-      const dataUrl = await blobToDataUrl(imgBlob)
-      return { ok: true, imageUrl: dataUrl, source: 'fal' }
-    } catch {
-      return { ok: true, imageUrl: data.imageUrl, source: 'fal' }
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    try {
-      const url = await localCartoonFilter(blob)
-      return { ok: true, imageUrl: url, source: 'local' }
-    } catch {
-      return { ok: false, error: msg }
-    }
+    const imageResponse = await fetch(data.imageUrl, { signal: AbortSignal.timeout(30_000) })
+    if (!imageResponse.ok) throw new Error('Could not download the generated portrait. Please retry.')
+    const image = await imageResponse.blob()
+    if (!image.type.startsWith('image/')) throw new Error('The service returned an invalid portrait.')
+    return { ok: true, imageUrl: await blobToDataUrl(image), source: 'fal' }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Portrait creation failed. Please retry.' }
   }
 }
