@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { loadCachedAvatar } from './avatar/stylizeClient'
 import { type ControlState } from './game/controlState'
 import { DEFAULT_KART, stepKart, type KartState } from './game/kartPhysics'
@@ -16,11 +16,12 @@ import { loadCalibration, type Calibration } from './vision/calibration'
 import { GestureMapper, mergeControls } from './vision/gestureMapper'
 import { useHandTracker } from './vision/useHandTracker'
 import { useKeyboardControls } from './vision/useKeyboardControls'
+import { useRaceAudio } from './game/useRaceAudio'
 import './App.css'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { status, error, hands } = useHandTracker(videoRef)
+  const { status, error, hands, retry } = useHandTracker(videoRef)
   const readKeyboard = useKeyboardControls()
   const mapper = useMemo(() => new GestureMapper(), [])
 
@@ -38,18 +39,19 @@ export default function App() {
     brake: 0,
     item: false,
   })
+  const audio = useRaceAudio(kart, race)
   const [showPip, setShowPip] = useState(true)
 
-  const raceRef = useRef(race)
   const kartRef = useRef(kart)
   const calRef = useRef(calibration)
   const handsRef = useRef(hands)
   const phaseRef = useRef(race.phase)
-  raceRef.current = race
-  kartRef.current = kart
-  calRef.current = calibration
-  handsRef.current = hands
-  phaseRef.current = race.phase
+  useLayoutEffect(() => {
+    kartRef.current = kart
+    calRef.current = calibration
+    handsRef.current = hands
+    phaseRef.current = race.phase
+  }, [kart, calibration, hands, race.phase])
 
   // Vision → ControlState + race tick
   useEffect(() => {
@@ -88,6 +90,7 @@ export default function App() {
   }, [mapper, readKeyboard])
 
   const startCountdown = () => {
+    void audio.enable()
     mapper.reset()
     setKart({ ...DEFAULT_KART })
     setRace({
@@ -112,25 +115,27 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">Palm Prix</span>
-          <span className="brand-sub">webcam hand-tracking kart · MVP scaffold</span>
+          <span className="brand-sub">THE ISLAND CIRCUIT</span>
         </div>
         <div className="topbar-actions">
+          <button className="retry-camera" onClick={audio.toggleMute}>{audio.muted ? 'Sound off' : 'Sound on'}</button>
           <label className="toggle">
             <input
               type="checkbox"
               checked={showPip}
               onChange={(e) => setShowPip(e.target.checked)}
             />
-            Webcam PIP
+            Camera view
           </label>
-          <span className={`cam-status ${status}`}>{status}</span>
+          <span className={`cam-status ${status}`}>{status === 'ready' ? 'Hands ready' : status === 'loading' ? 'Connecting camera' : 'Keyboard ready'}</span>
+          {(status === 'error' || status === 'denied') && <button className="retry-camera" onClick={retry} title={error ?? 'Retry camera'}>Retry camera</button>}
         </div>
       </header>
 
       <main className={`stage ${inRace ? 'racing' : ''}`}>
-        {(inRace || race.phase === 'calibrate' || race.phase === 'avatar') && (
-          <div className="scene-wrap">
-            <RaceScene kart={kart} driverTextureUrl={avatarUrl} />
+        {(
+          <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
+            <RaceScene kart={kart} driverTextureUrl={avatarUrl} race={race} showcase={race.phase === 'menu'} />
             {inRace && (
               <Hud
                 race={race}
@@ -144,8 +149,8 @@ export default function App() {
         )}
 
         <div
-          className={`pip-dock ${inRace ? 'corner' : 'hero'}`}
-          style={showPip ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          className={`pip-dock ${inRace ? 'corner' : 'hero'} ${race.phase === 'menu' ? 'menu-pip' : ''}`}
+          style={showPip && status === 'ready' ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         >
           <WebcamPip
             videoRef={videoRef}
@@ -158,32 +163,16 @@ export default function App() {
 
         {race.phase === 'menu' && (
           <div className="panel menu">
-            <h1>Palm Prix</h1>
-            <p>
-              Drive with a virtual steering wheel — two fists twist to steer.
-              Camera stays local; only an opt-in selfie still hits the stylize
-              API.
-            </p>
-            <ul className="privacy-list">
-              <li>Hand video: in-browser MediaPipe only</li>
-              <li>Avatar: one still, cloud fal via /api/stylize (opt-in)</li>
-              <li>Keyboard fallback always on (WASD / arrows + Space)</li>
-            </ul>
-            <div className="row">
-              <button
-                type="button"
-                className="primary"
-                onClick={() => setRace((r) => ({ ...r, phase: 'avatar' }))}
-              >
-                Avatar studio
-              </button>
-              <button
-                type="button"
-                onClick={() => setRace((r) => ({ ...r, phase: 'calibrate' }))}
-              >
-                Calibrate & race
-              </button>
+            <div className="eyebrow"><span /> SEASIDE GRAND PRIX / VOL. 01</div>
+            <h1>GOOD TIMES.<br /><em>FULL THROTTLE.</em></h1>
+            <p className="menu-description">An island escape with a competitive streak. Take the wheel with your hands and chase the perfect lap.</p>
+            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Sunset Palms</strong><span>Coastal circuit · 3 laps · 6 racers</span></div><span className="difficulty">150<small>CC</small></span></div>
+            <div className="row menu-actions">
+              <button type="button" className="primary" onClick={startCountdown}>LET’S RACE <span>→</span></button>
+              <button type="button" onClick={() => setRace(r => ({ ...r, phase: 'calibrate' }))}>Set up hand controls</button>
             </div>
+            <div className="menu-secondary"><button type="button" onClick={() => setRace(r => ({ ...r, phase: 'avatar' }))}>Customize driver ↗</button><span>WASD / arrows to drive · Space to boost</span></div>
+            <p className="privacy-note">Hand tracking runs on your device. Your camera feed stays yours.</p>
             {status === 'denied' && (
               <p className="cam-error">
                 Camera denied — use keyboard, or allow webcam and reload.
@@ -226,6 +215,8 @@ export default function App() {
             </div>
           </div>
         )}
+        {inRace && <button className="exit-race" onClick={goMenu}>← Paddock</button>}
+        {race.phase === 'menu' && <div className="edition">PALM PRIX <span>RACE THE SUN.</span></div>}
       </main>
     </div>
   )

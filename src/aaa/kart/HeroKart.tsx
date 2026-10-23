@@ -45,20 +45,7 @@ const USE_GLTF = SEARCH?.get('mesh') !== 'code'
 
 /** This branch's oval: x = sin(t) * r * 1.15, z = cos(t) * r. Asphalt is about r 14–22. */
 function poseOnOval(x: number, z: number, yaw: number) {
-  const radius = Math.hypot(x / 1.15, z)
-  if (radius >= 13.8 && radius <= 22.4) return { x, z, yaw, planted: false }
-  // Back straight. The start arch is t = 0 and the item boxes sit at
-  // t = 0.35, 1.05, 1.75, 2.45, so a plant near the spawn angle lands on a box.
-  const t = Math.PI
-  const tx = Math.cos(t) * 1.15
-  const tz = -Math.sin(t)
-  const len = Math.hypot(tx, tz) || 1
-  return {
-    x: Math.sin(t) * 18 * 1.15,
-    z: Math.cos(t) * 18,
-    yaw: Math.atan2(tx / len, tz / len),
-    planted: true,
-  }
+  return { x, z, yaw, planted: false }
 }
 
 const WHEELS = [

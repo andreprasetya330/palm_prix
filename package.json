@@ -9,7 +9,8 @@
     "server": "tsx server/index.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx scripts/test-game.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",

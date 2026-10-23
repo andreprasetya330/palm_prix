@@ -88,8 +88,10 @@ export function HandDebugOverlay({
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
+        objectFit: 'contain',
         transform: 'scaleX(1)',
       }}
     />
   )
 }
+

@@ -4,13 +4,17 @@ import type { KartState } from '../game/kartPhysics'
 import { FollowCamera } from './FollowCamera'
 import { Kart } from '../aaa/kart'
 import { Track } from './Track'
+import { Opponents } from './Opponents'
+import type { RaceStatus } from '../game/raceLoop'
 
 type Props = {
+  race?: RaceStatus
+  showcase?: boolean
   kart: KartState
   driverTextureUrl: string | null
 }
 
-export function RaceScene({ kart, driverTextureUrl }: Props) {
+export function RaceScene({ kart, driverTextureUrl, race, showcase = false }: Props) {
   return (
     <Canvas
       shadows
@@ -44,9 +48,12 @@ export function RaceScene({ kart, driverTextureUrl }: Props) {
         mieDirectionalG={0.9}
       />
       <fog attach="fog" args={['#b8e8ff', 60, 120]} />
-      <Track />
+      <Track showcase={showcase} />
       <Kart kart={kart} driverTextureUrl={driverTextureUrl} />
-      <FollowCamera kart={kart} />
+      <Opponents elapsed={race?.elapsed ?? 0} />
+      <FollowCamera kart={kart} showcase={showcase} />
     </Canvas>
   )
 }
+
+

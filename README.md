@@ -1,6 +1,6 @@
 # Palm Prix
 
-Browser MVP scaffold: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
+Three.js arcade racing prototype: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
 
 Stack: Vite + React + TypeScript · MediaPipe Hands (`@mediapipe/tasks-vision`) · Three.js (`@react-three/fiber` + `@react-three/drei`) · tiny Express stylize proxy (fal.ai).
 
@@ -81,9 +81,9 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 | Webcam + MediaPipe Hands (2 hands) + skeleton / wheel overlay | **Real** |
 | Wheel-angle `ControlState` + keyboard merge | **Real** |
 | Three.js oval track, kart, chase camera, arcade move | **Real** (Mario Kart–style bright low-poly art) |
-| Countdown → drive → finish (checkpoint laps) | **Stub / minimal** (2 laps, no AI opponent) |
+| Countdown → drive → finish (checkpoint laps) | **Implemented**: three ordered laps, five scripted rivals, ranking and minimap |
 | Avatar capture → `POST /api/stylize` → driver texture | **Real path**; placeholder SVG if no `FAL_KEY`; local posterize on error |
-| Items / SFX / dummy AI / polish | **Stubbed / deferred** |
+| Boost / audio / rivals | Cooldown boost, synthesized engine and race cues, five animated scripted rivals |
 | Online multiplayer | **Not in MVP** (`ControlState` kept clean for Phase 2) |
 
 ## API
@@ -91,3 +91,11 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 `POST /api/stylize` — multipart field `image` → `{ ok, imageUrl, placeholder? }`
 
 `GET /api/health` — `{ ok, falConfigured, model }`
+
+## Current quality and validation
+
+The island scene, responsive menu, speed HUD, minimap, camera setup, and race loop have been rebuilt. This is a playable prototype, not a claim of AAA parity. Rivals follow scripted paths; kart-to-kart collision, drift mechanics, weapon items, multiple courses and multiplayer remain unimplemented. Camera startup has explicit deadlines and retry; continuous hand-control feel still needs human testing on real hardware.
+
+Run `npx tsx scripts/test-game.ts` for gameplay regression checks, `npm run build` for production verification, and `npm run lint` for static diagnostics. Existing imperative Three.js animation patterns produce React compiler lint warnings. The production bundle still exceeds the default size warning threshold.
+
+Camera tracking downloads its runtime/model from jsDelivr and Google on startup; an internet connection is required. Keyboard racing remains available without camera permission. Sound starts only after clicking Race and can be muted in the header.
