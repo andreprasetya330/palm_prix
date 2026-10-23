@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { RIVALS, rivalAngle } from '../game/raceLoop'
+import { getTrackSample } from '../game/trackLayout'
 
 export function Opponents({ elapsed }: { elapsed: number }) {
   return <>{RIVALS.map((r, i) => <Rival key={r.name} index={i} elapsed={elapsed} />)}</>
@@ -13,10 +14,12 @@ function Rival({ index, elapsed }: { index: number; elapsed: number }) {
   const r = RIVALS[index]
   useFrame(() => {
     const t = rivalAngle(index, elapsed)
-    const radius = r.lane + Math.sin(t * 2 + index) * 0.35
+    const sample = getTrackSample(t / (Math.PI * 2))
+    const lane = (r.lane - 18.5) * 0.75 + Math.sin(t * 2 + index) * 0.25
     if (root.current) {
-      root.current.position.set(Math.sin(t) * radius * 1.15, 0.04, Math.cos(t) * radius)
-      root.current.rotation.y = Math.atan2(Math.cos(t) * 1.15, -Math.sin(t))
+      root.current.position.copy(sample.point).addScaledVector(sample.normal, lane)
+      root.current.position.y = 0.04
+      root.current.rotation.y = sample.yaw
     }
     if (wheels.current) wheels.current.children.forEach(w => { w.rotation.x = elapsed * 40 })
   })
@@ -32,3 +35,4 @@ function Rival({ index, elapsed }: { index: number; elapsed: number }) {
     {[-0.34,0.34].map(x => <mesh key={x} position={[x,0.49,1.035]}><boxGeometry args={[0.22,0.075,0.02]} /><meshStandardMaterial color="#fff5d9" emissive="#ffdf99" emissiveIntensity={1.2} /></mesh>)}
   </group>
 }
+
