@@ -29,6 +29,9 @@ export function PalmDartModel({ speed = 0, steerRef, ...props }: PalmDartModelPr
     // The original baked driver ignored personalized faces. Use our live driver instead.
     clone.traverse((obj) => {
       if (obj.name === 'Driver' || obj.name.startsWith('Glove') || /^Arm-?1$/.test(obj.name)) obj.visible = false
+      // These oversized freestanding letters sit behind the wheels like extra fins.
+      // Keep the smaller wheel-hub and wing emblems instead.
+      if (obj.name.startsWith('SidewallMark')) obj.visible = false
       const mesh = obj as Mesh
       if (!mesh.isMesh) return
       const adjust = (source: MeshStandardMaterial) => {
