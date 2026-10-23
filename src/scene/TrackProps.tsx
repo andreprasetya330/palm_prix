@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { nearestTrack } from '../game/trackLayout'
 
 function Palm({x,z,s=1,angle=0}:{x:number;z:number;s?:number;angle?:number}){
  const frond=useMemo(()=>{
@@ -7,6 +8,7 @@ function Palm({x,z,s=1,angle=0}:{x:number;z:number;s?:number;angle?:number}){
   for(let i=0;i<=12;i++){const t=i/12,w=Math.sin(t*Math.PI)*0.36; p.push(t*2.7,Math.sin(t*Math.PI)*0.6-t*t*0.7,-w,t*2.7,Math.sin(t*Math.PI)*0.6-t*t*0.7,w);if(i<12){const n=i*2;ix.push(n,n+1,n+2,n+1,n+3,n+2)}}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setIndex(ix);g.computeVertexNormals();return g
  },[])
+ if(nearestTrack(x,z).distance<7) return null
  return <group position={[x,0,z]} scale={s} rotation={[0,angle,-0.08]}>
   <mesh position={[0,2,0]} castShadow><cylinderGeometry args={[0.12,0.28,4,10]}/><meshStandardMaterial color="#b58a59" roughness={1}/></mesh>
   {Array.from({length:10},(_,i)=><mesh key={i} position={[0,0.35+i*0.35,0]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[0.26-i*0.012,0.018,4,10]}/><meshStandardMaterial color="#876746"/></mesh>)}
@@ -15,6 +17,7 @@ function Palm({x,z,s=1,angle=0}:{x:number;z:number;s?:number;angle?:number}){
  </group>
 }
 function Umbrella({x,z,color}:{x:number;z:number;color:string}){
+ if(nearestTrack(x,z).distance<7) return null
  return <group position={[x,0,z]}>
  <mesh position={[0,1,0]}><cylinderGeometry args={[0.035,0.035,2,8]}/><meshStandardMaterial color="#e9d1a1"/></mesh>
  <mesh position={[0,2,0]} castShadow><coneGeometry args={[1.3,0.5,12,1,true]}/><meshStandardMaterial color={color} side={THREE.DoubleSide}/></mesh>
@@ -54,7 +57,7 @@ function GardenBeds(){
 }
 export function TrackProps(){
  return <group>
- {Array.from({length:24},(_,i)=>{const a=i/24*Math.PI*2,r=28+(i%3)*2.4;return <Palm key={i} x={Math.sin(a)*r*1.15} z={Math.cos(a)*r} s={0.9+i%4*0.18} angle={i*2}/>})}
+ {Array.from({length:24},(_,i)=>{const a=i/24*Math.PI*2,r=40+(i%3)*2.4;return <Palm key={i} x={Math.sin(a)*r*1.15} z={Math.cos(a)*r} s={0.9+i%4*0.18} angle={i*2}/>})}
  {[[-8,-5],[6,6],[-6,8],[8,-7]].map(([x,z],i)=><Palm key={`inner-${i}`} x={x} z={z} s={0.85} angle={i}/>)}
  <mesh position={[0,0.07,0]} rotation={[-Math.PI/2,0,0]} scale={[1.4,1,1]}><circleGeometry args={[6.8,64]}/><meshStandardMaterial color="#e7d6aa"/></mesh>
  <mesh position={[0,0.09,0]} rotation={[-Math.PI/2,0,0]} scale={[1.4,1,1]}><circleGeometry args={[5.9,64]}/><meshStandardMaterial color="#38bdc5" roughness={0.18} metalness={0.25}/></mesh>
@@ -64,8 +67,8 @@ export function TrackProps(){
  {[0,1,2,3,4].map(i=><mesh key={`rock-${i}`} position={[Math.sin(i*1.9)*1.45,0.2,Math.cos(i*1.9)*1.12]} rotation={[i,0,i*0.6]} scale={[0.35,0.2,0.28]} castShadow><dodecahedronGeometry args={[1,1]}/><meshStandardMaterial color={i%2?'#c3b798':'#dacdaf'} roughness={1}/></mesh>)}
  <Palm x={0} z={0} s={1.2}/>
  <GardenBeds/>
- <Hotel x={-15} z={-31} rotation={0.2}/><Hotel x={-25} z={-26} rotation={0.5}/><Hotel x={1} z={-33}/>
- {Array.from({length:8},(_,i)=><Umbrella key={i} x={26+i%2*4} z={-15+i*4.5} color={i%2?'#f38167':'#2d9d9d'}/>)}
+ <Hotel x={-15} z={-43} rotation={0.2}/><Hotel x={-28} z={-38} rotation={0.5}/><Hotel x={1} z={-45}/>
+ {Array.from({length:8},(_,i)=><Umbrella key={i} x={41+i%2*4} z={-15+i*4.5} color={i%2?'#f38167':'#2d9d9d'}/>)}
  {Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <mesh key={`isle-${i}`} position={[Math.sin(a)*110,-1.5,Math.cos(a)*110]} scale={[1.3,1,1]}><coneGeometry args={[12+i%3*5,15+i%4*5,9]}/><meshStandardMaterial color={i%2?'#6d9c8a':'#74aaa1'} roughness={1}/></mesh>})}
  {Array.from({length:8},(_,i)=><group key={`cloud-${i}`} position={[Math.sin(i*2.4)*90,25+i%3*4,Math.cos(i*2.4)*90]} scale={[2,1,1]}>{[0,1,2].map(j=><mesh key={j} position={[j*2,Math.sin(j)*0.6,0]}><sphereGeometry args={[2.4,16,12]}/><meshStandardMaterial color="#fff6df" roughness={1}/></mesh>)}</group>)}
  </group>
