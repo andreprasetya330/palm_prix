@@ -170,13 +170,14 @@ export function mergeControls(
     fallback.steer !== 0 ||
     fallback.throttle !== 0 ||
     fallback.brake !== 0 ||
-    fallback.item
+    fallback.item || fallback.drift
   if (!kbActive) return primary
   return clampControl({
     steer: fallback.steer !== 0 ? fallback.steer : primary.steer,
     throttle: Math.max(primary.throttle, fallback.throttle),
     brake: Math.max(primary.brake, fallback.brake),
     item: primary.item || fallback.item,
+    drift: Boolean(primary.drift || fallback.drift),
   })
 }
 

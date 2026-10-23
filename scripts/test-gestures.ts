@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { GestureMapper } from '../src/vision/gestureMapper'
+import { GestureMapper, mergeControls } from '../src/vision/gestureMapper'
 import { DEFAULT_CALIBRATION } from '../src/vision/calibration'
 import type { HandSample } from '../src/vision/landmarks'
 
@@ -40,3 +40,9 @@ assert.ok(update(mapper, [hand(0.3, 0.3), hand(0.7, 0.6)]).steer > 0)
 mapper.reset()
 assert.ok(update(mapper, [hand(0.3, 0.6), hand(0.7, 0.3)]).steer < 0)
 console.log('Gesture regressions passed: two-fist throttle, height/depth independence, open-hand brake, tracking loss, steering.')
+
+const handDrive = { steer: 0.4, throttle: 1, brake: 0, item: false }
+const mixed = mergeControls(handDrive, { steer: 0, throttle: 0, brake: 0, item: false, drift: true })
+assert.equal(mixed.drift, true, 'Shift drift must survive keyboard/hand control merging')
+assert.equal(mixed.throttle, 1, 'Keyboard drift keeps fist acceleration')
+assert.equal(mixed.steer, 0.4, 'Keyboard drift keeps wheel steering')

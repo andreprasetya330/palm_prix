@@ -41,16 +41,7 @@ export function Track({ showcase = false }: { showcase?: boolean }) {
     <Ribbon inner={-5.1} outer={5.1} color="#d6bf84" y={0.035} />
     <Ribbon inner={-4.5} outer={4.5} color="#414b5b" y={0.04} textured />
     {[-1, 1].map(side => <Ribbon key={side} inner={side * 4.20} outer={side * 4.32} color="#fff2d7" y={0.055} />)}
-    {[-1, 1].map(side => Array.from({ length: 260 }, (_, i) => {
-      const s = getTrackSample(i / 260), p = s.point.clone().addScaledVector(s.normal, side * 4.7)
-      return <mesh key={`${side}-${i}`} position={[p.x, 0.075, p.z]} rotation={[0, s.yaw, 0]} receiveShadow><boxGeometry args={[0.5, 0.13, TRACK_LENGTH / 260 * 1.04]} /><meshStandardMaterial color={i % 4 < 2 ? '#f76c56' : '#fff4dd'} roughness={0.7} /></mesh>
-    }))}
-    {Array.from({ length: 68 }, (_, i) => { const s = getTrackSample(i / 68); return <mesh key={i} position={[s.point.x, 0.065, s.point.z]} rotation={[0, s.yaw, 0]}><boxGeometry args={[0.085, 0.015, 1.25]} /><meshStandardMaterial color="#c4cbd1" /></mesh> })}
-    {[-1, 1].map(side => <group key={side}>
-      <Ribbon inner={side * 6.2} outer={side * 6.45} color="#fff3d7" y={0.65} />
-      <Ribbon inner={side * 6.2} outer={side * 6.45} color="#137d89" y={0.26} />
-      {Array.from({ length: 90 }, (_, i) => { const s = getTrackSample(i / 90), p = s.point.clone().addScaledVector(s.normal, side * 6.3); return <mesh key={i} position={[p.x, 0.35, p.z]} castShadow><boxGeometry args={[0.12, 0.7, 0.12]} /><meshStandardMaterial color="#e5dfc9" /></mesh> })}
-    </group>)}
+    <TrackFurniture />
     <group position={start.point} rotation={[0, start.yaw, 0]}>
       {Array.from({ length: 27 }, (_, i) => <mesh key={i} position={[(i % 9 - 4), 0.075, (Math.floor(i / 9) - 1) * 0.4]}><boxGeometry args={[1, 0.015, 0.4]} /><meshStandardMaterial color={(i + Math.floor(i / 9)) % 2 ? '#fff7e5' : '#172b36'} /></mesh>)}
       {!showcase && <group>
@@ -62,6 +53,35 @@ export function Track({ showcase = false }: { showcase?: boolean }) {
     </group>
     <TrackProps />
   </group>
+}
+/** Hundreds of curb/rail pieces share four draw calls instead of individual meshes. */
+function TrackFurniture() {
+  const meshes = useMemo(() => {
+    const matrix = new THREE.Object3D()
+    const create = (geometry: THREE.BufferGeometry, count: number, place: (i: number) => {t: number; offset: number; y: number; color: string}) => {
+      const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshStandardMaterial({roughness:0.7}), count)
+      for (let i=0;i<count;i++) {
+        const spec=place(i), sample=getTrackSample(spec.t)
+        matrix.position.copy(sample.point).addScaledVector(sample.normal,spec.offset)
+        matrix.position.y=spec.y; matrix.rotation.set(0,sample.yaw,0);matrix.updateMatrix()
+        mesh.setMatrixAt(i,matrix.matrix);mesh.setColorAt(i,new THREE.Color(spec.color))
+      }
+      mesh.receiveShadow=true;mesh.computeBoundingSphere();return mesh
+    }
+    return [
+      create(new THREE.BoxGeometry(.5,.13,TRACK_LENGTH/260*1.04),520,i=>({t:(i%260)/260,offset:i<260?-4.7:4.7,y:.075,color:i%4<2?'#f76c56':'#fff4dd'})),
+      create(new THREE.BoxGeometry(.085,.015,1.25),68,i=>({t:i/68,offset:0,y:.065,color:'#c4cbd1'})),
+      create(new THREE.BoxGeometry(.12,.7,.12),180,i=>({t:(i%90)/90,offset:i<90?-6.3:6.3,y:.35,color:'#e5dfc9'})),
+    ]
+  },[])
+  useEffect(()=>()=>{meshes.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();m.dispose()})},[meshes])
+  return <>
+    {meshes.map((mesh,i)=><primitive key={i} object={mesh}/>)}
+    {[-1,1].map(side=><group key={side}>
+      <Ribbon inner={side*6.2} outer={side*6.45} color="#fff3d7" y={.65}/>
+      <Ribbon inner={side*6.2} outer={side*6.45} color="#137d89" y={.26}/>
+    </group>)}
+  </>
 }
 function Banner() {
   const texture = useMemo(() => { const c = document.createElement('canvas'); c.width = 1024; c.height = 128; const ctx = c.getContext('2d')!; ctx.fillStyle = '#123c4b'; ctx.fillRect(0, 0, 1024, 128); ctx.fillStyle = '#fff3d8'; ctx.textAlign = 'center'; ctx.font = '900 72px Arial'; ctx.fillText('PALM  PRIX', 512, 91); ctx.fillStyle = '#fcb457'; ctx.fillRect(20, 20, 12, 88); ctx.fillRect(992, 20, 12, 88); return new THREE.CanvasTexture(c) }, [])

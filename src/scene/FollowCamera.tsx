@@ -3,30 +3,34 @@ import { useRef } from 'react'
 import * as THREE from 'three'
 import type { KartState } from '../game/kartPhysics'
 
+/** Heading spring and velocity look-ahead keep turns readable without camera snapping. */
 export function FollowCamera({ kart, showcase = false }: { kart: KartState; showcase?: boolean }) {
   const { camera } = useThree()
-  const look = useRef(new THREE.Vector3(kart.x, 1, kart.z))
-  const desired = useRef(new THREE.Vector3())
-  const initialized = useRef(false)
-  useFrame(({ clock }, dt) => {
-    const f = Math.min(1, Math.abs(kart.speed) / 30)
-    if (showcase) {
-      const angle = -0.72 + Math.sin(clock.elapsedTime * 0.045) * 0.07
-      desired.current.set(kart.x + Math.sin(angle) * 13, 6.0, kart.z + Math.cos(angle) * 13)
-    } else {
-      const back = 7 + f * 1.2
-      desired.current.set(kart.x - Math.sin(kart.yaw) * back, 3.8 + f * 0.65, kart.z - Math.cos(kart.yaw) * back)
+  const rig = useRef({heading:kart.yaw, initialized:false, mode:showcase, look:new THREE.Vector3(kart.x,1,kart.z), desired:new THREE.Vector3(), target:new THREE.Vector3()})
+  useFrame(({clock}, delta)=>{
+    const dt=Math.min(delta,.05), r=rig.current
+    const speed=Math.abs(kart.speed), f=Math.min(1,speed/36)
+    const angleError=Math.atan2(Math.sin(kart.yaw-r.heading),Math.cos(kart.yaw-r.heading))
+    r.heading+=angleError*(1-Math.exp(-9*dt))
+    if(showcase){
+      const angle=-.72+Math.sin(clock.elapsedTime*.045)*.07
+      r.desired.set(kart.x+Math.sin(angle)*12,5.2,kart.z+Math.cos(angle)*12)
+      r.target.set(kart.x-3.5,1.3,kart.z-3)
+    }else{
+      const back=6.3+f*1.2
+      r.desired.set(kart.x-Math.sin(r.heading)*back,3.1+f*.6,kart.z-Math.cos(r.heading)*back)
+      const lookAhead=3.2+f*3.5
+      r.target.set(kart.x+Math.sin(kart.yaw)*lookAhead+(kart.vx??0)*.045,1,kart.z+Math.cos(kart.yaw)*lookAhead+(kart.vz??0)*.045)
     }
-    if (!initialized.current) { camera.position.copy(desired.current); initialized.current = true }
-    camera.position.lerp(desired.current, 1 - Math.exp(-6 * dt))
-    look.current.lerp(new THREE.Vector3(kart.x + (showcase ? -3.5 : Math.sin(kart.yaw) * 3), showcase ? 1.5 : 0.9, kart.z + (showcase ? -3 : Math.cos(kart.yaw) * 3)), 1 - Math.exp(-9 * dt))
-    camera.lookAt(look.current)
-    if (camera instanceof THREE.PerspectiveCamera) {
-      const targetFov = showcase ? 45 : 52 + f * 7 + (kart.boostTimer > 0 ? 5 : 0)
-      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.exp(-4 * dt))
-      camera.updateProjectionMatrix()
+    if(!r.initialized || r.mode!==showcase || camera.position.distanceToSquared(r.desired)>2500){
+      camera.position.copy(r.desired);r.look.copy(r.target);r.heading=kart.yaw;r.initialized=true;r.mode=showcase
+    }
+    camera.position.lerp(r.desired,1-Math.exp(-12*dt))
+    r.look.lerp(r.target,1-Math.exp(-13*dt));camera.lookAt(r.look)
+    if(camera instanceof THREE.PerspectiveCamera){
+      const fov=showcase?45:54+f*9+(kart.boostTimer>0?5:0)
+      camera.fov=THREE.MathUtils.damp(camera.fov,fov,5,dt);camera.updateProjectionMatrix()
     }
   })
   return null
 }
-

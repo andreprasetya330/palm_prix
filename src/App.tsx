@@ -16,6 +16,7 @@ import { loadCalibration, type Calibration } from './vision/calibration'
 import { GestureMapper, mergeControls } from './vision/gestureMapper'
 import { useHandTracker } from './vision/useHandTracker'
 import { useKeyboardControls } from './vision/useKeyboardControls'
+import { loadDriverStyle, saveDriverStyle, type DriverStyle } from './avatar/driverStyle'
 import { useRaceAudio } from './game/useRaceAudio'
 import './App.css'
 
@@ -39,6 +40,8 @@ export default function App() {
     brake: 0,
     item: false,
   })
+  const [driverStyle, setDriverStyle] = useState<DriverStyle>(loadDriverStyle)
+  const updateDriverStyle = (style: DriverStyle) => { setDriverStyle(style); saveDriverStyle(style) }
   const audio = useRaceAudio(kart, race)
   const [showPip, setShowPip] = useState(true)
 
@@ -135,7 +138,7 @@ export default function App() {
       <main className={`stage ${inRace ? 'racing' : ''}`}>
         {(
           <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
-            <RaceScene kart={kart} driverTextureUrl={avatarUrl} race={race} showcase={race.phase === 'menu'} />
+            <RaceScene driverStyle={driverStyle} kart={kart} driverTextureUrl={avatarUrl} race={race} showcase={race.phase === 'menu'} />
             {inRace && (
               <Hud
                 race={race}
@@ -166,12 +169,12 @@ export default function App() {
             <div className="eyebrow"><span /> SEASIDE GRAND PRIX / VOL. 01</div>
             <h1>GOOD TIMES.<br /><em>FULL THROTTLE.</em></h1>
             <p className="menu-description">An island escape with a competitive streak. Take the wheel with your hands and chase the perfect lap.</p>
-            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Sunset Palms</strong><span>Coastal circuit · 3 laps · 6 racers</span></div><span className="difficulty">150<small>CC</small></span></div>
+            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Sunset Palms</strong><span>Coastal S-curves · 3 laps · 6 racers</span></div><span className="difficulty">150<small>CC</small></span></div>
             <div className="row menu-actions">
               <button type="button" className="primary" onClick={startCountdown}>LET’S RACE <span>→</span></button>
               <button type="button" onClick={() => setRace(r => ({ ...r, phase: 'calibrate' }))}>Set up hand controls</button>
             </div>
-            <div className="menu-secondary"><button type="button" onClick={() => setRace(r => ({ ...r, phase: 'avatar' }))}>Customize driver ↗</button><span>WASD / arrows to drive · Space to boost</span></div>
+            <div className="menu-secondary"><button type="button" onClick={() => setRace(r => ({ ...r, phase: 'avatar' }))}>Customize driver ↗</button><span>Two fists to accelerate · Open palms to brake</span></div>
             <p className="privacy-note">Hand tracking runs on your device. Your camera feed stays yours.</p>
             {status === 'denied' && (
               <p className="cam-error">
@@ -185,6 +188,9 @@ export default function App() {
           <AvatarStudio
             videoRef={videoRef}
             currentAvatar={avatarUrl}
+            currentStyle={driverStyle}
+            onStyleChange={updateDriverStyle}
+            onEnableCamera={retry}
             onAvatar={setAvatarUrl}
             onBack={goMenu}
             onDone={() => setRace((r) => ({ ...r, phase: 'calibrate' }))}

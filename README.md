@@ -48,11 +48,11 @@ Prompt asks for a cartoon/anime driver portrait. Override with `FAL_STYLIZE_MODE
 **Hands (preferred)**
 
 - Two fists = steering wheel; twist left/right (wheel angle vs calibrated neutral) — **not** palm-X.
-- Fists in chest–shoulder “drive zone” → accelerate; drop / pull back → brake.
+- Two closed fists anywhere in view accelerate; open palms brake. One fist or tracking loss releases throttle.
 - Thumb flick → boost item (edge-triggered).
-- One fist → yaw fallback. Lost tracking → steer decays (~200ms).
+- One fist may steer while coasting. Lost tracking releases throttle and steering decays.
 
-**Keyboard fallback:** WASD / arrow keys · Space = boost.
+**Keyboard fallback:** WASD / arrow keys · Space = boost · Hold Shift while turning to drift; release for a charged mini turbo.
 
 Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 
@@ -94,8 +94,18 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 
 ## Current quality and validation
 
-The island scene, responsive menu, speed HUD, minimap, camera setup, and race loop have been rebuilt. This is a playable prototype, not a claim of AAA parity. Rivals follow scripted paths; kart-to-kart collision, drift mechanics, weapon items, multiple courses and multiplayer remain unimplemented. Camera startup has explicit deadlines and retry; continuous hand-control feel still needs human testing on real hardware.
+The island scene, responsive menu, speed HUD, minimap, camera setup, and race loop have been rebuilt. This is a playable prototype, not a claim of AAA parity. Rivals follow scripted paths; kart-to-kart collision, weapon items, multiple courses and multiplayer remain unimplemented. Camera startup has explicit deadlines and retry; continuous hand-control feel still needs human testing on real hardware.
 
 Run `npx tsx scripts/test-game.ts` for gameplay regression checks, `npm run build` for production verification, and `npm run lint` for static diagnostics. Existing imperative Three.js animation patterns produce React compiler lint warnings. The production bundle still exceeds the default size warning threshold.
 
 Camera tracking downloads its runtime/model from jsDelivr and Google on startup; an internet connection is required. Keyboard racing remains available without camera permission. Sound starts only after clicking Race and can be muted in the header.
+
+## Handling update
+
+Physics runs at a fixed 120 Hz and keeps pending boost input across render frames. Launch reaches 90 km/h in about 1.42 seconds on the start straight; normal top speed is 122 km/h. Steering uses a fast response filter, and a charged Shift powerslide releases a tiered mini turbo. The game tests compare trajectories at 30, 60, 120 and 144 FPS.
+
+The irregular coastal circuit has a shared sampled centerline for physics, rivals and the minimap. Curbs, center dashes and fence posts are instanced to reduce draw calls. Drift sparks, turbo dust, animated water and a damped chase camera provide motion feedback.
+
+Driver Garage supports camera capture or photo import, a live 3D portrait preview, helmet and suit colors, an explicitly local portrait effect, and consent-based cloud AI. Set FAL_KEY in the server .env to enable actual AI generation. The default GLTF kart now renders the personalized driver.
+
+Reference reviewed: OpenWii games/mario-kart/logic.js and input.js (https://github.com/pattssun/OpenWii). Handling was implemented independently. Nintendo runtime assets from its pack are not included.
