@@ -1,6 +1,6 @@
 # Palm Prix
 
-Browser MVP scaffold: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
+Three.js arcade racing prototype: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
 
 Stack: Vite + React + TypeScript · MediaPipe Hands (`@mediapipe/tasks-vision`) · Three.js (`@react-three/fiber` + `@react-three/drei`) · tiny Express stylize proxy (fal.ai).
 
@@ -48,11 +48,11 @@ Prompt asks for a cartoon/anime driver portrait. Override with `FAL_STYLIZE_MODE
 **Hands (preferred)**
 
 - Two fists = steering wheel; twist left/right (wheel angle vs calibrated neutral) — **not** palm-X.
-- Fists in chest–shoulder “drive zone” → accelerate; drop / pull back → brake.
+- Two closed fists anywhere in view accelerate; open palms brake. One fist or tracking loss releases throttle.
 - Thumb flick → boost item (edge-triggered).
-- One fist → yaw fallback. Lost tracking → steer decays (~200ms).
+- One fist may steer while coasting. Lost tracking releases throttle and steering decays.
 
-**Keyboard fallback:** WASD / arrow keys · Space = boost.
+**Keyboard fallback:** WASD / arrow keys · Space = boost · Hold Shift while turning to drift; release for a charged mini turbo.
 
 Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 
@@ -81,9 +81,9 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 | Webcam + MediaPipe Hands (2 hands) + skeleton / wheel overlay | **Real** |
 | Wheel-angle `ControlState` + keyboard merge | **Real** |
 | Three.js oval track, kart, chase camera, arcade move | **Real** (Mario Kart–style bright low-poly art) |
-| Countdown → drive → finish (checkpoint laps) | **Stub / minimal** (2 laps, no AI opponent) |
+| Countdown → drive → finish (checkpoint laps) | **Implemented**: three ordered laps, five scripted rivals, ranking and minimap |
 | Avatar capture → `POST /api/stylize` → driver texture | **Real path**; placeholder SVG if no `FAL_KEY`; local posterize on error |
-| Items / SFX / dummy AI / polish | **Stubbed / deferred** |
+| Boost / audio / rivals | Cooldown boost, synthesized engine and race cues, five animated scripted rivals |
 | Online multiplayer | **Not in MVP** (`ControlState` kept clean for Phase 2) |
 
 ## API
@@ -91,3 +91,31 @@ Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
 `POST /api/stylize` — multipart field `image` → `{ ok, imageUrl, placeholder? }`
 
 `GET /api/health` — `{ ok, falConfigured, model }`
+
+## Current quality and validation
+
+The island scene, responsive menu, speed HUD, minimap, camera setup, and race loop have been rebuilt. This is a playable prototype, not a claim of AAA parity. Rivals follow scripted paths; kart-to-kart collision, weapon items, multiple courses and multiplayer remain unimplemented. Camera startup has explicit deadlines and retry; continuous hand-control feel still needs human testing on real hardware.
+
+Run `npx tsx scripts/test-game.ts` for gameplay regression checks, `npm run build` for production verification, and `npm run lint` for static diagnostics. Existing imperative Three.js animation patterns produce React compiler lint warnings. The production bundle still exceeds the default size warning threshold.
+
+Camera tracking downloads its runtime/model from jsDelivr and Google on startup; an internet connection is required. Keyboard racing remains available without camera permission. Sound starts only after clicking Race and can be muted in the header.
+
+## Handling update
+
+Physics runs at a fixed 120 Hz and keeps pending boost input across render frames. Launch reaches 90 km/h in about 1.42 seconds on the start straight; normal top speed is 122 km/h. Steering uses a fast response filter, and a charged Shift powerslide releases a tiered mini turbo. The game tests compare trajectories at 30, 60, 120 and 144 FPS.
+
+The irregular coastal circuit has a shared sampled centerline for physics, rivals and the minimap. Curbs, center dashes and fence posts are instanced to reduce draw calls. Drift sparks, turbo dust, animated water and a damped chase camera provide motion feedback.
+
+Driver Garage supports camera capture or photo import, a live 3D portrait preview, helmet and suit colors, an explicitly local portrait effect, and consent-based cloud AI. Set FAL_KEY in the server .env to enable actual AI generation. The default GLTF kart now renders the personalized driver.
+
+Reference reviewed: OpenWii games/mario-kart/logic.js and input.js (https://github.com/pattssun/OpenWii). Handling was implemented independently. Nintendo runtime assets from its pack are not included.
+
+## Stadium performance rebuild
+
+The race now runs simulation and visual updates inside one Three.js render loop, using stable mutable frame data. React receives HUD snapshots at 10 Hz rather than rebuilding the world every frame. Fixed-step motion is interpolated for high-refresh displays, ordinary slow frames retain simulation time, and tab suspension pauses safely. Hand detection runs on a background CPU worker with at most one 480px frame in flight at 20 Hz; the default keyboard mode does not start the camera or detector.
+
+The active art is a motorsport stadium with local CC0 Kenney kart/driver models, scanned Poly Haven asphalt and optimized barriers, merged seating/garages and original signs. The old tropical world and original Palm Dart do not mount during racing. Avatar customization is deferred; it loads separately only if explicitly opened.
+
+Use the **Credits** button or see [ASSET-CREDITS.md](public/assets/ASSET-CREDITS.md) for authors, original source URLs and reuse licenses. All external assets loaded by the active race are CC0, including commercial reuse and redistribution. The source Mario Kart pack was evaluated as a reference and is not included.
+
+Additional regression checks: `npm test` covers simulation/UI decoupling, interpolation, suspension/reset and external glTF resource paths. Browser development diagnostics are available as data attributes on the page root (`data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, `data-race-triangles`); these do not add a user-facing debug HUD.

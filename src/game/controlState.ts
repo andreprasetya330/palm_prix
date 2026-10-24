@@ -11,6 +11,8 @@ export type ControlState = {
   brake: number
   /** edge-triggered item use this frame */
   item: boolean
+  /** Hold while steering to powerslide; release a charged drift for a mini-turbo. */
+  drift?: boolean
 }
 
 export const ZERO_CONTROL: ControlState = {
@@ -26,5 +28,7 @@ export function clampControl(c: ControlState): ControlState {
     throttle: Math.max(0, Math.min(1, c.throttle)),
     brake: Math.max(0, Math.min(1, c.brake)),
     item: c.item,
+    drift: c.drift,
   }
 }
+

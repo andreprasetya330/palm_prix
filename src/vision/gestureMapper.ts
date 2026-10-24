@@ -30,9 +30,6 @@ function mapAngleToSteer(
   return Math.max(-1, Math.min(1, sign * (usable / span)))
 }
 
-function inDriveZone(h: HandSample, cal: Calibration): boolean {
-  return h.height >= cal.driveZoneTop && h.height <= cal.driveZoneBottom
-}
 
 export type MapperDebug = {
   mode: 'two-fist' | 'one-hand' | 'none'
@@ -51,8 +48,6 @@ export class GestureMapper {
   private smoothedThrottle = 0
   private smoothedBrake = 0
   private lossMs = 0
-  private lastDepth = 0
-  private depthPrimed = false
   private itemCooldownMs = 0
   private prevThumbUp = false
   debug: MapperDebug = {
@@ -68,7 +63,6 @@ export class GestureMapper {
     this.smoothedThrottle = 0
     this.smoothedBrake = 0
     this.lossMs = 0
-    this.depthPrimed = false
     this.itemCooldownMs = 0
     this.prevThumbUp = false
   }
@@ -78,6 +72,7 @@ export class GestureMapper {
     cal: Calibration,
     dtMs: number,
   ): ControlState {
+    dtMs = Math.max(0, Math.min(100, Number.isFinite(dtMs) ? dtMs : 0))
     this.itemCooldownMs = Math.max(0, this.itemCooldownMs - dtMs)
     const fists = hands.filter((h) => h.isFist)
     this.debug.handsVisible = hands.length
@@ -101,23 +96,8 @@ export class GestureMapper {
       this.debug.wheelAngle = wheelAngle
       steerTarget = mapAngleToSteer(wheelAngle, cal.neutralAngle, cal)
 
-      const inZone = fists.every((h) => inDriveZone(h, cal))
-      const avgDepth = fists.reduce((s, h) => s + h.depth, 0) / fists.length
-      if (!this.depthPrimed) {
-        this.lastDepth = avgDepth
-        this.depthPrimed = true
-      }
-      const depthPull = avgDepth - this.lastDepth
-      this.lastDepth = ema(this.lastDepth, avgDepth, 0.15)
-
-      const belowZone = fists.every((h) => h.height > cal.driveZoneBottom)
-      if (belowZone || depthPull > cal.brakeDepthDelta) {
-        brakeTarget = 1
-        throttleTarget = 0
-      } else if (inZone) {
-        throttleTarget = 1
-      }
-
+      // A closed two-hand grip is the accelerator, at any height or depth.
+      throttleTarget = 1
       item = this.detectItem(hands)
     } else if (fists.length === 1 || hands.length === 1) {
       this.lossMs = 0
@@ -126,8 +106,6 @@ export class GestureMapper {
       this.debug.wheelAngle = h.yaw
       if (h.isFist) {
         steerTarget = mapAngleToSteer(h.yaw, cal.oneHandNeutral, cal)
-        if (inDriveZone(h, cal)) throttleTarget = 0.85
-        if (h.height > cal.driveZoneBottom) brakeTarget = 0.8
       } else {
         // open hand: soft decay (handled below via lower target)
         steerTarget = this.smoothedSteer * 0.5
@@ -137,7 +115,7 @@ export class GestureMapper {
       this.debug.mode = 'none'
       this.debug.wheelAngle = null
       this.lossMs += dtMs
-      this.depthPrimed = false
+      this.prevThumbUp = false
       // decay toward 0 over ~200ms
       const decay = Math.min(1, this.lossMs / 200)
       steerTarget = this.smoothedSteer * (1 - decay)
@@ -145,11 +123,13 @@ export class GestureMapper {
       brakeTarget = 0
     }
 
+    // Opening either visible hand brakes; losing tracking only coasts.
+    brakeTarget = hands.some((h) => !h.isFist) ? 1 : 0
     this.debug.steerRaw = steerTarget
     const alpha = 1 - Math.exp(-dtMs / 60) // ~EMA τ≈60ms
     this.smoothedSteer = ema(this.smoothedSteer, steerTarget, alpha)
-    this.smoothedThrottle = ema(this.smoothedThrottle, throttleTarget, alpha)
-    this.smoothedBrake = ema(this.smoothedBrake, brakeTarget, alpha)
+    this.smoothedThrottle = throttleTarget > 0 ? ema(this.smoothedThrottle, throttleTarget, alpha) : 0
+    this.smoothedBrake = brakeTarget > 0 ? ema(this.smoothedBrake, brakeTarget, alpha) : 0
 
     return clampControl({
       steer: this.smoothedSteer,
@@ -160,7 +140,7 @@ export class GestureMapper {
   }
 
   private detectItem(hands: HandSample[]): boolean {
-    if (this.itemCooldownMs > 0) return false
+
     // crude thumbs-up: thumb tip above wrist and away from palm center
     let thumbUp = false
     for (const h of hands) {
@@ -173,7 +153,7 @@ export class GestureMapper {
     }
     const edge = thumbUp && !this.prevThumbUp
     this.prevThumbUp = thumbUp
-    if (edge) {
+    if (edge && this.itemCooldownMs <= 0) {
       this.itemCooldownMs = 400
       return true
     }
@@ -190,14 +170,19 @@ export function mergeControls(
     fallback.steer !== 0 ||
     fallback.throttle !== 0 ||
     fallback.brake !== 0 ||
-    fallback.item
+    fallback.item || fallback.drift
   if (!kbActive) return primary
   return clampControl({
     steer: fallback.steer !== 0 ? fallback.steer : primary.steer,
     throttle: Math.max(primary.throttle, fallback.throttle),
     brake: Math.max(primary.brake, fallback.brake),
     item: primary.item || fallback.item,
+    drift: Boolean(primary.drift || fallback.drift),
   })
 }
 
 export { ZERO_CONTROL }
+
+
+
+
