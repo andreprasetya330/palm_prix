@@ -1,3 +1,4 @@
+import { FrameCadence } from './frameCadence'
 import { useCallback, useEffect, useState } from 'react'
 import type { HandSample } from './landmarks'
 import type { TrackingRequest, TrackingResponse } from './handTracking.worker'
@@ -22,7 +23,9 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     let ready = false
     let inFlight = false
     let lastVideoTime = -1
-    let lastSent = 0
+    const cadence = new FrameCadence()
+    let staleCleared = true
+    let lastSampleTime = 0
     let frameInterval = 1000 / 30
     let lastResult = 0
     const video = videoRef.current
@@ -85,12 +88,16 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     }
     const loop = (now: number) => {
       if (cancelled) return
-      if (!document.hidden && video && ready && !inFlight && video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime && now - lastSent >= frameInterval) {
+      if (!document.hidden && video && ready && !inFlight && video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime && cadence.consume(now, frameInterval)) {
         lastVideoTime = video.currentTime
-        lastSent = now
+
         void sendFrame(video, now)
       }
-      if (now - lastResult > 250) setHands((current) => current.length ? [] : current)
+      if (!staleCleared && now - lastSampleTime > 250) {
+        staleCleared = true
+        setHands([])
+        setTrackingLatencyMs(null)
+      }
       raf = requestAnimationFrame(loop)
     }
     async function start() {
@@ -131,6 +138,8 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
             frameInterval = data.detectionMs < 40 ? 1000 / 30 : 50
             const latency = lastResult - data.timestamp
             setTrackingLatencyMs(latency)
+            lastSampleTime = data.timestamp
+            staleCleared = document.hidden || latency > 250 || data.hands.length === 0
             // Never apply a stale frame or revive gestures while the tab is hidden.
             setHands(!document.hidden && latency <= 250 ? data.hands.map((hand) => ({ ...hand, trackingLatencyMs: latency, detectionMs: data.detectionMs })) : [])
           }
@@ -144,6 +153,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
   }, [videoRef, attempt, enabled])
   return { status, error, hands, retry, trackingLatencyMs }
 }
+
 
 
 

@@ -59,7 +59,14 @@ function integrate(kart: KartState, control: ControlState, dt: number): KartStat
   if (drifting) driftCharge = Math.min(3, driftCharge + dt * (0.65 + Math.abs(steering) * 0.6))
   const maxSpeed = offroad ? 14 : boostTimer > 0 ? KART_BOOST_SPEED : KART_TOP_SPEED
   const throttle = clamp(control.throttle, 0, 1), brake = clamp(control.brake, 0, 1)
-  if (brake > 0.1) longitudinal -= Math.sign(longitudinal) * Math.min(Math.abs(longitudinal), brake * 40 * dt)
+  const reverse = clamp(control.reverse ?? 0, 0, 1)
+  // An open palm first stops forward travel, then gently backs out of trouble.
+  if (reverse > 0.1) {
+    boostTimer = 0
+    if (longitudinal > 0) longitudinal = Math.max(0, longitudinal - 40 * dt)
+    else longitudinal = Math.max(-8 * reverse, longitudinal - 12 * reverse * dt)
+  }
+  else if (brake > 0.1) longitudinal -= Math.sign(longitudinal) * Math.min(Math.abs(longitudinal), brake * 40 * dt)
   else if (throttle > 0.05 && longitudinal < maxSpeed) longitudinal = Math.min(maxSpeed, longitudinal + (boostTimer > 0 ? 34 : 19.5) * throttle * (1 - 0.25 * clamp(longitudinal / maxSpeed, 0, 1)) * dt)
   else if (throttle <= 0.05) longitudinal -= Math.sign(longitudinal) * Math.min(Math.abs(longitudinal), 4 * dt)
   if (longitudinal > maxSpeed) longitudinal = Math.max(maxSpeed, longitudinal - (offroad ? 32 : 15) * dt)

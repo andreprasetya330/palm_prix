@@ -106,6 +106,18 @@ test('brake holds a stopped kart without reversing', () => {
   for (let i = 0; i < 600; i++) kart = stepKart(kart, { ...idle, brake: 1 }, 1 / 60)
   assert(Math.abs(kart.speed) < 0.001)
 })
+test('open palm brakes before reversing, with a capped speed and release coast', () => {
+  let kart = { ...DEFAULT_KART, speed: 12 }
+  const reverse = { ...idle, brake: 1, reverse: 1 }
+  kart = stepKart(kart, reverse, 0.05)
+  assert(kart.speed > 0 && kart.speed < 12, 'reverse must first brake forward motion')
+  for (let i = 0; i < 90; i++) kart = stepKart(kart, reverse, 1 / 120)
+  assert(kart.speed < -3 && kart.speed >= -8.01)
+  const released = stepKart(kart, idle, 0.05)
+  assert(released.speed > kart.speed && released.speed < 0, 'loss or release coasts toward stop')
+  const boosted = stepKart({ ...DEFAULT_KART, boostTimer: 1 }, reverse, 0.05)
+  assert.equal(boosted.boostTimer, 0)
+})
 test('launch reaches 90 km/h in under two seconds on the starting straight', () => {
   let kart = { ...DEFAULT_KART }, seconds = 0
   while (kart.speed < 25 && seconds < 2) { kart = stepKart(kart, drive, 1 / 120); seconds += 1 / 120 }

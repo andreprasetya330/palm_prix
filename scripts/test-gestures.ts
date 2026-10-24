@@ -116,3 +116,8 @@ assert.equal(clampControl({...reversing,reverse:Infinity}).reverse,0)
 assert.equal(clampControl({...reversing,reverse:2}).reverse,1)
 console.log('Quarter-turn fists, partial occlusion, 30Hz confirmation, palm reverse and keyboard override tests passed.')
 
+
+const reacquired = new GestureMapper()
+update(reacquired,[{...hand(0.2,0.4),trackingId:1},{...hand(0.8,0.4),trackingId:2}])
+update(reacquired,[{...hand(0.2,0.4),trackingId:2},{...hand(0.8,0.7),trackingId:3}])
+assert.ok(reacquired.debug.wheelAngle! > 0.1, "A new pair must not reuse the surviving hand for both wheel grips")

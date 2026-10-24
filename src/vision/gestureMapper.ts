@@ -91,8 +91,13 @@ export class GestureMapper {
       // left = smaller mirrored x, right = larger x
       const sorted = [...fists].sort((a, b) => a.grip.x - b.grip.x)
       if (!this.wheelIds && sorted.every((h) => h.trackingId !== undefined)) this.wheelIds = [sorted[0].trackingId!, sorted[sorted.length-1].trackingId!]
-      const left = (this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![0]) : undefined) ?? sorted[0]
-      const right = (this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![1]) : undefined) ?? sorted[sorted.length - 1]
+      let left = this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![0]) : undefined
+      let right = this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![1]) : undefined
+      // Reacquired IDs must form a fresh pair; never use the surviving hand twice.
+      if (!left || !right) {
+        left = sorted[0]; right = sorted[sorted.length - 1]
+        this.wheelIds = left.trackingId !== undefined && right.trackingId !== undefined ? [left.trackingId, right.trackingId] : null
+      }
       const angle = wheelAngle(left, right)
       this.debug.wheelAngle = angle
       steerTarget = mapAngleToSteer(angle, cal.neutralAngle, cal)
