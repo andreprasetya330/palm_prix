@@ -3,7 +3,7 @@ import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
 import { sampleHand, type HandSample } from './landmarks'
 
 export type TrackingRequest = { type: 'init' } | { type: 'frame'; bitmap: ImageBitmap; timestamp: number }
-export type TrackingResponse = { type: 'ready' } | { type: 'result'; hands: HandSample[]; timestamp: number } | { type: 'error'; message: string }
+export type TrackingResponse = { type: 'ready' } | { type: 'result'; hands: HandSample[]; timestamp: number; detectionMs: number } | { type: 'error'; message: string }
 const scope = self as unknown as {
   import?: (url: string) => Promise<void>
   dbg?: (message:string) => void
@@ -49,13 +49,15 @@ scope.onmessage = async ({ data }) => {
   }
   try {
     if (!detector) throw new Error('Hand detector is not ready')
+    const started = performance.now()
     const result = detector.detectForVideo(data.bitmap, data.timestamp)
-    scope.postMessage({ type: 'result', timestamp: data.timestamp, hands: stabilizer.update((result.landmarks ?? []).map((points, i) => sampleHand(points, true, data.bitmap.width / data.bitmap.height, result.worldLandmarks?.[i])), data.timestamp) })
+    scope.postMessage({ type: 'result', timestamp: data.timestamp, detectionMs: performance.now() - started, hands: stabilizer.update((result.landmarks ?? []).map((points, i) => sampleHand(points, true, data.bitmap.width / data.bitmap.height, result.worldLandmarks?.[i])), data.timestamp) })
   } catch (error) {
     scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) })
   } finally {
     data.bitmap.close()
   }
 }
+
 
 

@@ -9,6 +9,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
   const retry = useCallback(() => setAttempt((value) => value + 1), [])
   const [status, setStatus] = useState<TrackerStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [trackingLatencyMs, setTrackingLatencyMs] = useState<number | null>(null)
   const [hands, setHands] = useState<HandSample[]>([])
   useEffect(() => {
     let cancelled = false
@@ -22,7 +23,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     let inFlight = false
     let lastVideoTime = -1
     let lastSent = 0
-    let frameInterval = 50
+    let frameInterval = 1000 / 30
     let lastResult = 0
     const video = videoRef.current
     const release = () => {
@@ -39,7 +40,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       if (cancelled) return
       cancelled = true
       release()
-      setHands([])
+      setHands([]); setTrackingLatencyMs(null)
       const name = e instanceof Error ? e.name : ''
       const denied = name === 'NotAllowedError' || name === 'SecurityError'
       setStatus(denied ? 'denied' : 'error')
@@ -63,7 +64,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       window.clearTimeout(startupTimer)
       startupTimer = window.setTimeout(() => fail(new DOMException('Camera setup timed out', 'TimeoutError')), ms)
     }
-    const visibility = () => { if (document.hidden && !cancelled) setHands([]) }
+    const visibility = () => { if (document.hidden && !cancelled) { setHands([]); setTrackingLatencyMs(null) } }
     document.addEventListener('visibilitychange', visibility)
     async function sendFrame(v: HTMLVideoElement, timestamp: number) {
       inFlight = true
@@ -89,17 +90,17 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
         lastSent = now
         void sendFrame(video, now)
       }
-      if (now - lastResult > 500) setHands((current) => current.length ? [] : current)
+      if (now - lastResult > 250) setHands((current) => current.length ? [] : current)
       raf = requestAnimationFrame(loop)
     }
     async function start() {
       setStatus('loading')
       setError(null)
-      setHands([])
+      setHands([]); setTrackingLatencyMs(null)
       armTimeout(20000)
       try {
         if (!navigator.mediaDevices?.getUserMedia || typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined') throw new Error('Camera tracking requires a modern secure browser')
-        const acquired = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user', frameRate: { ideal: 24, max: 30 } }, audio: false })
+        const acquired = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user', frameRate: { ideal: 30, max: 30 } }, audio: false })
         if (cancelled) { acquired.getTracks().forEach((track) => track.stop()); return }
         stream = acquired
         if (!video) throw new Error('Video element missing')
@@ -127,18 +128,22 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
             inFlight = false
             window.clearTimeout(frameTimer)
             lastResult = performance.now()
-            frameInterval = lastResult - data.timestamp < 25 ? 1000 / 30 : 50
+            frameInterval = data.detectionMs < 40 ? 1000 / 30 : 50
+            const latency = lastResult - data.timestamp
+            setTrackingLatencyMs(latency)
             // Never apply a stale frame or revive gestures while the tab is hidden.
-            setHands(!document.hidden && lastResult - data.timestamp <= 500 ? data.hands : [])
+            setHands(!document.hidden && latency <= 250 ? data.hands.map((hand) => ({ ...hand, trackingLatencyMs: latency, detectionMs: data.detectionMs })) : [])
           }
         }
         worker.postMessage({ type: 'init' } satisfies TrackingRequest)
       } catch (e) { fail(e) }
     }
     if (enabled) void start()
-    else { setStatus('idle'); setError(null); setHands([]) }
+    else { setStatus('idle'); setError(null); setHands([]); setTrackingLatencyMs(null) }
     return () => { cancelled = true; release(); document.removeEventListener('visibilitychange', visibility) }
   }, [videoRef, attempt, enabled])
-  return { status, error, hands, retry }
+  return { status, error, hands, retry, trackingLatencyMs }
 }
+
+
 

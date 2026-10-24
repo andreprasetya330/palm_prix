@@ -112,7 +112,7 @@ export class GestureMapper {
     // Opening either visible hand brakes; losing tracking only coasts.
     brakeTarget = hands.some((h) => h.pose ? h.pose === 'open' : !h.isFist) ? 1 : 0
     this.debug.steerRaw = steerTarget
-    const alpha = 1 - Math.exp(-dtMs / 60) // ~EMA τ≈60ms
+    const alpha = 1 - Math.exp(-dtMs / 35) // Responsive steering, with short jitter filtering.
     this.smoothedSteer = ema(this.smoothedSteer, steerTarget, alpha)
     this.smoothedThrottle = throttleTarget > 0 ? ema(this.smoothedThrottle, throttleTarget, alpha) : 0
     this.smoothedBrake = brakeTarget > 0 ? ema(this.smoothedBrake, brakeTarget, alpha) : 0
@@ -121,6 +121,7 @@ export class GestureMapper {
       steer: this.smoothedSteer,
       throttle: this.smoothedThrottle,
       brake: this.smoothedBrake,
+      reverse: brakeTarget,
       item,
     })
   }
@@ -155,19 +156,21 @@ export function mergeControls(
   const kbActive =
     fallback.steer !== 0 ||
     fallback.throttle !== 0 ||
-    fallback.brake !== 0 ||
+    fallback.brake !== 0 || (fallback.reverse ?? 0) !== 0 ||
     fallback.item || fallback.drift
   if (!kbActive) return primary
   return clampControl({
     steer: fallback.steer !== 0 ? fallback.steer : primary.steer,
-    throttle: Math.max(primary.throttle, fallback.throttle),
-    brake: Math.max(primary.brake, fallback.brake),
+    throttle: fallback.throttle > 0 || fallback.brake > 0 ? fallback.throttle : primary.throttle,
+    brake: fallback.throttle > 0 || fallback.brake > 0 ? fallback.brake : primary.brake,
+    reverse: fallback.throttle > 0 || fallback.brake > 0 ? (fallback.reverse ?? 0) : Math.max(primary.reverse ?? 0, fallback.reverse ?? 0),
     item: primary.item || fallback.item,
     drift: Boolean(primary.drift || fallback.drift),
   })
 }
 
 export { ZERO_CONTROL }
+
 
 
 

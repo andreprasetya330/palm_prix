@@ -58,7 +58,7 @@ export function CalibrateScreen({
       <span style={{ color: "#78f7d5", fontSize: 11, letterSpacing: "0.2em", fontWeight: 800 }}>DRIVER SETUP</span><h2>Find your racing line.</h2>
       <p>
         Steering uses <strong>wheel angle</strong> (fist rotation), not palm X.
-        Close both fists to accelerate at any height. Open either hand to brake. One fist or no hands coasts. Keyboard: WASD / arrows + Space boost.
+        Close both fists to accelerate at any height. Open either palm to brake, then reverse while held. One fist or no hands coasts. Keyboard: WASD / arrows + Space boost.
       </p>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '18px 0' }}>
         <div aria-hidden="true" style={{ width: 70, height: 70, flexShrink: 0, border: '5px solid #78f7d5', borderRadius: '50%', transform: `rotate(${control.steer * 55}deg)`, display: 'grid', placeItems: 'center', boxShadow: '0 0 25px #78f7d522', transition: 'transform 80ms linear' }}><div style={{ width: 58, height: 5, background: '#78f7d5' }} /></div>
@@ -90,6 +90,7 @@ export function CalibrateScreen({
     </div>
   )
 }
+
 
 
 

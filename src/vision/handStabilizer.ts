@@ -22,7 +22,7 @@ export class HandStabilizer {
       if (raw !== 'fist') track.candidateSince = now
       let pose = raw
       if (raw === 'fist') {
-        if (now-track.candidateSince >= 60 || track.sample.pose === 'fist') track.lastFist = now
+        if (now-track.candidateSince >= 30 || track.sample.pose === 'fist') track.lastFist = now
         else pose = 'uncertain'
       } else if (raw === 'uncertain' && now-track.lastFist < 100) pose = 'fist'
       // Definite open hands brake immediately, never held as fists by hysteresis.
@@ -34,4 +34,5 @@ export class HandStabilizer {
     return output
   }
 }
+
 

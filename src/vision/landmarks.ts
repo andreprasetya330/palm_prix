@@ -23,6 +23,8 @@ export type HandSample = {
   pose?: 'fist' | 'open' | 'uncertain'
   aspectRatio?: number
   trackingId?: number
+  trackingLatencyMs?: number
+  detectionMs?: number
   /** normalized height 0 top → 1 bottom (mirrored screen space) */
   height: number
   /** average landmark z (more positive ≈ farther from camera in MediaPipe) */
@@ -56,7 +58,7 @@ export function classifyPose(points: Vec3[]): 'fist' | 'open' | 'uncertain' {
     const [mcp,pip,dip,tip] = points.slice(base,base+4)
     const flexion = bend(mcp,pip,dip) + bend(pip,dip,tip)
     const reach = distance(tip, points[0]) / scale
-    if (flexion > 1.2 && reach < 1.65) curled++
+    if (flexion > 1.05 && reach < 2.0) curled++
     if (flexion < 0.75 && reach > 1.5) extended++
   }
   return curled >= 3 ? 'fist' : extended >= 3 ? 'open' : 'uncertain'
@@ -94,5 +96,6 @@ export function sampleHand(landmarks: Vec3[], mirrorX = true, aspectRatio = 1, w
     depth,
   }
 }
+
 
 

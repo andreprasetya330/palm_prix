@@ -86,3 +86,33 @@ assert.ok(partial.steer>=0 && partial.steer<=turned.steer,'One hand cannot snap 
 const uncertain = update(lostMapper,[{...hand(0.3,0.4,false),pose:'uncertain'}])
 assert.equal(uncertain.brake,0)
 console.log('3D pose, temporal stability, hand identity, aspect ratio, and safe partial-wheel tests passed.')
+
+for (const pitch of [-Math.PI/2,0,Math.PI/2]) for (const yaw of [-Math.PI/2,0,Math.PI/2]) {
+  const rotated = fixture(true).map(({x,y,z}) => {
+    const py = y*Math.cos(pitch)-z*Math.sin(pitch), pz = y*Math.sin(pitch)+z*Math.cos(pitch)
+    return { x:x*Math.cos(yaw)+pz*Math.sin(yaw), y:py, z:-x*Math.sin(yaw)+pz*Math.cos(yaw) }
+  })
+  assert.equal(classifyPose(rotated),'fist','Closed grip survives +/-90 degree pitch and yaw')
+}
+const occluded = fixture(true)
+for (const base of [5,9]) for(let i=1;i<4;i++) occluded[base+i] = {...occluded[base]}
+assert.equal(classifyPose(occluded),'uncertain','Collapsed/occluded fingers must not confidently drive or reverse')
+const quickGrip = new HandStabilizer()
+quickGrip.update(pair,0)
+assert.ok(quickGrip.update(pair,34).every(h=>h.isFist),'Grip should confirm on the next 30Hz frame')
+
+const { clampControl } = await import('../src/game/controlState')
+const reversing = update(new GestureMapper(),[{...hand(0.3,0.4,false),pose:'open'}])
+assert.equal(reversing.reverse,1,'A definite open palm explicitly requests reverse')
+assert.ok(reversing.brake>0,'Reverse request also brakes forward motion')
+assert.equal(uncertain.reverse,0,'Uncertain tracking cannot request reverse')
+for(const pedal of [{throttle:1,brake:0},{throttle:0,brake:1}]) {
+  const mixed = mergeControls(reversing,{steer:0,item:false,...pedal})
+  assert.equal(mixed.reverse,0,'Keyboard pedals override hand reverse')
+  assert.equal(mixed.throttle,pedal.throttle)
+  assert.equal(mixed.brake,pedal.brake)
+}
+assert.equal(clampControl({...reversing,reverse:Infinity}).reverse,0)
+assert.equal(clampControl({...reversing,reverse:2}).reverse,1)
+console.log('Quarter-turn fists, partial occlusion, 30Hz confirmation, palm reverse and keyboard override tests passed.')
+
