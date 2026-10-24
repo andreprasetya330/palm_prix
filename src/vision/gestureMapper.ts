@@ -4,7 +4,7 @@ import {
   type ControlState,
 } from '../game/controlState'
 import type { Calibration } from './calibration'
-import type { HandSample } from './landmarks'
+import { wheelAngle, type HandSample } from './landmarks'
 
 function ema(prev: number, next: number, alpha: number): number {
   return prev + alpha * (next - prev)
@@ -48,6 +48,7 @@ export class GestureMapper {
   private smoothedThrottle = 0
   private smoothedBrake = 0
   private lossMs = 0
+  private wheelIds: number[] | null = null
   private itemCooldownMs = 0
   private prevThumbUp = false
   debug: MapperDebug = {
@@ -59,6 +60,7 @@ export class GestureMapper {
   }
 
   reset(): void {
+    this.wheelIds = null
     this.smoothedSteer = 0
     this.smoothedThrottle = 0
     this.smoothedBrake = 0
@@ -88,43 +90,27 @@ export class GestureMapper {
       this.debug.mode = 'two-fist'
       // left = smaller mirrored x, right = larger x
       const sorted = [...fists].sort((a, b) => a.grip.x - b.grip.x)
-      const left = sorted[0]
-      const right = sorted[sorted.length - 1]
-      const dx = right.grip.x - left.grip.x
-      const dy = right.grip.y - left.grip.y
-      const wheelAngle = Math.atan2(dy, dx)
-      this.debug.wheelAngle = wheelAngle
-      steerTarget = mapAngleToSteer(wheelAngle, cal.neutralAngle, cal)
+      if (!this.wheelIds && sorted.every((h) => h.trackingId !== undefined)) this.wheelIds = [sorted[0].trackingId!, sorted[sorted.length-1].trackingId!]
+      const left = (this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![0]) : undefined) ?? sorted[0]
+      const right = (this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![1]) : undefined) ?? sorted[sorted.length - 1]
+      const angle = wheelAngle(left, right)
+      this.debug.wheelAngle = angle
+      steerTarget = mapAngleToSteer(angle, cal.neutralAngle, cal)
 
       // A closed two-hand grip is the accelerator, at any height or depth.
       throttleTarget = 1
       item = this.detectItem(hands)
-    } else if (fists.length === 1 || hands.length === 1) {
-      this.lossMs = 0
-      this.debug.mode = 'one-hand'
-      const h = fists[0] ?? hands[0]
-      this.debug.wheelAngle = h.yaw
-      if (h.isFist) {
-        steerTarget = mapAngleToSteer(h.yaw, cal.oneHandNeutral, cal)
-      } else {
-        // open hand: soft decay (handled below via lower target)
-        steerTarget = this.smoothedSteer * 0.5
-      }
-      item = this.detectItem(hands)
     } else {
-      this.debug.mode = 'none'
+      this.debug.mode = hands.length ? 'one-hand' : 'none'
       this.debug.wheelAngle = null
       this.lossMs += dtMs
       this.prevThumbUp = false
-      // decay toward 0 over ~200ms
-      const decay = Math.min(1, this.lossMs / 200)
-      steerTarget = this.smoothedSteer * (1 - decay)
-      throttleTarget = 0
-      brakeTarget = 0
+      if (this.lossMs > 300) this.wheelIds = null
+      // A partial wheel cannot provide a new angle. Smoothly return to center.
+      steerTarget = this.smoothedSteer * Math.max(0, 1-this.lossMs/200)
     }
-
     // Opening either visible hand brakes; losing tracking only coasts.
-    brakeTarget = hands.some((h) => !h.isFist) ? 1 : 0
+    brakeTarget = hands.some((h) => h.pose ? h.pose === 'open' : !h.isFist) ? 1 : 0
     this.debug.steerRaw = steerTarget
     const alpha = 1 - Math.exp(-dtMs / 60) // ~EMA τ≈60ms
     this.smoothedSteer = ema(this.smoothedSteer, steerTarget, alpha)
@@ -182,6 +168,8 @@ export function mergeControls(
 }
 
 export { ZERO_CONTROL }
+
+
 
 
 

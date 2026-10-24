@@ -46,3 +46,43 @@ const mixed = mergeControls(handDrive, { steer: 0, throttle: 0, brake: 0, item: 
 assert.equal(mixed.drift, true, 'Shift drift must survive keyboard/hand control merging')
 assert.equal(mixed.throttle, 1, 'Keyboard drift keeps fist acceleration')
 assert.equal(mixed.steer, 0.4, 'Keyboard drift keeps wheel steering')
+
+// Regression coverage for pose geometry and unstable detector ordering.
+const { classifyPose, wheelAngle } = await import('../src/vision/landmarks')
+const { HandStabilizer } = await import('../src/vision/handStabilizer')
+function fixture(closed: boolean) {
+  const points = Array.from({length:21},()=>({x:0,y:0,z:0}))
+  for (const [i,base] of [5,9,13,17].entries()) {
+    const x = (i-1)*0.25
+    points[base] = {x,y:1,z:0}
+    points[base+1] = {x,y:1.4,z:0}
+    points[base+2] = closed ? {x,y:1.35,z:0.3} : {x,y:1.7,z:0}
+    points[base+3] = closed ? {x,y:1.05,z:0.3} : {x,y:2,z:0}
+  }
+  return points
+}
+for (const closed of [true,false]) for (const angle of [0,0.8,1.8,3]) {
+  const points = fixture(closed).map(({x,y,z})=>({x:2+(x*Math.cos(angle)-z*Math.sin(angle))*0.02,y:y*0.02-3,z:(x*Math.sin(angle)+z*Math.cos(angle))*0.02}))
+  assert.equal(classifyPose(points),closed?'fist':'open','Pose classification must survive rotation, scale, translation')
+}
+assert.equal(classifyPose([]),'uncertain')
+assert.equal(classifyPose(Array.from({length:21},()=>({x:0,y:0,z:0}))),'uncertain')
+assert.ok(Math.abs(wheelAngle({...hand(0.2,0.2),aspectRatio:2},hand(0.4,0.6))-Math.PI/4)<1e-6)
+const stabilizer = new HandStabilizer()
+const pair = [{...hand(0.2,0.4),pose:'fist' as const},{...hand(0.8,0.4),pose:'fist' as const}]
+assert.ok(stabilizer.update(pair,0).every(h=>!h.isFist),'A fresh grip needs confirmation')
+const stable = stabilizer.update(pair,70)
+assert.ok(stable.every(h=>h.isFist))
+const swapped = stabilizer.update([...pair].reverse(),110)
+assert.equal(swapped[0].trackingId,stable[1].trackingId)
+assert.equal(swapped[1].trackingId,stable[0].trackingId)
+assert.equal(stabilizer.update([{...pair[0],pose:'uncertain'}],150)[0].isFist,true)
+assert.equal(stabilizer.update([{...pair[0],pose:'uncertain'}],250)[0].isFist,false)
+assert.equal(stabilizer.update([{...pair[0],pose:'open'}],260)[0].pose,'open')
+const lostMapper = new GestureMapper()
+const turned = update(lostMapper,[hand(0.3,0.3),hand(0.7,0.6)])
+const partial = update(lostMapper,[{...hand(0.3,0.3),yaw:-Math.PI}])
+assert.ok(partial.steer>=0 && partial.steer<=turned.steer,'One hand cannot snap wheel steering to its yaw')
+const uncertain = update(lostMapper,[{...hand(0.3,0.4,false),pose:'uncertain'}])
+assert.equal(uncertain.brake,0)
+console.log('3D pose, temporal stability, hand identity, aspect ratio, and safe partial-wheel tests passed.')

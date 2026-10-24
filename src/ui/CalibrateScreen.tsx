@@ -6,7 +6,7 @@ import {
 } from '../vision/calibration'
 import type { MapperDebug } from '../vision/gestureMapper'
 import type { ControlState } from '../game/controlState'
-import type { HandSample } from '../vision/landmarks'
+import { wheelAngle, type HandSample } from '../vision/landmarks'
 
 type Props = {
   hands: HandSample[]
@@ -33,25 +33,17 @@ export function CalibrateScreen({
     const fists = hands.filter((h) => h.isFist)
     if (fists.length >= 2) {
       const sorted = [...fists].sort((a, b) => a.grip.x - b.grip.x)
-      const left = sorted[0].grip
-      const right = sorted[sorted.length - 1].grip
-      const neutralAngle = Math.atan2(right.y - left.y, right.x - left.x)
+      const left = sorted[0]
+      const right = sorted[sorted.length - 1]
+      const neutralAngle = wheelAngle(left, right)
       const next = { ...calibration, neutralAngle }
       onCalibration(next)
       saveCalibration(next)
       setMsg(
         `Neutral wheel saved (${((neutralAngle * 180) / Math.PI).toFixed(0)}°). Twist L/R to feel steer.`,
       )
-    } else if (fists.length === 1) {
-      const next = {
-        ...calibration,
-        oneHandNeutral: fists[0].yaw,
-      }
-      onCalibration(next)
-      saveCalibration(next)
-      setMsg('One-hand neutral yaw saved. Raise both fists for best steering.')
     } else {
-      setMsg('No hands visible — raise fists in frame.')
+      setMsg('Keep two closed fists visible and apart before saving.')
     }
   }
 
@@ -70,7 +62,7 @@ export function CalibrateScreen({
       </p>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '18px 0' }}>
         <div aria-hidden="true" style={{ width: 70, height: 70, flexShrink: 0, border: '5px solid #78f7d5', borderRadius: '50%', transform: `rotate(${control.steer * 55}deg)`, display: 'grid', placeItems: 'center', boxShadow: '0 0 25px #78f7d522', transition: 'transform 80ms linear' }}><div style={{ width: 58, height: 5, background: '#78f7d5' }} /></div>
-        <div><strong>{debug.fists >= 2 ? 'Wheel connected' : debug.handsVisible ? 'Close your fists' : 'Let’s find your hands'}</strong><p style={{ margin: '5px 0', fontSize: 13 }}>Sit in good light, keep both hands apart and fully in frame. Hold level, then save your neutral pose.</p></div>
+        <div><strong>{debug.fists >= 2 ? 'Wheel connected' : debug.handsVisible ? 'Close your fists' : 'Let’s find your hands'}</strong><p style={{ margin: '5px 0', fontSize: 13 }}>Light your hands from the front. Keep both fists shoulder-width apart, with wrists and fingers fully visible. Hold level until both grips register, then save. Avoid overlapping hands.</p></div>
       </div>
       <div className="hud-stats">
         <span>Mode: {debug.mode}</span>
@@ -85,7 +77,7 @@ export function CalibrateScreen({
         <button type="button" onClick={onBack}>
           Back
         </button>
-        <button type="button" onClick={captureNeutral} disabled={!hands.some((h) => h.isFist)}>
+        <button type="button" onClick={captureNeutral} disabled={hands.filter((h) => h.isFist).length < 2}>
           Save neutral pose
         </button>
         <button type="button" onClick={reset}>
@@ -98,5 +90,6 @@ export function CalibrateScreen({
     </div>
   )
 }
+
 
 

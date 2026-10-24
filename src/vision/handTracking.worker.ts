@@ -1,3 +1,4 @@
+import { HandStabilizer } from './handStabilizer'
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
 import { sampleHand, type HandSample } from './landmarks'
 
@@ -24,6 +25,7 @@ scope.import = async (url: string) => {
 }
 let detector: HandLandmarker | null = null
 let initializing = false
+const stabilizer = new HandStabilizer()
 
 scope.onmessage = async ({ data }) => {
   if (data.type === 'init') {
@@ -37,7 +39,7 @@ scope.onmessage = async ({ data }) => {
           delegate: 'CPU',
         },
         runningMode: 'VIDEO', numHands: 2,
-        minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.6,
+        minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.45,
       })
       scope.postMessage({ type: 'ready' })
     } catch (error) {
@@ -48,11 +50,12 @@ scope.onmessage = async ({ data }) => {
   try {
     if (!detector) throw new Error('Hand detector is not ready')
     const result = detector.detectForVideo(data.bitmap, data.timestamp)
-    scope.postMessage({ type: 'result', timestamp: data.timestamp, hands: (result.landmarks ?? []).map((points) => sampleHand(points, true)) })
+    scope.postMessage({ type: 'result', timestamp: data.timestamp, hands: stabilizer.update((result.landmarks ?? []).map((points, i) => sampleHand(points, true, data.bitmap.width / data.bitmap.height, result.worldLandmarks?.[i])), data.timestamp) })
   } catch (error) {
     scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) })
   } finally {
     data.bitmap.close()
   }
 }
+
 

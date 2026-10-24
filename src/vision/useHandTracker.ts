@@ -22,6 +22,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     let inFlight = false
     let lastVideoTime = -1
     let lastSent = 0
+    let frameInterval = 50
     let lastResult = 0
     const video = videoRef.current
     const release = () => {
@@ -69,7 +70,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       // Covers both a stalled bitmap conversion and a stalled worker inference.
       frameTimer = window.setTimeout(() => fail(new DOMException('Tracking frame timed out', 'TimeoutError')), 5000)
       try {
-        const bitmap = await createImageBitmap(v, { resizeWidth: 480, resizeHeight: Math.max(1, Math.round(480 * v.videoHeight / v.videoWidth)), resizeQuality: 'low' })
+        const bitmap = await createImageBitmap(v, { resizeWidth: 640, resizeHeight: Math.max(1, Math.round(640 * v.videoHeight / v.videoWidth)), resizeQuality: 'low' })
         if (cancelled || !worker) { bitmap.close(); return }
         if (document.hidden) {
           bitmap.close()
@@ -83,7 +84,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     }
     const loop = (now: number) => {
       if (cancelled) return
-      if (!document.hidden && video && ready && !inFlight && video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime && now - lastSent >= 50) {
+      if (!document.hidden && video && ready && !inFlight && video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime && now - lastSent >= frameInterval) {
         lastVideoTime = video.currentTime
         lastSent = now
         void sendFrame(video, now)
@@ -126,6 +127,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
             inFlight = false
             window.clearTimeout(frameTimer)
             lastResult = performance.now()
+            frameInterval = lastResult - data.timestamp < 25 ? 1000 / 30 : 50
             // Never apply a stale frame or revive gestures while the tab is hidden.
             setHands(!document.hidden && lastResult - data.timestamp <= 500 ? data.hands : [])
           }
@@ -139,3 +141,4 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
   }, [videoRef, attempt, enabled])
   return { status, error, hands, retry }
 }
+
