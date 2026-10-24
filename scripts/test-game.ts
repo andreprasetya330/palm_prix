@@ -80,7 +80,7 @@ test('inner and outer barriers contain the kart during sustained driving', () =>
 test('offroad decelerates and brake slows forward motion', () => {
   const road = stepKart({ ...DEFAULT_KART, speed: 27 }, drive, 0.05)
   const s = getTrackSample(0)
-  const grass = stepKart({ ...DEFAULT_KART, x: s.point.x + s.normal.x * 5, z: s.point.z + s.normal.z * 5, speed: 27 }, drive, 0.05)
+  const grass = stepKart({ ...DEFAULT_KART, x: s.point.x + s.normal.x * (ROAD_HALF_WIDTH + 0.5), z: s.point.z + s.normal.z * (ROAD_HALF_WIDTH + 0.5), speed: 27 }, drive, 0.05)
   assert(grass.offroad); assert(grass.speed < road.speed)
   assert(stepKart({ ...DEFAULT_KART, speed: 20 }, { ...idle, brake: 1 }, 0.05).speed < 20)
   assert.equal(racePosition(racing(), DEFAULT_KART.x, DEFAULT_KART.z), 1)
@@ -141,7 +141,7 @@ test('stationary drift and grass cannot farm turbo; braking cancels charge', () 
   const braked = stepKart(charged, { ...idle, brake: 1 }, 1 / 120)
   assert(!braked.drifting); assert.equal(braked.boostTimer, 0)
   const s = getTrackSample(0)
-  const grass = stepKart({ ...charged, x: s.point.x + s.normal.x * 5, z: s.point.z + s.normal.z * 5 }, drive, 1 / 120)
+  const grass = stepKart({ ...charged, x: s.point.x + s.normal.x * (ROAD_HALF_WIDTH + 0.5), z: s.point.z + s.normal.z * (ROAD_HALF_WIDTH + 0.5) }, drive, 1 / 120)
   assert(!grass.drifting); assert.equal(grass.boostTimer, 0)
 })
 test('boost input survives a frame shorter than a fixed step', () => {
@@ -151,5 +151,6 @@ test('boost input survives a frame shorter than a fixed step', () => {
   assert(kart.boostTimer > 1)
 })
 console.log(`${passed} game checks passed.`)
+
 
 

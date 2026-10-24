@@ -15,7 +15,7 @@ export function TrackProps() {
       buckets.get(color)!.push(g)
     }
     // Grandstands: cantilever canopy, stepped seating, access aisles and steel supports.
-    for (const [cx, cz, yaw, length] of [[0, -46, 0, 86], [-47, 0, Math.PI / 2, 66], [47, 0, -Math.PI / 2, 66]] as const) {
+    for (const [cx, cz, yaw, length] of [[0, -46, 0, 86], [-49, 0, Math.PI / 2, 66], [49, 0, -Math.PI / 2, 66]] as const) {
       const place = (color: string, x: number, y: number, z: number, w: number, h: number, d: number) => box(color, cx + Math.cos(yaw) * x + Math.sin(yaw) * z, y, cz - Math.sin(yaw) * x + Math.cos(yaw) * z, w, h, d, yaw)
       place('#273444', 0, 1.8, -2.2, length, 3.6, 8)
       for (let row = 0; row < 7; row++) {
@@ -65,7 +65,7 @@ export function TrackProps() {
     })
   }, [])
   useEffect(() => () => batches.forEach(b => b.geometry.dispose()), [batches])
-  return <group>
+  return <group scale={1.7}>
     {batches.map(b => <mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial color={b.color} roughness={0.65} metalness={0.18} emissive={b.color === '#fff4d3' || b.color === '#ffbd64' ? b.color : '#000000'} emissiveIntensity={b.color === '#fff4d3' ? 2 : 0.35} /></mesh>)}
     <Sign position={[0, 8.2, -2.65]} width={12} height={4.5} title="PALM PRIX" subtitle="NIGHTFALL GRAND PRIX  /  LIVE" />
     <Sign position={[0, 2.0, -40.4]} width={42} height={1.6} title="PRECISION  /  PACE  /  PALM PRIX" subtitle="THE NIGHTFALL CIRCUIT" />
@@ -103,3 +103,5 @@ function ScannedBarriers() {
   useEffect(() => () => geometry.dispose(), [geometry])
   return <instancedMesh ref={ref} args={[geometry, material, 12]} receiveShadow />
 }
+
+
