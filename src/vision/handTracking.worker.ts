@@ -5,9 +5,13 @@ export type TrackingRequest = { type: 'init' } | { type: 'frame'; bitmap: ImageB
 export type TrackingResponse = { type: 'ready' } | { type: 'result'; hands: HandSample[]; timestamp: number } | { type: 'error'; message: string }
 const scope = self as unknown as {
   import?: (url: string) => Promise<void>
+  dbg?: (message:string) => void
   onmessage: ((event: MessageEvent<TrackingRequest>) => void) | null
   postMessage: (message: TrackingResponse) => void
 }
+// Supply Emscripten's optional debug hook: its classic block-function fallback
+// has different scoping when the loader is imported as a strict ES module.
+scope.dbg = (message:string) => console.debug(message)
 // MediaPipe's classic WASM loader declares `var ModuleFactory`. In a module
 // worker that declaration is module-local, so publish it explicitly. The
 // library calls this import hook after importScripts rejects in module workers.

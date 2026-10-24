@@ -109,3 +109,13 @@ The irregular coastal circuit has a shared sampled centerline for physics, rival
 Driver Garage supports camera capture or photo import, a live 3D portrait preview, helmet and suit colors, an explicitly local portrait effect, and consent-based cloud AI. Set FAL_KEY in the server .env to enable actual AI generation. The default GLTF kart now renders the personalized driver.
 
 Reference reviewed: OpenWii games/mario-kart/logic.js and input.js (https://github.com/pattssun/OpenWii). Handling was implemented independently. Nintendo runtime assets from its pack are not included.
+
+## Stadium performance rebuild
+
+The race now runs simulation and visual updates inside one Three.js render loop, using stable mutable frame data. React receives HUD snapshots at 10 Hz rather than rebuilding the world every frame. Fixed-step motion is interpolated for high-refresh displays, ordinary slow frames retain simulation time, and tab suspension pauses safely. Hand detection runs on a background CPU worker with at most one 480px frame in flight at 20 Hz; the default keyboard mode does not start the camera or detector.
+
+The active art is a motorsport stadium with local CC0 Kenney kart/driver models, scanned Poly Haven asphalt and optimized barriers, merged seating/garages and original signs. The old tropical world and original Palm Dart do not mount during racing. Avatar customization is deferred; it loads separately only if explicitly opened.
+
+Use the **Credits** button or see [ASSET-CREDITS.md](public/assets/ASSET-CREDITS.md) for authors, original source URLs and reuse licenses. All external assets loaded by the active race are CC0, including commercial reuse and redistribution. The source Mario Kart pack was evaluated as a reference and is not included.
+
+Additional regression checks: `npm test` covers simulation/UI decoupling, interpolation, suspension/reset and external glTF resource paths. Browser development diagnostics are available as data attributes on the page root (`data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, `data-race-triangles`); these do not add a user-facing debug HUD.

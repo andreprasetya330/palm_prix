@@ -13,9 +13,9 @@ export function FollowCamera({ kart, showcase = false }: { kart: KartState; show
     const angleError=Math.atan2(Math.sin(kart.yaw-r.heading),Math.cos(kart.yaw-r.heading))
     r.heading+=angleError*(1-Math.exp(-9*dt))
     if(showcase){
-      const angle=-.72+Math.sin(clock.elapsedTime*.045)*.07
-      r.desired.set(kart.x+Math.sin(angle)*12,5.2,kart.z+Math.cos(angle)*12)
-      r.target.set(kart.x-3.5,1.3,kart.z-3)
+      const angle=kart.yaw+.6+Math.sin(clock.elapsedTime*.045)*.07
+      r.desired.set(kart.x+Math.sin(angle)*10,3.8,kart.z+Math.cos(angle)*10)
+      r.target.set(kart.x-Math.cos(angle)*2.8,1,kart.z+Math.sin(angle)*2.8)
     }else{
       const back=6.3+f*1.2
       r.desired.set(kart.x-Math.sin(r.heading)*back,3.1+f*.6,kart.z-Math.cos(r.heading)*back)

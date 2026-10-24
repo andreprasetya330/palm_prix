@@ -22,7 +22,7 @@ export function Hud({ race, kart, debug }: Props) {
     </svg>
     {kart.boostTimer > 0 && <div className="turbo-screen" aria-hidden="true"/>}
     {race.phase === 'countdown' && <div className="countdown" key={Math.ceil(race.countdown)}>{Math.ceil(race.countdown)}</div>}
-    {race.phase === 'finish' && <div className="finish-banner"><div className="eyebrow">SUNSET PALMS / COMPLETE</div><h2>{position === 1 ? 'VICTORY LAP.' : 'WHAT A RIDE.'}</h2><p>Finished {position} of 6 · {time}</p></div>}
+    {race.phase === 'finish' && <div className="finish-banner"><div className="eyebrow">VELOCITY CIRCUIT / COMPLETE</div><h2>{position === 1 ? 'VICTORY LAP.' : 'WHAT A RIDE.'}</h2><p>Finished {position} of 6 · {time}</p></div>}
     <div className="hud-bottom">
       <div className="speed-readout">{Math.round(Math.abs(kart.speed)*3.6)}<small>KM/H</small></div>
       <div className="hud-stats"><span>{kart.offroad ? 'OFF ROAD · FIND THE TARMAC' : kart.boostCooldown ? `BOOST RECHARGING · ${kart.boostCooldown.toFixed(1)}s` : 'BOOST READY · SPACE / THUMB FLICK'}</span></div>

@@ -1,75 +1,105 @@
-import { useMemo } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { nearestTrack } from '../game/trackLayout'
+import { PaddockVehicles } from './PaddockVehicles'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 
-function Palm({x,z,s=1,angle=0}:{x:number;z:number;s?:number;angle?:number}){
- const frond=useMemo(()=>{
-  const p:number[]=[],ix:number[]=[]
-  for(let i=0;i<=12;i++){const t=i/12,w=Math.sin(t*Math.PI)*0.36; p.push(t*2.7,Math.sin(t*Math.PI)*0.6-t*t*0.7,-w,t*2.7,Math.sin(t*Math.PI)*0.6-t*t*0.7,w);if(i<12){const n=i*2;ix.push(n,n+1,n+2,n+1,n+3,n+2)}}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setIndex(ix);g.computeVertexNormals();return g
- },[])
- if(nearestTrack(x,z).distance<7) return null
- return <group position={[x,0,z]} scale={s} rotation={[0,angle,-0.08]}>
-  <mesh position={[0,2,0]} castShadow><cylinderGeometry args={[0.12,0.28,4,10]}/><meshStandardMaterial color="#b58a59" roughness={1}/></mesh>
-  {Array.from({length:10},(_,i)=><mesh key={i} position={[0,0.35+i*0.35,0]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[0.26-i*0.012,0.018,4,10]}/><meshStandardMaterial color="#876746"/></mesh>)}
-  {Array.from({length:9},(_,i)=><mesh key={i} geometry={frond} position={[0,4,0]} rotation={[0,i/9*Math.PI*2,i%2*0.2]} castShadow><meshStandardMaterial color={i%2?'#268965':'#49a66d'} side={THREE.DoubleSide} roughness={0.8}/></mesh>)}
-  {[0,1,2].map(i=><mesh key={i} position={[Math.sin(i*2)*0.22,3.85,Math.cos(i*2)*0.22]}><sphereGeometry args={[0.18,8,8]}/><meshStandardMaterial color="#8f653b"/></mesh>)}
- </group>
+/** Static architecture is baked by material, not hundreds of independent scene objects. */
+export function TrackProps() {
+  const batches = useMemo(() => {
+    const buckets = new Map<string, THREE.BufferGeometry[]>()
+    const box = (color: string, x: number, y: number, z: number, w: number, h: number, d: number, yaw = 0) => {
+      const g = new THREE.BoxGeometry(w, h, d)
+      g.rotateY(yaw); g.translate(x, y, z)
+      if (!buckets.has(color)) buckets.set(color, [])
+      buckets.get(color)!.push(g)
+    }
+    // Grandstands: cantilever canopy, stepped seating, access aisles and steel supports.
+    for (const [cx, cz, yaw, length] of [[0, -46, 0, 86], [-47, 0, Math.PI / 2, 66], [47, 0, -Math.PI / 2, 66]] as const) {
+      const place = (color: string, x: number, y: number, z: number, w: number, h: number, d: number) => box(color, cx + Math.cos(yaw) * x + Math.sin(yaw) * z, y, cz - Math.sin(yaw) * x + Math.cos(yaw) * z, w, h, d, yaw)
+      place('#273444', 0, 1.8, -2.2, length, 3.6, 8)
+      for (let row = 0; row < 7; row++) {
+        place('#7d8290', 0, 1.2 + row * 0.58, 1.6 - row * 0.92, length, 0.34, 1.05)
+        for (let seat = 0; seat < length / 0.75; seat++) {
+          if (seat % 20 < 2) continue
+          const color = (seat + row * 3) % 13 < 3 ? '#e9b96a' : (seat + row) % 7 < 3 ? '#446179' : '#1e344d'
+          place(color, -length / 2 + seat * 0.75 + 0.4, 1.65 + row * 0.58, 1.4 - row * 0.92, 0.5, 0.45, 0.42)
+        }
+      }
+      place('#182639', 0, 8.2, -0.4, length + 1, 0.25, 12)
+      place('#ffbd64', 0, 8.08, 5.5, length, 0.14, 0.16)
+      for (let x = -length / 2 + 3; x < length / 2; x += 9) {
+        place('#566575', x, 5.1, -5.4, 0.22, 6.1, 0.3)
+        place('#566575', x, 7.9, -0.2, 0.16, 0.16, 11)
+      }
+      place('#172738', 0, 0.8, 5, length, 1.6, 0.35)
+    }
+    // Paddock garages, continuous hospitality glazing, rooftop guardrails.
+    box('#263444', 0, 2.2, 40, 54, 4.4, 8)
+    box('#182639', 0, 4.45, 40, 56, 0.35, 9)
+    box('#435364', 0, 5.9, 40.5, 42, 2.6, 6.5)
+    box('#294d60', 0, 5.9, 37.22, 40, 2.0, 0.08)
+    box('#ffbd64', 0, 4.05, 35.94, 54, 0.11, 0.12)
+    box('#182639', 0, 7.35, 40.5, 44, 0.22, 7.5)
+    for (let i = 0; i < 10; i++) {
+      const x = -23.5 + i * 5.2
+      box('#101b2a', x, 1.7, 35.94, 4.4, 3, 0.1)
+      for (let slat = 0; slat < 10; slat++) box('#435364', x, 0.4 + slat * 0.28, 35.87, 4.15, 0.045, 0.04)
+      box('#c5cbd0', x + 2.4, 2.0, 35.85, 0.12, 4, 0.12)
+      box('#ffbd64', x, 3.5, 35.8, 0.8, 0.2, 0.08)
+    }
+    for (let x = -20; x <= 20; x += 3.3) box('#c5cbd0', x, 5.9, 37.15, 0.08, 2.3, 0.08)
+    // Floodlight masts: emissive panels instead of costly real-time point lights.
+    for (const [x, z] of [[-38, -36], [38, -36], [-38, 34], [38, 34]]) {
+      box('#697586', x, 8, z, 0.28, 16, 0.28)
+      box('#162b3d', x, 16, z, 5.4, 1.4, 0.35)
+      for (let i = 0; i < 6; i++) box('#fff4d3', x - 2.15 + i * 0.86, 16.03, z + (z > 0 ? -0.2 : 0.2), 0.65, 0.9, 0.04)
+    }
+    // Infield media tower and timing pylon sit clear of the road.
+    box('#182639', 0, 5, -3, 1.1, 10, 1.1)
+    box('#172738', 0, 8.2, -3, 12.5, 5.0, 0.65)
+    return [...buckets].map(([color, geometries]) => {
+      const geometry = mergeGeometries(geometries)
+      geometries.forEach(g => g.dispose())
+      return { color, geometry }
+    })
+  }, [])
+  useEffect(() => () => batches.forEach(b => b.geometry.dispose()), [batches])
+  return <group>
+    {batches.map(b => <mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial color={b.color} roughness={0.65} metalness={0.18} emissive={b.color === '#fff4d3' || b.color === '#ffbd64' ? b.color : '#000000'} emissiveIntensity={b.color === '#fff4d3' ? 2 : 0.35} /></mesh>)}
+    <Sign position={[0, 8.2, -2.65]} width={12} height={4.5} title="PALM PRIX" subtitle="NIGHTFALL GRAND PRIX  /  LIVE" />
+    <Sign position={[0, 2.0, -40.4]} width={42} height={1.6} title="PRECISION  /  PACE  /  PALM PRIX" subtitle="THE NIGHTFALL CIRCUIT" />
+    <Sign position={[0, 6.0, 37.12]} rotation={Math.PI} width={18} height={1.8} title="PALM PRIX MOTORSPORT" subtitle="PIT LANE  /  TEAM HOSPITALITY" />
+    <Suspense fallback={null}><ScannedBarriers /><PaddockVehicles/></Suspense>
+  </group>
 }
-function Umbrella({x,z,color}:{x:number;z:number;color:string}){
- if(nearestTrack(x,z).distance<7) return null
- return <group position={[x,0,z]}>
- <mesh position={[0,1,0]}><cylinderGeometry args={[0.035,0.035,2,8]}/><meshStandardMaterial color="#e9d1a1"/></mesh>
- <mesh position={[0,2,0]} castShadow><coneGeometry args={[1.3,0.5,12,1,true]}/><meshStandardMaterial color={color} side={THREE.DoubleSide}/></mesh>
- {[0,1].map(i=><mesh key={i} position={[(i-0.5)*1.1,0.28,0.8]} rotation={[-0.12,0,0]} castShadow><boxGeometry args={[0.6,0.13,1.5]}/><meshStandardMaterial color="#fff0cb"/></mesh>)}
- </group>
+function Sign({ position, rotation = 0, width, height, title, subtitle }: { position: [number, number, number]; rotation?: number; width: number; height: number; title: string; subtitle: string }) {
+  const map = useMemo(() => {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 256
+    const ctx = c.getContext('2d')!; ctx.fillStyle = '#0c1727'; ctx.fillRect(0, 0, 1024, 256)
+    ctx.fillStyle = '#ffb75f'; ctx.fillRect(0, 0, 12, 256); ctx.fillRect(1012, 0, 12, 256)
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff3dc'; ctx.font = 'italic 900 66px Arial'; ctx.fillText(title, 512, 130, 950)
+    ctx.font = '22px Arial'; ctx.fillStyle = '#ffbd64'; ctx.fillText(subtitle, 512, 190, 940)
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
+  }, [title, subtitle])
+  useEffect(() => () => map.dispose(), [map])
+  return <mesh position={position} rotation={[0, rotation, 0]}><planeGeometry args={[width, height]} /><meshBasicMaterial map={map} toneMapped={false} side={THREE.DoubleSide} /></mesh>
 }
-function Hotel({x,z,rotation=0}:{x:number;z:number;rotation?:number}){
- return <group position={[x,0,z]} rotation={[0,rotation,0]}>
- <mesh position={[0,2.5,0]} castShadow receiveShadow><boxGeometry args={[8,5,3]}/><meshStandardMaterial color="#f4d4ab"/></mesh>
- {[1,2,3].map(f=><group key={f} position={[0,f*1.3,1.55]}>
- <mesh position={[0,-0.45,0.25]} castShadow><boxGeometry args={[8.5,0.12,0.9]}/><meshStandardMaterial color="#fff1d8"/></mesh>
- {[-3,-1.5,0,1.5,3].map(x=><mesh key={x} position={[x,0,0]}><boxGeometry args={[0.8,0.85,0.04]}/><meshStandardMaterial color="#246974" roughness={0.25} metalness={0.2}/></mesh>)}
- </group>)}
- <mesh position={[0,5.1,0]} castShadow><boxGeometry args={[8.7,0.25,3.7]}/><meshStandardMaterial color="#ce7759"/></mesh>
- <mesh position={[0,5.3,0]}><boxGeometry args={[6.7,0.2,2.7]}/><meshStandardMaterial color="#f6ddbd"/></mesh>
- </group>
-}
-function GardenBeds(){
- const foliage=useMemo(()=>{
-  const geometry=new THREE.SphereGeometry(1,8,6)
-  const material=new THREE.MeshStandardMaterial({color:'#398563',roughness:1})
-  const mesh=new THREE.InstancedMesh(geometry,material,80)
-  const transform=new THREE.Object3D()
-  for(let i=0;i<80;i++){
-   const cluster=Math.floor(i/20),angle=(cluster/4)*Math.PI*2+0.4,t=(i%20)*2.39996,r=Math.sqrt(i%20)*0.23
-   transform.position.set(Math.sin(angle)*10.4+Math.sin(t)*r,0.2+(i%3)*0.07,Math.cos(angle)*8.4+Math.cos(t)*r)
-   transform.scale.set(0.36+(i%3)*0.09,0.25+(i%4)*0.08,0.4)
-   transform.updateMatrix();mesh.setMatrixAt(i,transform.matrix)
-   mesh.setColorAt(i,new THREE.Color(i%4===0?'#8fae50':i%3===0?'#226b54':'#418969'))
-  }
-  mesh.castShadow=true;mesh.receiveShadow=true;return mesh
- },[])
- return <group>
- <primitive object={foliage}/>
- {Array.from({length:20},(_,i)=>{const cluster=Math.floor(i/5),a=cluster/4*Math.PI*2+0.4,t=i*2.4;return <mesh key={i} position={[Math.sin(a)*10.4+Math.sin(t)*0.65,0.58,Math.cos(a)*8.4+Math.cos(t)*0.65]}><sphereGeometry args={[0.12,6,5]}/><meshStandardMaterial color={i%2?'#ffab6a':'#ffe3a0'} roughness={0.8}/></mesh>})}
- </group>
-}
-export function TrackProps(){
- return <group>
- {Array.from({length:24},(_,i)=>{const a=i/24*Math.PI*2,r=40+(i%3)*2.4;return <Palm key={i} x={Math.sin(a)*r*1.15} z={Math.cos(a)*r} s={0.9+i%4*0.18} angle={i*2}/>})}
- {[[-8,-5],[6,6],[-6,8],[8,-7]].map(([x,z],i)=><Palm key={`inner-${i}`} x={x} z={z} s={0.85} angle={i}/>)}
- <mesh position={[0,0.07,0]} rotation={[-Math.PI/2,0,0]} scale={[1.4,1,1]}><circleGeometry args={[6.8,64]}/><meshStandardMaterial color="#e7d6aa"/></mesh>
- <mesh position={[0,0.09,0]} rotation={[-Math.PI/2,0,0]} scale={[1.4,1,1]}><circleGeometry args={[5.9,64]}/><meshStandardMaterial color="#38bdc5" roughness={0.18} metalness={0.25}/></mesh>
- {[2,3.7,5.4].map(r=><mesh key={r} position={[0,0.105,0]} rotation={[-Math.PI/2,0,0]} scale={[1.4,1,1]}><ringGeometry args={[r,r+0.025,64]}/><meshBasicMaterial color="#a1ede0" transparent opacity={0.3}/></mesh>)}
- <mesh position={[0,0.1,0]} scale={[2,0.32,1.6]} receiveShadow><sphereGeometry args={[1,32,16]}/><meshStandardMaterial color="#e7d7ad" roughness={1}/></mesh>
- <mesh position={[0,0.3,0]} scale={[1.35,0.15,1.05]} receiveShadow><sphereGeometry args={[1,24,12]}/><meshStandardMaterial color="#699559" roughness={1}/></mesh>
- {[0,1,2,3,4].map(i=><mesh key={`rock-${i}`} position={[Math.sin(i*1.9)*1.45,0.2,Math.cos(i*1.9)*1.12]} rotation={[i,0,i*0.6]} scale={[0.35,0.2,0.28]} castShadow><dodecahedronGeometry args={[1,1]}/><meshStandardMaterial color={i%2?'#c3b798':'#dacdaf'} roughness={1}/></mesh>)}
- <Palm x={0} z={0} s={1.2}/>
- <GardenBeds/>
- <Hotel x={-15} z={-43} rotation={0.2}/><Hotel x={-28} z={-38} rotation={0.5}/><Hotel x={1} z={-45}/>
- {Array.from({length:8},(_,i)=><Umbrella key={i} x={41+i%2*4} z={-15+i*4.5} color={i%2?'#f38167':'#2d9d9d'}/>)}
- {Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return <mesh key={`isle-${i}`} position={[Math.sin(a)*110,-1.5,Math.cos(a)*110]} scale={[1.3,1,1]}><coneGeometry args={[12+i%3*5,15+i%4*5,9]}/><meshStandardMaterial color={i%2?'#6d9c8a':'#74aaa1'} roughness={1}/></mesh>})}
- {Array.from({length:8},(_,i)=><group key={`cloud-${i}`} position={[Math.sin(i*2.4)*90,25+i%3*4,Math.cos(i*2.4)*90]} scale={[2,1,1]}>{[0,1,2].map(j=><mesh key={j} position={[j*2,Math.sin(j)*0.6,0]}><sphereGeometry args={[2.4,16,12]}/><meshStandardMaterial color="#fff6df" roughness={1}/></mesh>)}</group>)}
- </group>
+function ScannedBarriers() {
+  const { scene } = useGLTF('/assets/track/concrete-barrier-lod.glb')
+  const geometry = useMemo(() => {
+    scene.updateMatrixWorld(true)
+    const gs: THREE.BufferGeometry[] = []
+    scene.traverse(o => { if (o instanceof THREE.Mesh) gs.push(o.geometry.clone().applyMatrix4(o.matrixWorld)) })
+    const merged = mergeGeometries(gs); gs.forEach(g => g.dispose()); merged.computeBoundingBox()
+    const bounds = merged.boundingBox!, size = bounds.getSize(new THREE.Vector3())
+    merged.translate(-(bounds.min.x + bounds.max.x) / 2, -bounds.min.y, -(bounds.min.z + bounds.max.z) / 2)
+    merged.scale(2.7 / Math.max(size.x, size.z), 2.7 / Math.max(size.x, size.z), 2.7 / Math.max(size.x, size.z))
+    return merged
+  }, [scene])
+  const material = useMemo(() => { let m: THREE.Material | undefined; scene.traverse(o => { if (o instanceof THREE.Mesh) m = Array.isArray(o.material) ? o.material[0] : o.material }); return m }, [scene])
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => { if (!ref.current) return; const dummy = new THREE.Object3D(); for (let i = 0; i < 12; i++) { dummy.position.set(-16.5 + i * 3, 0.02, 34); dummy.updateMatrix(); ref.current.setMatrixAt(i, dummy.matrix) } ref.current.instanceMatrix.needsUpdate = true; ref.current.computeBoundingSphere() }, [])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return <instancedMesh ref={ref} args={[geometry, material, 12]} receiveShadow />
 }

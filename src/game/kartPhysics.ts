@@ -7,6 +7,7 @@ export type KartState = {
   vx?: number; vz?: number; slip?: number
   drifting?: boolean; driftCharge?: number; driftDirection?: number
   physicsRemainder?: number; pendingItem?: boolean
+  previousX?: number; previousZ?: number; previousYaw?: number
 }
 const spawn = getTrackSample(0.988)
 export const DEFAULT_KART: KartState = { x: spawn.point.x, z: spawn.point.z, yaw: spawn.yaw, speed: 0, boostTimer: 0, boostCooldown: 0, steering: 0, vx: 0, vz: 0, slip: 0 }
@@ -83,7 +84,7 @@ function integrate(kart: KartState, control: ControlState, dt: number): KartStat
     vx *= Math.exp(-3 * dt); vz *= Math.exp(-3 * dt)
   }
   const speed = vx * Math.sin(yaw) + vz * Math.cos(yaw)
-  return { x, z, yaw, speed, boostTimer, boostCooldown, steering, offroad, vx, vz, drifting, driftCharge, driftDirection, slip: Math.atan2(lateral, Math.max(1, Math.abs(longitudinal))) }
+  return { previousX:kart.x, previousZ:kart.z, previousYaw:kart.yaw, x, z, yaw, speed, boostTimer, boostCooldown, steering, offroad, vx, vz, drifting, driftCharge, driftDirection, slip: Math.atan2(lateral, Math.max(1, Math.abs(longitudinal))) }
 }
 
 
