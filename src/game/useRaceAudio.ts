@@ -4,12 +4,13 @@ import type { RaceStatus } from './raceLoop'
 
 type AudioRig = { context: AudioContext; master: GainNode; engine: GainNode; voices: OscillatorNode[] }
 /** Audio is created only by enable(), which must be invoked from a user gesture. */
-export function useRaceAudio(kart: KartState, race: RaceStatus) {
+export function useRaceAudio(kart: KartState, race: RaceStatus, coins=0) {
   const rig = useRef<AudioRig | null>(null)
   const [enabled, setEnabled] = useState(false)
   const [muted, setMuted] = useState(false)
   const lastCue = useRef('')
   const boosted = useRef(false)
+  const lastCoins=useRef(coins)
   const enable = useCallback(() => {
     try {
       if (!rig.current) {
@@ -57,6 +58,8 @@ export function useRaceAudio(kart: KartState, race: RaceStatus) {
       voice.start(now + delay); voice.stop(now + delay + duration + 0.02)
       voice.onended = () => { voice.disconnect(); gain.disconnect() }
     }
+    if(coins>lastCoins.current){cue(1040,.1);cue(1560,.16,.07)}
+    lastCoins.current=coins
     const cueKey = race.phase === 'countdown' ? `count:${Math.ceil(race.countdown)}` : race.phase
     if (lastCue.current !== cueKey) {
       if (race.phase === 'countdown') cue(520, 0.16)
@@ -66,7 +69,7 @@ export function useRaceAudio(kart: KartState, race: RaceStatus) {
     }
     if (kart.boostTimer > 0 && !boosted.current) { cue(330, 0.2); cue(660, 0.3, 0.08); cue(1320, 0.3, 0.16) }
     boosted.current = kart.boostTimer > 0
-  }, [enabled, muted, kart.speed, kart.boostTimer, race.phase, race.countdown])
+  }, [enabled, muted, kart.speed, kart.boostTimer, race.phase, race.countdown,coins])
   useEffect(() => () => {
     const a = rig.current
     if (a) { a.voices.forEach(v => v.stop()); void a.context.close(); rig.current = null }

@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 const MODELS=['kart-oopi','kart-ooli','kart-oodi','kart-oobi','kart-oozi'].map(name=>`/assets/racers/${name}.glb`)
 const MODEL_SCALE=1.75
 export type RacerModelProps={player?:boolean;color?:string;variant?:number;motion?:{speed:number;steering?:number}}
-type Prepared={body:THREE.BufferGeometry;material:THREE.MeshStandardMaterial;wheels:{geometry:THREE.BufferGeometry;center:THREE.Vector3;front:boolean}[]}
+type Prepared={body:THREE.BufferGeometry;material:THREE.MeshStandardMaterial;groundY:number;wheels:{geometry:THREE.BufferGeometry;center:THREE.Vector3;front:boolean}[]}
 const cache=new WeakMap<THREE.Object3D,Prepared>()
 /** Preserve authored atlas, seated character and wheel pivots; bake static geometry once per asset. */
 function prepare(scene:THREE.Object3D):Prepared {
@@ -42,7 +42,8 @@ function prepare(scene:THREE.Object3D):Prepared {
   })
   const body=mergeGeometries(pieces,false)!
   pieces.forEach(g=>g.dispose());body.computeBoundingSphere()
-  const prepared={body,material:material!,wheels};cache.set(scene,prepared);return prepared
+  const groundY=new THREE.Box3().setFromObject(scene).min.y
+  const prepared={body,material:material!,wheels,groundY};cache.set(scene,prepared);return prepared
 }
 function AuthoredRacer({player=false,variant=0,motion}:RacerModelProps){
   const file=MODELS[player?0:(variant%4)+1]
@@ -56,7 +57,7 @@ function AuthoredRacer({player=false,variant=0,motion}:RacerModelProps){
       if(spinner)spinner.rotation.x+=(motion?.speed??0)/(.155*MODEL_SCALE)*Math.min(delta,.05)
     }
   })
-  return <group scale={MODEL_SCALE} dispose={null}>
+  return <group scale={MODEL_SCALE} position={[0,-asset.groundY*MODEL_SCALE,0]} dispose={null}>
     <mesh geometry={asset.body} material={asset.material} castShadow receiveShadow/>
     {asset.wheels.map((wheel,i)=><group key={i} position={wheel.center} ref={value=>{pivots.current[i]=value}}><group ref={value=>{spinners.current[i]=value}}><mesh geometry={wheel.geometry} material={asset.material} castShadow receiveShadow/></group></group>)}
   </group>

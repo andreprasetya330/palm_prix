@@ -1,3 +1,4 @@
+import {createCourseRewards,updateCourseRewards,type CourseRewards} from './courseFeatures'
 import type { ControlState } from './controlState'
 import { ZERO_CONTROL } from './controlState'
 import { DEFAULT_KART, FIXED_STEP, stepKart, type KartState } from './kartPhysics'
@@ -5,6 +6,7 @@ import { createRaceStatus, updateCheckpoints, type RaceStatus } from './raceLoop
 
 /** Stable, mutable frame data: rendering never waits for a React state commit. */
 export type RaceRuntime = {
+  rewards: CourseRewards
   kart: KartState
   visual: KartState
   race: RaceStatus
@@ -14,7 +16,7 @@ export type RaceRuntime = {
   sincePublish: number
 }
 export function createRuntime(): RaceRuntime {
-  return {kart:{...DEFAULT_KART},visual:{...DEFAULT_KART},race:createRaceStatus(),control:{...ZERO_CONTROL},readControls:()=>ZERO_CONTROL,publish:()=>{},sincePublish:0}
+  return {rewards:createCourseRewards(),kart:{...DEFAULT_KART},visual:{...DEFAULT_KART},race:createRaceStatus(),control:{...ZERO_CONTROL},readControls:()=>ZERO_CONTROL,publish:()=>{},sincePublish:0}
 }
 export function resetRuntime(runtime:RaceRuntime, racing=false) {
   // Clear optional simulation fields from the previous run before reusing the stable object.
@@ -23,6 +25,7 @@ export function resetRuntime(runtime:RaceRuntime, racing=false) {
   for(const key of Object.keys(runtime.visual)) delete (runtime.visual as unknown as Record<string,unknown>)[key]
   Object.assign(runtime.visual,DEFAULT_KART)
   Object.assign(runtime.race,createRaceStatus(),racing?{phase:'countdown',countdown:3}:{})
+  runtime.rewards=createCourseRewards()
   runtime.control={...ZERO_CONTROL};runtime.sincePublish=0;runtime.publish()
 }
 export function advanceRuntime(runtime:RaceRuntime,delta:number) {
@@ -37,8 +40,11 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     if(runtime.race.countdown===0)runtime.race.phase='racing'
   }else if(priorPhase==='racing'){
     // The physics function protects its own accumulator; divide slow visual frames to retain time.
+    const previousX=runtime.kart.x,previousZ=runtime.kart.z
     const chunks=Math.ceil(dt/.05)
     for(let i=0;i<chunks;i++)Object.assign(runtime.kart,stepKart(runtime.kart,runtime.control,dt/chunks))
+    const boosted=updateCourseRewards(runtime.rewards,Math.floor(runtime.race.checkpointsHit/4),previousX,previousZ,runtime.kart.x,runtime.kart.z,runtime.kart.speed,dt)
+    if(boosted)runtime.kart.boostTimer=Math.max(runtime.kart.boostTimer,.9)
     runtime.race.elapsed+=dt
     Object.assign(runtime.race,updateCheckpoints(runtime.race,runtime.kart.x,runtime.kart.z))
   }

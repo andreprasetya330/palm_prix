@@ -32,3 +32,8 @@ dist/
 *.blend2
 # Local visual review captures (may contain a webcam preview).
 assets/*-review*.png
+
+# Optional personal game extracts: local-only, separate from CC0 sources.
+assets/source/personal/
+public/assets/personal/*.glb
+public/assets/personal/manifest.json

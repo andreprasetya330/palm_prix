@@ -3,9 +3,9 @@ import { CatmullRomCurve3, Vector3 } from 'three'
 export const ROAD_HALF_WIDTH = 8
 /** Broad flowing circuit, with generous radius turns and a 16-metre racing surface. */
 const curve = new CatmullRomCurve3([
-  [0, 26], [20, 27], [34, 17], [35, 0], [26, -18],
-  [7, -31], [-14, -30], [-31, -17], [-35, 2], [-26, 19], [-15, 26],
-].map(([x, z]) => new Vector3(x * 1.7, 0, z * 1.7)), true, 'centripetal')
+  [0, 26], [22, 26], [40, 12], [42, -10], [27, -18], [23, -33],
+  [0, -44], [-30, -32], [-42, -10], [-29, 10], [-27, 28], [-10, 31],
+].map(([x, z]) => new Vector3(x * 1.7, 0, z * 1.7)).map((p, i, nodes) => p.clone().multiplyScalar(0.7).addScaledVector(nodes[(i + nodes.length - 1) % nodes.length], 0.15).addScaledVector(nodes[(i + 1) % nodes.length], 0.15)), true, 'centripetal')
 curve.arcLengthDivisions = 2048
 export const TRACK_LENGTH = curve.getLength()
 const wrap = (t: number) => ((t % 1) + 1) % 1
@@ -39,5 +39,3 @@ export function nearestTrack(x: number, z: number) {
   sample.point.set(px, 0, pz)
   return { ...sample, distance: Math.sqrt(bestDistanceSq), signedDistance: (x - px) * sample.normal.x + (z - pz) * sample.normal.z }
 }
-
-

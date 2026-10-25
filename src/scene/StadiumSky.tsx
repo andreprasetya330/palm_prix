@@ -1,18 +1,16 @@
-import { useMemo } from 'react'
+import {useRef,useMemo,useEffect} from 'react'
+import {useFrame} from '@react-three/fiber'
+import {useTexture} from '@react-three/drei'
 import * as THREE from 'three'
-/** Original dusk backdrop: horizon haze, a warm low sun and a clear blue upper sky. */
+/** Original panoramic cloud painting, centered on the camera to stay infinitely distant. */
 export function StadiumSky(){
-  const material=useMemo(()=>new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
-    vertexShader:'varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader:`varying vec3 direction;
-      void main(){vec3 d=normalize(direction);float h=max(0.,d.y);
-      vec3 color=mix(vec3(.31,.36,.46),vec3(.055,.11,.21),smoothstep(0.,.65,h));
-      float glow=pow(max(0.,dot(d,normalize(vec3(-.8,.09,-.4)))),18.);
-      color+=vec3(.45,.19,.06)*glow;
-      gl_FragColor=vec4(color,1.);
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-      }`
-  }),[])
-  return <mesh material={material} renderOrder={-10}><sphereGeometry args={[230,24,16]}/></mesh>
+  const source=useTexture('/assets/cloud-carnival/cloud-panorama.png')
+  const map=useMemo(()=>{const texture=source.clone();texture.colorSpace=THREE.SRGBColorSpace;return texture},[source])
+  useEffect(()=>()=>map.dispose(),[map])
+  const ref=useRef<THREE.Mesh>(null)
+  useFrame(({camera})=>{if(ref.current)ref.current.position.copy(camera.position)},-90)
+  return <mesh ref={ref} rotation={[0,1.2,0]} renderOrder={-100}>
+    <sphereGeometry args={[380,64,32]}/>
+    <meshBasicMaterial map={map} side={THREE.BackSide} depthWrite={false} toneMapped={false} fog={false}/>
+  </mesh>
 }

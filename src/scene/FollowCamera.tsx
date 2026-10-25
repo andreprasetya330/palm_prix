@@ -13,9 +13,9 @@ export function FollowCamera({ kart, showcase = false }: { kart: KartState; show
     const angleError=Math.atan2(Math.sin(kart.yaw-r.heading),Math.cos(kart.yaw-r.heading))
     r.heading+=angleError*(1-Math.exp(-9*dt))
     if(showcase){
-      const angle=kart.yaw+.6+Math.sin(clock.elapsedTime*.045)*.07
-      r.desired.set(kart.x+Math.sin(angle)*10,3.8,kart.z+Math.cos(angle)*10)
-      r.target.set(kart.x-Math.cos(angle)*2.8,1,kart.z+Math.sin(angle)*2.8)
+      const angle=Math.sin(clock.elapsedTime*.045)*.08
+      r.desired.set(kart.x-2+angle*3,5.5,kart.z+18)
+      r.target.set(kart.x-8,2,kart.z-10)
     }else{
       const back=6.3+f*1.2
       r.desired.set(kart.x-Math.sin(r.heading)*back,3.1+f*.6,kart.z-Math.cos(r.heading)*back)
@@ -28,7 +28,7 @@ export function FollowCamera({ kart, showcase = false }: { kart: KartState; show
     camera.position.lerp(r.desired,1-Math.exp(-12*dt))
     r.look.lerp(r.target,1-Math.exp(-13*dt));camera.lookAt(r.look)
     if(camera instanceof THREE.PerspectiveCamera){
-      const fov=showcase?45:54+f*9+(kart.boostTimer>0?5:0)
+      const fov=showcase?50:54+f*9+(kart.boostTimer>0?5:0)
       camera.fov=THREE.MathUtils.damp(camera.fov,fov,5,dt);camera.updateProjectionMatrix()
     }
   })

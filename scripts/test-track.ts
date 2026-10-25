@@ -18,14 +18,12 @@ for (let i = 0; i < count; i++) for (const side of [-1, 1]) {
   assert(nearest.distance > ROAD_HALF_WIDTH - 0.04 && nearest.distance < ROAD_HALF_WIDTH + 0.04)
 }
 console.log(`PASS sixteen-metre corridor stays clear over ${TRACK_LENGTH.toFixed(1)} metres`)
-// Closest architecture edges: pit facade, grandstand fronts, and scanned pit barriers.
-for (let x = -46; x <= 46; x += 1) {
-  assert(nearestTrack(x, 35.8 * 1.7).distance > ROAD_HALF_WIDTH + 2)
-  assert(nearestTrack(x, -40.5 * 1.7).distance > ROAD_HALF_WIDTH + 2)
+// New carnival entry pillars and the waterfall tunnel stay outside the road corridor.
+for (const t of [.025,.43]) for (const side of [-1,1]) {
+  const s=getTrackSample(t),p=s.point.clone().addScaledVector(s.normal,side*10.3)
+  assert(nearestTrack(p.x,p.z).distance>ROAD_HALF_WIDTH+1.5)
 }
-for (let z = -50; z <= 50; z += 1) for (const side of [-1, 1]) assert(nearestTrack(side * 43.5 * 1.7, z).distance > ROAD_HALF_WIDTH + 2)
-for (let x = -30; x <= 30; x += 1) assert(nearestTrack(x, 34 * 1.7).distance > ROAD_HALF_WIDTH + 2)
-console.log('PASS grandstands, garages, and service barriers remain clear of the road')
+console.log('PASS carnival gateway and waterfall supports clear the drivable road')
 let race: RaceStatus = { ...createRaceStatus(), phase: 'racing' }
 for (let lap = 0; lap < 3; lap++) for (const t of [0.25, 0.5, 0.75, 0]) { const p = getTrackSample(t).point; race = updateCheckpoints(race, p.x, p.z) }
 assert.equal(race.phase, 'finish'); assert.equal(race.checkpointsHit, 12)

@@ -1,98 +1,148 @@
-import { Suspense, useMemo, useEffect } from 'react'
-import { useTexture } from '@react-three/drei'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { TrackProps } from './TrackProps'
 import { getTrackSample, TRACK_LENGTH, ROAD_HALF_WIDTH } from '../game/trackLayout'
 
-function ribbon(inner: number, outer: number, wallHeight = 0) {
+/** A floating ceramic ribbon; the top stays aligned with the gameplay corridor at y=0. */
+function ribbon(inner: number, outer: number, rise = 0) {
   const positions: number[] = [], indices: number[] = [], uvs: number[] = []
   for (let i = 0; i <= 384; i++) {
-    const sample = getTrackSample(i / 384)
+    const s = getTrackSample(i / 384)
     for (const [j, offset] of [inner, outer].entries()) {
-      const p = sample.point.clone().addScaledVector(sample.normal, offset)
-      positions.push(p.x, j * wallHeight, p.z); uvs.push(p.x / 5, p.z / 5)
+      const p = s.point.clone().addScaledVector(s.normal, offset)
+      positions.push(p.x, j * rise, p.z)
+      uvs.push((offset + ROAD_HALF_WIDTH) / 4, i / 384 * TRACK_LENGTH / 4)
     }
     if (i < 384) { const n = i * 2; indices.push(n, n + 2, n + 1, n + 1, n + 2, n + 3) }
   }
-  const g = new THREE.BufferGeometry()
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(indices); g.computeVertexNormals()
-  return g
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geometry.setIndex(indices); geometry.computeVertexNormals()
+  return geometry
 }
-function Ribbon({ inner, outer, color, y = 0, wallHeight = 0, glow = false }: { inner: number; outer: number; color: string; y?: number; wallHeight?: number; glow?: boolean }) {
-  const geometry = useMemo(() => ribbon(inner, outer, wallHeight), [inner, outer, wallHeight])
+function Ribbon({ inner, outer, color, y = 0, rise = 0, metalness = 0, glow = false }: { inner: number; outer: number; color: string; y?: number; rise?: number; metalness?: number; glow?: boolean }) {
+  const geometry = useMemo(() => ribbon(inner, outer, rise), [inner, outer, rise])
   useEffect(() => () => geometry.dispose(), [geometry])
-  return <mesh geometry={geometry} position={[0, y, 0]} receiveShadow><meshStandardMaterial color={color} roughness={0.8} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 0.8 : 0} side={THREE.DoubleSide} /></mesh>
+  return <mesh geometry={geometry} position={[0, y, 0]} receiveShadow>
+    <meshStandardMaterial color={color} roughness={0.46} metalness={metalness} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 0.18 : 0} side={THREE.DoubleSide} />
+  </mesh>
 }
-function Asphalt() {
-  const [sourceDiff, sourceNormal] = useTexture(['/assets/track/asphalt-diff.jpg', '/assets/track/asphalt-normal.jpg'])
-  const {diff,normal}=useMemo(()=>{
-    const diff=sourceDiff.clone(),normal=sourceNormal.clone()
-    for(const texture of [diff,normal]){texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;texture.needsUpdate=true}
-    diff.colorSpace=THREE.SRGBColorSpace
-    return {diff,normal}
-  },[sourceDiff,sourceNormal])
-  useEffect(()=>()=>{diff.dispose();normal.dispose()},[diff,normal])
+/** Small porcelain tiles provide motion cues without loud lane stripes. */
+function CeramicRoad() {
   const geometry = useMemo(() => ribbon(-ROAD_HALF_WIDTH, ROAD_HALF_WIDTH), [])
-  useEffect(() => () => geometry.dispose(), [geometry])
-  return <mesh geometry={geometry} position={[0, 0.04, 0]} receiveShadow><meshStandardMaterial color="#9095a1" map={diff} normalMap={normal} normalScale={[0.18, 0.18]} roughness={0.83} side={THREE.DoubleSide} /></mesh>
-}
-/** Road stays exactly on the shared gameplay spline. Static details are merged into six draws. */
-export function Track({ showcase = false }: { showcase?: boolean }) {
-  const batches = useMemo(() => {
-    const groups = new Map<string, THREE.BufferGeometry[]>()
-    const add = (color: string, g: THREE.BufferGeometry) => { if (!groups.has(color)) groups.set(color, []); groups.get(color)!.push(g) }
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 260; i++) {
-        const s = getTrackSample(i / 260), p = s.point.clone().addScaledVector(s.normal, side * (ROAD_HALF_WIDTH + 0.22))
-        const g = new THREE.BoxGeometry(0.5, 0.1, TRACK_LENGTH / 260 * 1.03)
-        g.rotateY(s.yaw); g.translate(p.x, 0.07, p.z)
-        add(i % 6 < 3 ? '#db7b4c' : '#d7dce0', g)
-      }
-      for (let i = 0; i < 90; i++) {
-        const s = getTrackSample(i / 90), p = s.point.clone().addScaledVector(s.normal, side * (ROAD_HALF_WIDTH + 1.9))
-        add('#6c7985', new THREE.BoxGeometry(0.09, 1.3, 0.09).translate(p.x, 0.65, p.z))
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#cbd5d1'; ctx.fillRect(0, 0, 512, 512)
+    let seed = 4187
+    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) | 0; return (seed >>> 0) / 4294967296 }
+    for (let row = 0; row < 4; row++) {
+      const shift = row % 2 ? 128 : 0
+      for (let col = -1; col < 3; col++) {
+        const x = col * 256 + shift, y = row * 128
+        const value = 228 + Math.floor(random() * 10)
+        ctx.fillStyle = `rgb(${value - 3},${value + 2},${value})`
+        ctx.fillRect(x + 1, y + 1, 254, 126)
+        ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1
+        ctx.strokeRect(x + 2, y + 2, 252, 124)
       }
     }
-    // Finish checker and staggered starting grid.
+    // Restrained fired-glaze variation; no coarse noise or cracked asphalt.
+    for (let i = 0; i < 5000; i++) {
+      ctx.fillStyle = random() > 0.5 ? 'rgba(255,255,255,0.018)' : 'rgba(60,90,82,0.018)'
+      ctx.beginPath(); ctx.ellipse(random() * 512, random() * 512, random() * 4 + 1, random() * 2 + 1, 0, 0, Math.PI * 2); ctx.fill()
+    }
+    const map = new THREE.CanvasTexture(canvas)
+    map.wrapS = map.wrapT = THREE.RepeatWrapping; map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8
+    return map
+  }, [])
+  useEffect(() => () => { geometry.dispose(); texture.dispose() }, [geometry, texture])
+  return <mesh geometry={geometry} receiveShadow><meshStandardMaterial color="#a0b9b2" map={texture} bumpMap={texture} bumpScale={0.012} roughness={0.6} metalness={0} side={THREE.DoubleSide} /></mesh>
+}
+const GOLD = '#edbd62'
+const CREAM = '#fff0cf'
+const EDGE = ROAD_HALF_WIDTH + 1.68
+
+export function Track({ showcase = false }: { showcase?: boolean }) {
+  // showcase remains part of the public API; Cloud Carnival's arch is a separate landmark.
+  void showcase
+  const batches = useMemo(() => {
+    const buckets = new Map<string, THREE.BufferGeometry[]>()
+    const add = (color: string, geometry: THREE.BufferGeometry) => { if (!buckets.has(color)) buckets.set(color, []); buckets.get(color)!.push(geometry) }
+    const place = (g: THREE.BufferGeometry, t: number, lateral: number, y: number, color: string) => {
+      const s = getTrackSample(t), p = s.point.clone().addScaledVector(s.normal, lateral)
+      g.rotateY(s.yaw); g.translate(p.x, y, p.z); add(color, g)
+    }
+    // Deliberate long colour blocks, not noisy candy stripes. Rounded rail finials
+    // add silhouette detail with one draw per material across the entire circuit.
+    for (const side of [-1, 1]) {
+      const palette = ['#eea8ba', '#88cec4', '#b8ade1', '#f0c67d']
+      for (let i = 0; i < 180; i++) {
+        const color = palette[Math.floor(i / 15) % palette.length]
+        place(new THREE.BoxGeometry(0.24, 0.64, TRACK_LENGTH / 180 * 1.015), i / 180, side * EDGE, 0.37, color)
+      }
+      for (let i = 0; i < 72; i++) {
+        place(new THREE.CylinderGeometry(0.085, 0.13, 1.12, 8), i / 72, side * (EDGE + 0.08), 0.57, GOLD)
+        place(new THREE.SphereGeometry(0.19, 8, 6), i / 72, side * (EDGE + 0.08), 1.18, CREAM)
+        place(new THREE.CylinderGeometry(0.23, 0.28, 0.1, 8), i / 72, side * (EDGE + 0.08), 0.09, '#418d99')
+      }
+      // Recessed rounded-looking curb blocks outline the playable cream road.
+      for (let i = 0; i < 150; i++) place(new THREE.BoxGeometry(0.32, 0.06, TRACK_LENGTH / 150 * 0.8), i / 150, side * (ROAD_HALF_WIDTH + 0.1), 0.03, i % 2 ? CREAM : '#82c8c3')
+    }
+    // Gold ribs beneath the suspended deck give it depth when seen from the menu.
+    for (let i = 0; i < 40; i++) {
+      place(new THREE.BoxGeometry(EDGE * 2 + 0.5, 0.18, 0.22), i / 40, 0, -1.45, GOLD)
+      for (const side of [-1, 1]) place(new THREE.SphereGeometry(0.38, 8, 6), i / 40, side * (EDGE - 0.1), -1.15, '#57aeb7')
+    }
+    // Sparse inset diamonds define the racing line without competing with rewards.
+    for (let i = 0; i < 60; i++) {
+      const tile = new THREE.PlaneGeometry(0.11, 0.8).rotateX(-Math.PI / 2)
+      place(tile, i / 60, 0, 0.014, '#dacdaf')
+    }
+    // Broad arrow inlays before major corners. Each chevron is part of one gold mesh.
+    for (let i = 0; i < 22; i++) {
+      const t = i / 22, current = getTrackSample(t), next = getTrackSample(t + 0.02)
+      const turn = current.tangent.x * next.tangent.z - current.tangent.z * next.tangent.x
+      if (Math.abs(turn) < 0.12) continue
+      for (const side of [-1, 1]) {
+        const shape = new THREE.Shape()
+        shape.moveTo(-0.48, -0.3); shape.lineTo(0, 0.38); shape.lineTo(0.48, -0.3)
+        shape.lineTo(0.27, -0.3); shape.lineTo(0, 0.08); shape.lineTo(-0.27, -0.3); shape.closePath()
+        const geo = new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2)
+        place(geo, t, side * (ROAD_HALF_WIDTH - 1.0), 0.018, GOLD)
+      }
+    }
+    // Pearl and teal finish line with eight spacious staggered grid slots.
     const start = getTrackSample(0)
     for (let row = 0; row < 3; row++) for (let col = 0; col < ROAD_HALF_WIDTH * 2; col++) {
-      const g = new THREE.BoxGeometry(1, 0.012, 0.38).translate(col - ROAD_HALF_WIDTH + 0.5, 0.07, (row - 1) * 0.38)
+      const g = new THREE.BoxGeometry(1, 0.012, 0.38).translate(col - ROAD_HALF_WIDTH + 0.5, 0.017, (row - 1) * 0.38)
       g.rotateY(start.yaw); g.translate(start.point.x, 0, start.point.z)
-      add((row + col) % 2 ? '#d7dce0' : '#152536', g)
+      add((row + col) % 2 ? '#fff7e7' : '#3b8391', g)
     }
-    for (let i = 0; i < 8; i++) {
-      const s = getTrackSample(0.985 - Math.floor(i / 2) * 0.017), p = s.point.clone().addScaledVector(s.normal, i % 2 ? ROAD_HALF_WIDTH * 0.4 : -ROAD_HALF_WIDTH * 0.4)
-      const g = new THREE.BoxGeometry(1.8, 0.012, 0.09).rotateY(s.yaw).translate(p.x, 0.065, p.z)
-      add('#d7dce0', g)
-    }
-    if (!showcase) {
-      for (const side of [-1, 1]) {
-        const p = start.point.clone().addScaledVector(start.normal, side * (ROAD_HALF_WIDTH + 0.85))
-        add('#152536', new THREE.BoxGeometry(0.28, 5.8, 0.28).translate(p.x, 2.9, p.z))
-      }
-      const beam = new THREE.BoxGeometry(ROAD_HALF_WIDTH * 2 + 2.2, 0.8, 0.35).rotateY(start.yaw).translate(start.point.x, 5.6, start.point.z)
-      add('#152536', beam)
-      const light = new THREE.BoxGeometry(ROAD_HALF_WIDTH * 2 + 1.6, 0.07, 0.4).rotateY(start.yaw).translate(start.point.x, 5.15, start.point.z)
-      add('#ffbd64', light)
-    }
-    return [...groups].map(([color, gs]) => { const geometry = mergeGeometries(gs); gs.forEach(g => g.dispose()); return { color, geometry } })
-  }, [showcase])
+    for (let i = 0; i < 8; i++) place(new THREE.BoxGeometry(2.3, 0.012, 0.1), 0.985 - Math.floor(i / 2) * 0.017, i % 2 ? 3.3 : -3.3, 0.018, '#bda776')
+    return [...buckets].map(([color, geometries]) => {
+      // Plane and solid geometries both carry UVs/normals, so merge safely in each colour batch.
+      const geometry = mergeGeometries(geometries)
+      geometries.forEach(g => g.dispose())
+      return { color, geometry }
+    })
+  }, [])
   useEffect(() => () => batches.forEach(b => b.geometry.dispose()), [batches])
   return <group>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} receiveShadow><planeGeometry args={[240, 240]} /><meshStandardMaterial color="#263937" roughness={1} /></mesh>
-    <Ribbon inner={-ROAD_HALF_WIDTH - 2} outer={ROAD_HALF_WIDTH + 2} color="#364451" y={0.012} />
-    <Ribbon inner={-ROAD_HALF_WIDTH - 1.1} outer={ROAD_HALF_WIDTH + 1.1} color="#406c6b" y={0.025} />
-    <Suspense fallback={<Ribbon inner={-ROAD_HALF_WIDTH} outer={ROAD_HALF_WIDTH} color="#313641" y={0.04} />}><Asphalt /></Suspense>
+    {/* No ground: gaps between the ribbons reveal the cloud abyss. */}
+    <Ribbon inner={-EDGE - 0.35} outer={EDGE + 0.35} color="#285969" y={-1.55} />
+    <Ribbon inner={-EDGE - 0.2} outer={EDGE + 0.2} color="#f3c5cc" y={-0.015} />
+    <CeramicRoad />
     {[-1, 1].map(side => <group key={side}>
-      <Ribbon inner={side * (ROAD_HALF_WIDTH - 0.3)} outer={side * (ROAD_HALF_WIDTH - 0.2)} color="#e9e4d6" y={0.055} />
-      <Ribbon inner={side * (ROAD_HALF_WIDTH + 1.68)} outer={side * (ROAD_HALF_WIDTH + 1.68)} color="#263c50" y={0.04} wallHeight={0.8} />
-      <Ribbon inner={side * (ROAD_HALF_WIDTH + 1.68)} outer={side * (ROAD_HALF_WIDTH + 1.9)} color="#c1c9cf" y={0.84} />
-      <Ribbon inner={side * (ROAD_HALF_WIDTH + 1.85)} outer={side * (ROAD_HALF_WIDTH + 1.92)} color="#df9b54" y={1.02} glow />
+      <Ribbon inner={side * (EDGE + 0.2)} outer={side * (EDGE + 0.2)} color="#438899" y={-1.5} rise={1.47} />
+      <Ribbon inner={side * (EDGE + 0.08)} outer={side * (EDGE + 0.35)} color={GOLD} y={-1.49} metalness={0.35} />
+      <Ribbon inner={side * (EDGE - 0.14)} outer={side * (EDGE + 0.14)} color={CREAM} y={0.72} />
+      <Ribbon inner={side * (EDGE - 0.18)} outer={side * (EDGE + 0.18)} color={GOLD} y={0.76} metalness={0.3} />
+      <Ribbon inner={side * (ROAD_HALF_WIDTH - 0.42)} outer={side * (ROAD_HALF_WIDTH - 0.08)} color="#83c8c2" y={0.008} />
+      <Ribbon inner={side * (ROAD_HALF_WIDTH - 0.49)} outer={side * (ROAD_HALF_WIDTH - 0.44)} color={GOLD} y={0.009} />
     </group>)}
-    {batches.map(b => <mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial color={b.color} roughness={0.7} emissive={b.color === '#ffbd64' ? b.color : '#000000'} emissiveIntensity={0.6} /></mesh>)}
-    <TrackProps />
+    {batches.map(b => <mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial color={b.color} roughness={0.44} metalness={b.color === GOLD ? 0.3 : 0.05} side={THREE.DoubleSide} /></mesh>)}
   </group>
 }
-
 

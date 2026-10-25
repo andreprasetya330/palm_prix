@@ -1,121 +1,67 @@
-# Palm Prix
+# Palm Prix — Cloud Carnival
 
-Three.js arcade racing prototype: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
+A Three.js kart racer controlled with your webcam or keyboard. The current course is a floating amusement park: a 397-metre ribbon road above painted cloud banks, with a moving carousel, sculpted horses, wind-up airship, balloon fleet, island gardens and a flowing waterfall tunnel.
 
-Stack: Vite + React + TypeScript · MediaPipe Hands (`@mediapipe/tasks-vision`) · Three.js (`@react-three/fiber` + `@react-three/drei`) · tiny Express stylize proxy (fal.ai).
+## Run locally
 
-Repo: [`andreprasetya330/palm_prix`](https://github.com/andreprasetya330/palm_prix)
-
-## Quick start
-
-```bash
-cp .env.example .env   # optional: add FAL_KEY for real stylize
+```sh
 npm install
-npm run dev            # Vite :5173 + stylize API :8787
+npm run dev
 ```
 
-Open **http://localhost:5173** (HTTPS not required on localhost for `getUserMedia`).
-
-### Scripts
-
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Concurrently runs stylize server + Vite (proxies `/api` → `:8787`) |
-| `npm run dev:client` | Vite only |
-| `npm run server` | Stylize API only |
-| `npm run build` | Production client build |
-| `npm run preview` | Preview production build (still need `npm run server` for stylize) |
-
-## Environment variables
-
-| Var | Where | Required | Purpose |
-| --- | --- | --- | --- |
-| `FAL_KEY` | server `.env` / shell | No (placeholder if missing) | fal.ai API key — **never** commit or use `VITE_` prefix |
-| `FAL_STYLIZE_MODEL` | server | No | Defaults to `fal-ai/flux/dev/image-to-image` |
-| `STYLIZE_PORT` | server | No | Defaults to `8787` |
-| `VITE_STYLIZE_MODE` | client | No | Set to `local` to force canvas posterize fallback (no API) |
-
-Load server env yourself (`export FAL_KEY=...` or a dotenv tool). The Express process reads `process.env.FAL_KEY`.
-
-### fal model
-
-Default stylize model id: **`fal-ai/flux/dev/image-to-image`**
-
-Prompt asks for a cartoon/anime driver portrait. Override with `FAL_STYLIZE_MODEL` if you prefer another fal img2img endpoint.
+Open http://localhost:5173. For the production client, run `npm run build` followed by `npm run preview`. Camera permission works on localhost; remote hosting requires HTTPS. Tracking downloads MediaPipe's WASM runtime and model at startup. Keyboard racing works without camera permission.
 
 ## Controls
 
-**Hands (preferred)**
+- **Two closed fists:** accelerate. Rotate the line between your hands like a steering wheel.
+- **Open either palm:** brake forward motion, then reverse while held. Reverse tops out at 8m/s (29km/h).
+- **One fist, uncertain pose or lost tracking:** release the pedals and coast; steering recenters gradually.
+- **WASD / arrow keys:** drive and brake. Keyboard pedals override hand pedals.
+- **Shift + turn:** drift; release a charged drift for a mini turbo.
+- **Space / thumb flick:** item boost, with a cooldown.
 
-- Two fists = steering wheel; twist left/right (wheel angle vs calibrated neutral) — **not** palm-X.
-- Two closed fists anywhere in view accelerate; open palms brake. One fist or tracking loss releases throttle.
-- Thumb flick → boost item (edge-triggered).
-- One fist may steer while coasting. Lost tracking releases throttle and steering decays.
+Use Set up hand controls, keep your wrists and all fingers visible, close both fists at shoulder width, and save your neutral wheel position. The camera overlay draws all 21 landmarks and shows measured tracking/inference latency. Physical webcam performance depends on lighting, camera quality and hardware; synthetic tests do not establish real-hand recognition accuracy.
 
-**Keyboard fallback:** WASD / arrow keys · Space = boost · Hold Shift while turning to drift; release for a charged mini turbo.
+## Course and graphics
 
-Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
+The 16-metre racing surface follows a shared flowing spline with changing corner direction. Four directional boost strips and eighteen collectible tokens per lap reward line choice. The race ends after three ordered laps against five scripted rivals.
 
-## Privacy
+The active world uses original curved carnival architecture, instanced carousel horses, a decorated start gateway, a wind-up toy airship with animated propellers, floating textured islands, translucent animated water and a painted sky panorama. The older stadium and asphalt remain in the source tree but are not mounted. Driver avatar personalization is deferred.
 
-- Continuous webcam frames for hand tracking stay **in the browser** (MediaPipe WASM).
-- Avatar stylize sends **one still** to `POST /api/stylize` only after explicit opt-in.
-- “Clear my data” removes the cached avatar from `localStorage`.
+Third-party assets are local CC0 Kenney kart/driver and garden models plus Poly Haven cliff textures. The sky painting is original AI-generated project artwork; it is documented separately from third-party CC0 assets. Use the in-game Credits button, [full asset credits](public/assets/ASSET-CREDITS.md), and [artwork provenance and generation prompt](public/assets/cloud-carnival/ARTWORK.md). The reusable checkout uses original and CC0 art. An optional personal-only model set is documented below.
 
-## Project layout
+## Performance and validation
 
-```
-.
-  server/index.ts          # /api/stylize + /api/health
-  src/vision/              # camera, MediaPipe, wheel GestureMapper, debug overlay
-  src/game/                # ControlState, arcade kart, race loop stub
-  src/scene/               # R3F Mario Kart–style track, kart, props, follow camera
-  src/avatar/              # stylize client + local filter fallback
-  src/ui/                  # menu, avatar studio, calibrate, HUD
+Physics uses a fixed 120Hz step with interpolation. The Three.js frame loop owns simulation and visual motion, and React receives HUD snapshots at 10Hz. Camera inference runs in a CPU worker with at most one resized 640px frame in flight. Deadline-based capture targets 30Hz, dropping to 20Hz when inference takes longer; stale frames never revive driving input.
+
+```sh
+npm test
+npm run build
+npm run lint
 ```
 
-## What’s real vs stubbed
+Tests cover acceleration and braking, reverse, drift rewards, frame-rate independence, barrier containment, ordered laps, the full-width course corridor, rotated fist poses, tracking identity and occlusion, capture cadence, runtime/HUD separation, boost/token sweeps and local asset resources. Lint reports existing React compiler warnings around imperative Three.js updates; production builds retain a main-chunk size warning.
 
-| Feature | Status |
-| --- | --- |
-| Webcam + MediaPipe Hands (2 hands) + skeleton / wheel overlay | **Real** |
-| Wheel-angle `ControlState` + keyboard merge | **Real** |
-| Three.js oval track, kart, chase camera, arcade move | **Real** (Mario Kart–style bright low-poly art) |
-| Countdown → drive → finish (checkpoint laps) | **Implemented**: three ordered laps, five scripted rivals, ranking and minimap |
-| Avatar capture → `POST /api/stylize` → driver texture | **Real path**; placeholder SVG if no `FAL_KEY`; local posterize on error |
-| Boost / audio / rivals | Cooldown boost, synthesized engine and race cues, five animated scripted rivals |
-| Online multiplayer | **Not in MVP** (`ControlState` kept clean for Phase 2) |
+Development diagnostics are DOM data attributes on the page root: `data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, and `data-race-triangles`. They add no visible debug HUD.
 
-## API
+This remains an evolving browser racing game. Rivals are scripted; kart-to-kart collision, weapon items and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
 
-`POST /api/stylize` — multipart field `image` → `{ ok, imageUrl, placeholder? }`
+## Privacy and optional avatar backend
 
-`GET /api/health` — `{ ok, falConfigured, model }`
+Continuous tracking frames stay in the browser. The deferred avatar studio can send one explicitly approved still to the optional Express `/api/stylize` endpoint. `npm run dev` also starts that server on port8787; it is not required for keyboard racing or hand detection. Set `FAL_KEY` in the server environment to enable its cloud generation path; never expose a secret through a `VITE_` variable. `/api/health` reports backend availability.
 
-## Current quality and validation
+OpenWii was reviewed as a handling reference: https://github.com/pattssun/OpenWii. Handling was implemented independently.
 
-The island scene, responsive menu, speed HUD, minimap, camera setup, and race loop have been rebuilt. This is a playable prototype, not a claim of AAA parity. Rivals follow scripted paths; kart-to-kart collision, weapon items, multiple courses and multiplayer remain unimplemented. Camera startup has explicit deadlines and retry; continuous hand-control feel still needs human testing on real hardware.
+## Optional personal Nintendo models
 
-Run `npx tsx scripts/test-game.ts` for gameplay regression checks, `npm run build` for production verification, and `npm run lint` for static diagnostics. Existing imperative Three.js animation patterns produce React compiler lint warnings. The production bundle still exceeds the default size warning threshold.
+The owner's local noncommercial build additionally uses Models Resource's textured Teddy Buggy, Sweet Sweet hot-air balloon and Aqua Cup Ride. Nintendo owns the game artwork; uploaded-model contributor credits, source links and usage limits are in [personal model credits](public/assets/personal/CREDITS.md). These are **not CC0**. Downloaded archives, converted model binaries and the local manifest are excluded from Git; the regular checkout retains the original/CC0 fallback scene.
 
-Camera tracking downloads its runtime/model from jsDelivr and Google on startup; an internet connection is required. Keyboard racing remains available without camera permission. Sound starts only after clicking Race and can be muted in the header.
+After downloading/extracting the archives as described in that credits file, run:
 
-## Handling update
+```sh
+blender --background --python scripts/prepare-personal-props.py -- --asset sweet-balloon
+blender --background --python scripts/prepare-personal-props.py -- --asset aqua-cups
+blender --background --python scripts/prepare-personal-kart.py
+```
 
-Physics runs at a fixed 120 Hz and keeps pending boost input across render frames. Launch reaches 90 km/h in about 1.42 seconds on the start straight; normal top speed is 122 km/h. Steering uses a fast response filter, and a charged Shift powerslide releases a tiered mini turbo. The game tests compare trajectories at 30, 60, 120 and 144 FPS.
-
-The irregular coastal circuit has a shared sampled centerline for physics, rivals and the minimap. Curbs, center dashes and fence posts are instanced to reduce draw calls. Drift sparks, turbo dust, animated water and a damped chase camera provide motion feedback.
-
-Driver Garage supports camera capture or photo import, a live 3D portrait preview, helmet and suit colors, an explicitly local portrait effect, and consent-based cloud AI. Set FAL_KEY in the server .env to enable actual AI generation. The default GLTF kart now renders the personalized driver.
-
-Reference reviewed: OpenWii games/mario-kart/logic.js and input.js (https://github.com/pattssun/OpenWii). Handling was implemented independently. Nintendo runtime assets from its pack are not included.
-
-## Stadium performance rebuild
-
-The race now runs simulation and visual updates inside one Three.js render loop, using stable mutable frame data. React receives HUD snapshots at 10 Hz rather than rebuilding the world every frame. Fixed-step motion is interpolated for high-refresh displays, ordinary slow frames retain simulation time, and tab suspension pauses safely. Hand detection runs on a background CPU worker with at most one 480px frame in flight at 20 Hz; the default keyboard mode does not start the camera or detector.
-
-The active art is a motorsport stadium with local CC0 Kenney kart/driver models, scanned Poly Haven asphalt and optimized barriers, merged seating/garages and original signs. The old tropical world and original Palm Dart do not mount during racing. Avatar customization is deferred; it loads separately only if explicitly opened.
-
-Use the **Credits** button or see [ASSET-CREDITS.md](public/assets/ASSET-CREDITS.md) for authors, original source URLs and reuse licenses. All external assets loaded by the active race are CC0, including commercial reuse and redistribution. The source Mario Kart pack was evaluated as a reference and is not included.
-
-Additional regression checks: `npm test` covers simulation/UI decoupling, interpolation, suspension/reset and external glTF resource paths. Browser development diagnostics are available as data attributes on the page root (`data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, `data-race-triangles`); these do not add a user-facing debug HUD.
+Create `public/assets/personal/manifest.json` with `balloon`, `cups` and `kart` pointing to `/assets/personal/sweet-balloon.glb`, `/assets/personal/aqua-cups.glb` and `/assets/personal/teddy-buggy.glb`. Set `VITE_PERSONAL_ASSETS=true` in the ignored `.env.local`, then restart or rebuild. Missing personal assets fall back to the regular art. Set the flag false before preparing a reusable/public build. The current local production preview is the personal build requested by the owner.

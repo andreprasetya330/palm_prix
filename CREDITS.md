@@ -4,11 +4,12 @@
 
 See [the complete asset attribution and reuse notes](public/assets/ASSET-CREDITS.md), also available through the in-game **Credits** button.
 
+- Festival trees, rocks and mushrooms: **Kenney**, Nature Kit — CC0 1.0.
 - Karts, seated racers, wheels and atlas: **Kenney**, Car Kit 3.1 — CC0 1.0.
 - Asphalt 02: **Rob Tuytel / Poly Haven** — CC0.
 - Concrete Road Barrier: **Amal Kumar / Poly Haven** — CC0; optimized in Blender for this game.
 
-All external assets loaded by the active stadium race are CC0. Personal and commercial reuse, modification and redistribution are permitted under the source licenses, which are linked and retained with the assets. No extracted Nintendo game assets are included.
+All external assets loaded by the earlier stadium race are CC0. Personal and commercial reuse, modification and redistribution are permitted under the source licenses, which are linked and retained with the assets. No extracted Nintendo game assets are included.
 
 ## Retained original Palm Dart and garage art
 
@@ -35,3 +36,7 @@ Openly licensed parts may be downloaded while modeling (CC0 or CC-BY only). Cred
   Studied and left out. It is a bent steel spare, not the Palm Dart spoke.
 
 Poly Haven assets are CC0: https://polyhaven.com/license
+
+Cloud Carnival floating-island relief uses **Poly Haven Cliff Side** by James Ray Cock, Dario Barresi and Jenelle van Heerden, CC0: https://polyhaven.com/a/cliff_side. Original carnival meshes and an AI-generated panorama are documented at public/assets/cloud-carnival/ARTWORK.md. The reusable/default build uses no Nintendo assets; the optional personal build is documented below.
+
+Optional LOCAL PERSONAL BUILD: Nintendo Mario Kart 8 Teddy Buggy (Models Resource uploader BillyGaming964), Sweet Sweet Balloon and Aqua Cup Ride (uploader Centrixe the Dodo). These are not CC0. Extracted binaries are excluded from Git. Full sources/usage notes: public/assets/personal/CREDITS.md.
