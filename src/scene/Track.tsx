@@ -21,13 +21,6 @@ function ribbon(inner: number, outer: number, rise = 0) {
   geometry.setIndex(indices); geometry.computeVertexNormals()
   return geometry
 }
-function Ribbon({ inner, outer, color, y = 0, rise = 0, metalness = 0, glow = false }: { inner: number; outer: number; color: string; y?: number; rise?: number; metalness?: number; glow?: boolean }) {
-  const geometry = useMemo(() => ribbon(inner, outer, rise), [inner, outer, rise])
-  useEffect(() => () => geometry.dispose(), [geometry])
-  return <mesh geometry={geometry} position={[0, y, 0]} receiveShadow>
-    <meshStandardMaterial color={color} roughness={0.46} metalness={metalness} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 0.18 : 0} side={THREE.DoubleSide} />
-  </mesh>
-}
 /** Small porcelain tiles provide motion cues without loud lane stripes. */
 function CeramicRoad() {
   const geometry = useMemo(() => ribbon(-ROAD_HALF_WIDTH, ROAD_HALF_WIDTH), [])
@@ -121,28 +114,40 @@ export function Track({ showcase = false }: { showcase?: boolean }) {
       add((row + col) % 2 ? '#fff7e7' : '#3b8391', g)
     }
     for (let i = 0; i < 8; i++) place(new THREE.BoxGeometry(2.3, 0.012, 0.1), 0.985 - Math.floor(i / 2) * 0.017, i % 2 ? 3.3 : -3.3, 0.018, '#bda776')
-    return [...buckets].map(([color, geometries]) => {
-      // Plane and solid geometries both carry UVs/normals, so merge safely in each colour batch.
-      const geometry = mergeGeometries(geometries)
-      geometries.forEach(g => g.dispose())
-      return { color, geometry }
+    // Bake structural ribbons and colored trim into just two material batches.
+    const strip=(inner:number,outer:number,color:string,y=0,rise=0)=>add(color,ribbon(inner,outer,rise).translate(0,y,0))
+    strip(-EDGE-.35,EDGE+.35,'#285969',-1.55)
+    strip(-EDGE-.2,EDGE+.2,'#f3c5cc',-.015)
+    for(const side of [-1,1]){
+      strip(side*(EDGE+.2),side*(EDGE+.2),'#438899',-1.5,1.47)
+      strip(side*(EDGE+.08),side*(EDGE+.35),GOLD,-1.49)
+      strip(side*(EDGE-.14),side*(EDGE+.14),CREAM,.72)
+      strip(side*(EDGE-.18),side*(EDGE+.18),GOLD,.76)
+      strip(side*(ROAD_HALF_WIDTH-.42),side*(ROAD_HALF_WIDTH-.08),'#83c8c2',.008)
+      strip(side*(ROAD_HALF_WIDTH-.49),side*(ROAD_HALF_WIDTH-.44),GOLD,.009)
+    }
+    const painted:THREE.BufferGeometry[]=[],gold:THREE.BufferGeometry[]=[]
+    for(const [color,geometries] of buckets){
+      const value=new THREE.Color(color)
+      for(const original of geometries){
+        const g=original.index?original.toNonIndexed():original
+        if(g!==original)original.dispose()
+        g.deleteAttribute('uv')
+        const values=new Float32Array(g.attributes.position.count*3)
+        for(let i=0;i<values.length;i+=3)value.toArray(values,i)
+        g.setAttribute('color',new THREE.BufferAttribute(values,3))
+        ;(color===GOLD?gold:painted).push(g)
+      }
+    }
+    return [painted,gold].map((geometries,index)=>{
+      const geometry=mergeGeometries(geometries,false)!
+      geometries.forEach(g=>g.dispose());geometry.computeBoundingSphere()
+      return {color:index===1?'gold':'paint',geometry}
     })
   }, [])
   useEffect(() => () => batches.forEach(b => b.geometry.dispose()), [batches])
   return <group>
-    {/* No ground: gaps between the ribbons reveal the cloud abyss. */}
-    <Ribbon inner={-EDGE - 0.35} outer={EDGE + 0.35} color="#285969" y={-1.55} />
-    <Ribbon inner={-EDGE - 0.2} outer={EDGE + 0.2} color="#f3c5cc" y={-0.015} />
     <CeramicRoad />
-    {[-1, 1].map(side => <group key={side}>
-      <Ribbon inner={side * (EDGE + 0.2)} outer={side * (EDGE + 0.2)} color="#438899" y={-1.5} rise={1.47} />
-      <Ribbon inner={side * (EDGE + 0.08)} outer={side * (EDGE + 0.35)} color={GOLD} y={-1.49} metalness={0.35} />
-      <Ribbon inner={side * (EDGE - 0.14)} outer={side * (EDGE + 0.14)} color={CREAM} y={0.72} />
-      <Ribbon inner={side * (EDGE - 0.18)} outer={side * (EDGE + 0.18)} color={GOLD} y={0.76} metalness={0.3} />
-      <Ribbon inner={side * (ROAD_HALF_WIDTH - 0.42)} outer={side * (ROAD_HALF_WIDTH - 0.08)} color="#83c8c2" y={0.008} />
-      <Ribbon inner={side * (ROAD_HALF_WIDTH - 0.49)} outer={side * (ROAD_HALF_WIDTH - 0.44)} color={GOLD} y={0.009} />
-    </group>)}
-    {batches.map(b => <mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial color={b.color} roughness={0.44} metalness={b.color === GOLD ? 0.3 : 0.05} side={THREE.DoubleSide} /></mesh>)}
+    {batches.map(b=><mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial vertexColors roughness={b.color==='gold'?.44:.52} metalness={b.color==='gold'?.3:.05} side={THREE.DoubleSide}/></mesh>)}
   </group>
 }
-
