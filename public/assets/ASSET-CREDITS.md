@@ -1,6 +1,6 @@
 # Palm Prix — asset sources and reuse permissions
 
-The third-party assets loaded by Cloud Carnival are explicitly licensed for reuse. This file is shipped with the game; the Credits button provides an in-game attribution panel.
+The active Afterglow City scene uses original Palm Prix geometry, shaders and graphics: art-deco city, racers, striped sun, elevated roadway, suspension bridge, market arcade, observatory halo and terraced streetscape. It loads no extracted Nintendo models and no panorama image. The following external assets are retained for archived scenes and the deferred garage with their original attribution and licenses. This file is shipped with the game; the Credits button provides an in-game attribution panel.
 
 ## Kenney — Car Kit 3.1
 - Author: Kenney (https://kenney.nl).

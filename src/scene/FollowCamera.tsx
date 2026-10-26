@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useRef } from 'react'
 import * as THREE from 'three'
 import type { KartState } from '../game/kartPhysics'
+import {getRoadPose} from '../game/trackLayout'
 
 /** Heading spring and velocity look-ahead keep turns readable without camera snapping. */
 export function FollowCamera({ kart, showcase = false }: { kart: KartState; showcase?: boolean }) {
@@ -10,17 +11,19 @@ export function FollowCamera({ kart, showcase = false }: { kart: KartState; show
   useFrame(({clock}, delta)=>{
     const dt=Math.min(delta,.05), r=rig.current
     const speed=Math.abs(kart.speed), f=Math.min(1,speed/36)
+    const height=getRoadPose(kart.x,kart.z).height
     const angleError=Math.atan2(Math.sin(kart.yaw-r.heading),Math.cos(kart.yaw-r.heading))
     r.heading+=angleError*(1-Math.exp(-9*dt))
     if(showcase){
       const angle=Math.sin(clock.elapsedTime*.045)*.08
-      r.desired.set(kart.x-2+angle*3,5.5,kart.z+18)
-      r.target.set(kart.x-8,2,kart.z-10)
+      r.desired.set(kart.x-11+angle*3,height+4.8,kart.z+8)
+      r.target.set(kart.x+6,height+1.2,kart.z-4)
     }else{
       const back=6.3+f*1.2
-      r.desired.set(kart.x-Math.sin(r.heading)*back,3.1+f*.6,kart.z-Math.cos(r.heading)*back)
+      r.desired.set(kart.x-Math.sin(r.heading)*back,height+3.1+f*.6,kart.z-Math.cos(r.heading)*back)
       const lookAhead=3.2+f*3.5
       r.target.set(kart.x+Math.sin(kart.yaw)*lookAhead+(kart.vx??0)*.045,1,kart.z+Math.cos(kart.yaw)*lookAhead+(kart.vz??0)*.045)
+      r.target.y=getRoadPose(r.target.x,r.target.z).height+1
     }
     if(!r.initialized || r.mode!==showcase || camera.position.distanceToSquared(r.desired)>2500){
       camera.position.copy(r.desired);r.look.copy(r.target);r.heading=kart.yaw;r.initialized=true;r.mode=showcase

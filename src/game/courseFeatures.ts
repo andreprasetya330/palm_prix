@@ -1,9 +1,9 @@
-import {getTrackSample,ROAD_HALF_WIDTH} from './trackLayout'
+import {getTrackSurface,ROAD_HALF_WIDTH} from './trackLayout'
 
-export type TrackFeature={id:number;t:number;lane:number;x:number;z:number;nx:number;nz:number;tx:number;tz:number}
+export type TrackFeature={id:number;t:number;lane:number;x:number;y:number;z:number;pitch:number;bank:number;nx:number;nz:number;tx:number;tz:number}
 function feature(id:number,t:number,lane:number):TrackFeature{
- const s=getTrackSample(t),p=s.point.clone().addScaledVector(s.normal,lane)
- return {id,t,lane,x:p.x,z:p.z,nx:s.normal.x,nz:s.normal.z,tx:s.tangent.x,tz:s.tangent.z}
+ const s=getTrackSurface(t,lane),p=s.point
+ return {id,t,lane,x:p.x,y:p.y,z:p.z,pitch:s.pitch,bank:s.bank,nx:s.normal.x,nz:s.normal.z,tx:s.tangent.x,tz:s.tangent.z}
 }
 // Pick a line: racing tokens fan into three lanes; boost strips reward the wider outer line.
 export const BOOST_PADS=[.13,.36,.61,.83].map((t,id)=>feature(id,t,(id%2?1:-1)*ROAD_HALF_WIDTH*.48))

@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "tsx scripts/test-game.ts && tsx scripts/test-gestures.ts && tsx scripts/test-runtime.ts && tsx scripts/test-assets.ts && tsx scripts/test-course.ts && tsx scripts/test-frame-cadence.ts && tsx scripts/test-track.ts"
+    "test": "tsx scripts/test-game.ts && tsx scripts/test-gestures.ts && tsx scripts/test-runtime.ts && tsx scripts/test-assets.ts && tsx scripts/test-course.ts && tsx scripts/test-frame-cadence.ts && tsx scripts/test-track.ts && tsx scripts/test-obstacles.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",

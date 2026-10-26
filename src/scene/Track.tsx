@@ -1,153 +1,86 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { getTrackSample, TRACK_LENGTH, ROAD_HALF_WIDTH } from '../game/trackLayout'
+import { getTrackSample, getTrackSurface, ROAD_HALF_WIDTH, TRACK_LENGTH } from '../game/trackLayout'
 
-/** A floating ceramic ribbon; the top stays aligned with the gameplay corridor at y=0. */
-function ribbon(inner: number, outer: number, rise = 0) {
-  const positions: number[] = [], indices: number[] = [], uvs: number[] = []
-  for (let i = 0; i <= 384; i++) {
-    const s = getTrackSample(i / 384)
-    for (const [j, offset] of [inner, outer].entries()) {
-      const p = s.point.clone().addScaledVector(s.normal, offset)
-      positions.push(p.x, j * rise, p.z)
-      uvs.push((offset + ROAD_HALF_WIDTH) / 4, i / 384 * TRACK_LENGTH / 4)
-    }
-    if (i < 384) { const n = i * 2; indices.push(n, n + 2, n + 1, n + 1, n + 2, n + 3) }
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
-  geometry.setIndex(indices); geometry.computeVertexNormals()
-  return geometry
-}
-/** Small porcelain tiles provide motion cues without loud lane stripes. */
-function CeramicRoad() {
-  const geometry = useMemo(() => ribbon(-ROAD_HALF_WIDTH, ROAD_HALF_WIDTH), [])
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512
-    const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = '#cbd5d1'; ctx.fillRect(0, 0, 512, 512)
-    let seed = 4187
-    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) | 0; return (seed >>> 0) / 4294967296 }
-    for (let row = 0; row < 4; row++) {
-      const shift = row % 2 ? 128 : 0
-      for (let col = -1; col < 3; col++) {
-        const x = col * 256 + shift, y = row * 128
-        const value = 228 + Math.floor(random() * 10)
-        ctx.fillStyle = `rgb(${value - 3},${value + 2},${value})`
-        ctx.fillRect(x + 1, y + 1, 254, 126)
-        ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1
-        ctx.strokeRect(x + 2, y + 2, 252, 124)
-      }
-    }
-    // Restrained fired-glaze variation; no coarse noise or cracked asphalt.
-    for (let i = 0; i < 5000; i++) {
-      ctx.fillStyle = random() > 0.5 ? 'rgba(255,255,255,0.018)' : 'rgba(60,90,82,0.018)'
-      ctx.beginPath(); ctx.ellipse(random() * 512, random() * 512, random() * 4 + 1, random() * 2 + 1, 0, 0, Math.PI * 2); ctx.fill()
-    }
-    const map = new THREE.CanvasTexture(canvas)
-    map.wrapS = map.wrapT = THREE.RepeatWrapping; map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8
-    return map
-  }, [])
-  useEffect(() => () => { geometry.dispose(); texture.dispose() }, [geometry, texture])
-  return <mesh geometry={geometry} receiveShadow><meshStandardMaterial color="#a0b9b2" map={texture} bumpMap={texture} bumpScale={0.012} roughness={0.6} metalness={0} side={THREE.DoubleSide} /></mesh>
-}
-const GOLD = '#edbd62'
-const CREAM = '#fff0cf'
 const EDGE = ROAD_HALF_WIDTH + 1.68
-
+function ribbon(inner: number, outer: number, y: number, rise = 0) {
+  const positions: number[] = [], indices: number[] = []
+  for (let i = 0; i <= 512; i++) {
+    for (const [j, offset] of [inner, outer].entries()) { const p = getTrackSurface(i / 512, offset).point; positions.push(p.x, p.y + y + j * rise, p.z) }
+    if (i < 512) { const n = i * 2; indices.push(n, n + 2, n + 1, n + 1, n + 2, n + 3) }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); g.setIndex(indices); g.computeVertexNormals(); return g
+}
+/** Five material batches for the complete road, elevated deck, markings and neon rails. */
 export function Track({ showcase = false }: { showcase?: boolean }) {
-  // showcase remains part of the public API; Cloud Carnival's arch is a separate landmark.
   void showcase
   const batches = useMemo(() => {
-    const buckets = new Map<string, THREE.BufferGeometry[]>()
-    const add = (color: string, geometry: THREE.BufferGeometry) => { if (!buckets.has(color)) buckets.set(color, []); buckets.get(color)!.push(geometry) }
-    const place = (g: THREE.BufferGeometry, t: number, lateral: number, y: number, color: string) => {
-      const s = getTrackSample(t), p = s.point.clone().addScaledVector(s.normal, lateral)
-      g.rotateY(s.yaw); g.translate(p.x, y, p.z); add(color, g)
+    const buckets: THREE.BufferGeometry[][] = [[], [], [], [], []]
+    const add = (batch: number, color: string, g: THREE.BufferGeometry) => {
+      g.deleteAttribute('uv')
+      const c = new THREE.Color(color), colors = new Float32Array(g.getAttribute('position').count * 3)
+      for (let i = 0; i < colors.length; i += 3) { colors[i] = c.r; colors[i + 1] = c.g; colors[i + 2] = c.b }
+      g.setAttribute('color', new THREE.BufferAttribute(colors, 3)); buckets[batch].push(g)
     }
-    // Deliberate long colour blocks, not noisy candy stripes. Rounded rail finials
-    // add silhouette detail with one draw per material across the entire circuit.
+    const place = (batch: number, color: string, g: THREE.BufferGeometry, t: number, offset: number, y: number) => {
+      const s = getTrackSurface(t, offset), p = s.point
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(-s.pitch, s.yaw, s.bank, 'YXZ')))
+      g.translate(p.x, p.y + y, p.z); add(batch, color, g)
+    }
+    add(0, '#242037', ribbon(-ROAD_HALF_WIDTH, ROAD_HALF_WIDTH, 0))
+    add(1, '#29253e', ribbon(-EDGE - .3, EDGE + .3, -.025))
+    add(1, '#41415e', ribbon(-EDGE - .3, EDGE + .3, -1.1))
     for (const side of [-1, 1]) {
-      const palette = ['#eea8ba', '#88cec4', '#b8ade1', '#f0c67d']
-      for (let i = 0; i < 180; i++) {
-        const color = palette[Math.floor(i / 15) % palette.length]
-        place(new THREE.BoxGeometry(0.24, 0.64, TRACK_LENGTH / 180 * 1.015), i / 180, side * EDGE, 0.37, color)
+      add(1, '#56516f', ribbon(side * (EDGE + .3), side * (EDGE + .3), -1.1, 1.05))
+      add(1, '#25263f', ribbon(side * EDGE, side * EDGE, 0, .7))
+      add(1, '#4d506e', ribbon(side * (EDGE - .12), side * (EDGE + .12), .7))
+      add(2, side < 0 ? '#ff38a9' : '#38e6f3', ribbon(side * (ROAD_HALF_WIDTH + .12), side * (ROAD_HALF_WIDTH + .21), .025))
+      add(2, side < 0 ? '#ff38a9' : '#38e6f3', ribbon(side * (EDGE - .12), side * (EDGE + .12), .74))
+      add(3, '#b9c5d7', ribbon(side * (ROAD_HALF_WIDTH - .35), side * (ROAD_HALF_WIDTH - .23), .012))
+      for (let i = 0; i < 100; i++) {
+        place(1, '#48485e', new THREE.BoxGeometry(.08, 1.1, .08), i / 100, side * EDGE, .55)
+        place(2, side < 0 ? '#ff38a9' : '#38e6f3', new THREE.BoxGeometry(.15, .12, .15), i / 100, side * EDGE, 1.12)
       }
-      for (let i = 0; i < 72; i++) {
-        place(new THREE.CylinderGeometry(0.085, 0.13, 1.12, 8), i / 72, side * (EDGE + 0.08), 0.57, GOLD)
-        place(new THREE.SphereGeometry(0.19, 8, 6), i / 72, side * (EDGE + 0.08), 1.18, CREAM)
-        place(new THREE.CylinderGeometry(0.23, 0.28, 0.1, 8), i / 72, side * (EDGE + 0.08), 0.09, '#418d99')
-      }
-      // Recessed rounded-looking curb blocks outline the playable cream road.
-      for (let i = 0; i < 150; i++) place(new THREE.BoxGeometry(0.32, 0.06, TRACK_LENGTH / 150 * 0.8), i / 150, side * (ROAD_HALF_WIDTH + 0.1), 0.03, i % 2 ? CREAM : '#82c8c3')
+      for (let i = 0; i < 180; i++) place(3, i % 4 < 2 ? '#949eb6' : '#393048', new THREE.BoxGeometry(.48, .04, TRACK_LENGTH / 180 * .95), i / 180, side * (ROAD_HALF_WIDTH + .55), .02)
     }
-    // Gold ribs beneath the suspended deck give it depth when seen from the menu.
+    // Subtle two-lane dashed rhythm, and vertical bridge piers below the elevated roadway.
+    for (let i = 0; i < 78; i++) place(3, '#aaaec2', new THREE.BoxGeometry(.12, .012, 1.5), i / 78, 0, .012)
     for (let i = 0; i < 40; i++) {
-      place(new THREE.BoxGeometry(EDGE * 2 + 0.5, 0.18, 0.22), i / 40, 0, -1.45, GOLD)
-      for (const side of [-1, 1]) place(new THREE.SphereGeometry(0.38, 8, 6), i / 40, side * (EDGE - 0.1), -1.15, '#57aeb7')
-    }
-    // Sparse inset diamonds define the racing line without competing with rewards.
-    for (let i = 0; i < 60; i++) {
-      const tile = new THREE.PlaneGeometry(0.11, 0.8).rotateX(-Math.PI / 2)
-      place(tile, i / 60, 0, 0.014, '#dacdaf')
-    }
-    // Broad arrow inlays before major corners. Each chevron is part of one gold mesh.
-    for (let i = 0; i < 22; i++) {
-      const t = i / 22, current = getTrackSample(t), next = getTrackSample(t + 0.02)
-      const turn = current.tangent.x * next.tangent.z - current.tangent.z * next.tangent.x
-      if (Math.abs(turn) < 0.12) continue
+      const t = i / 40, center = getTrackSample(t)
+      if (center.height < 1.6) continue
       for (const side of [-1, 1]) {
-        const shape = new THREE.Shape()
-        shape.moveTo(-0.48, -0.3); shape.lineTo(0, 0.38); shape.lineTo(0.48, -0.3)
-        shape.lineTo(0.27, -0.3); shape.lineTo(0, 0.08); shape.lineTo(-0.27, -0.3); shape.closePath()
-        const geo = new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2)
-        place(geo, t, side * (ROAD_HALF_WIDTH - 1.0), 0.018, GOLD)
+        const surface = getTrackSurface(t, side * 5.7), top = surface.height - 1.12
+        const bottom = -.32, height = Math.max(.1, top - bottom)
+        const pier = new THREE.BoxGeometry(.9, height, 1.4).rotateY(center.yaw).translate(surface.point.x, bottom + height / 2, surface.point.z)
+        add(1, '#69607d', pier)
+      }
+      place(1, '#35324d', new THREE.BoxGeometry(13.2, .4, 1.5), t, 0, -1.25)
+    }    // Road-surface arrows mark each bend; their orientation follows the actual spline.
+    for (let i = 0; i < 28; i++) {
+      const t = i / 28, a = getTrackSample(t), b = getTrackSample(t + .018)
+      if (a.tangent.dot(b.tangent) > .985) continue
+      for (const side of [-1, 1]) {
+        const shape = new THREE.Shape(); shape.moveTo(-.65, -.35); shape.lineTo(0, .5); shape.lineTo(.65, -.35); shape.lineTo(.35, -.35); shape.lineTo(0, .13); shape.lineTo(-.35, -.35); shape.closePath()
+        place(3, '#d0d5e3', new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2), t, side * 6.2, .018)
       }
     }
-    // Pearl and teal finish line with eight spacious staggered grid slots.
-    const start = getTrackSample(0)
     for (let row = 0; row < 3; row++) for (let col = 0; col < ROAD_HALF_WIDTH * 2; col++) {
-      const g = new THREE.BoxGeometry(1, 0.012, 0.38).translate(col - ROAD_HALF_WIDTH + 0.5, 0.017, (row - 1) * 0.38)
-      g.rotateY(start.yaw); g.translate(start.point.x, 0, start.point.z)
-      add((row + col) % 2 ? '#fff7e7' : '#3b8391', g)
+      place(3, (row + col) % 2 ? '#e2dfef' : '#241c3b', new THREE.BoxGeometry(1, .012, .42), (row - 1) * .42 / TRACK_LENGTH, col - ROAD_HALF_WIDTH + .5, .018)
+    }    for (let i = 0; i < 8; i++) {
+      const t = .985 - Math.floor(i / 2) * .017, offset = i % 2 ? 3.3 : -3.3
+      place(3, '#aaaec2', new THREE.BoxGeometry(2.2, .012, .12), t, offset, .018)
     }
-    for (let i = 0; i < 8; i++) place(new THREE.BoxGeometry(2.3, 0.012, 0.1), 0.985 - Math.floor(i / 2) * 0.017, i % 2 ? 3.3 : -3.3, 0.018, '#bda776')
-    // Bake structural ribbons and colored trim into just two material batches.
-    const strip=(inner:number,outer:number,color:string,y=0,rise=0)=>add(color,ribbon(inner,outer,rise).translate(0,y,0))
-    strip(-EDGE-.35,EDGE+.35,'#285969',-1.55)
-    strip(-EDGE-.2,EDGE+.2,'#f3c5cc',-.015)
-    for(const side of [-1,1]){
-      strip(side*(EDGE+.2),side*(EDGE+.2),'#438899',-1.5,1.47)
-      strip(side*(EDGE+.08),side*(EDGE+.35),GOLD,-1.49)
-      strip(side*(EDGE-.14),side*(EDGE+.14),CREAM,.72)
-      strip(side*(EDGE-.18),side*(EDGE+.18),GOLD,.76)
-      strip(side*(ROAD_HALF_WIDTH-.42),side*(ROAD_HALF_WIDTH-.08),'#83c8c2',.008)
-      strip(side*(ROAD_HALF_WIDTH-.49),side*(ROAD_HALF_WIDTH-.44),GOLD,.009)
-    }
-    const painted:THREE.BufferGeometry[]=[],gold:THREE.BufferGeometry[]=[]
-    for(const [color,geometries] of buckets){
-      const value=new THREE.Color(color)
-      for(const original of geometries){
-        const g=original.index?original.toNonIndexed():original
-        if(g!==original)original.dispose()
-        g.deleteAttribute('uv')
-        const values=new Float32Array(g.attributes.position.count*3)
-        for(let i=0;i<values.length;i+=3)value.toArray(values,i)
-        g.setAttribute('color',new THREE.BufferAttribute(values,3))
-        ;(color===GOLD?gold:painted).push(g)
-      }
-    }
-    return [painted,gold].map((geometries,index)=>{
-      const geometry=mergeGeometries(geometries,false)!
-      geometries.forEach(g=>g.dispose());geometry.computeBoundingSphere()
-      return {color:index===1?'gold':'paint',geometry}
-    })
+    // Sparse amber reflectors add another visual beat without extra scene objects.
+    for (let i = 0; i < 48; i++) for (const side of [-1, 1]) place(4, '#ffbc53', new THREE.BoxGeometry(.12, .03, .28), i / 48, side * (ROAD_HALF_WIDTH - .6), .025)
+    return buckets.map(gs => { const merged = mergeGeometries(gs); gs.forEach(g => g.dispose()); return merged })
   }, [])
-  useEffect(() => () => batches.forEach(b => b.geometry.dispose()), [batches])
+  useEffect(() => () => batches.forEach(g => g.dispose()), [batches])
   return <group>
-    <CeramicRoad />
-    {batches.map(b=><mesh key={b.color} geometry={b.geometry} receiveShadow><meshStandardMaterial vertexColors roughness={b.color==='gold'?.44:.52} metalness={b.color==='gold'?.3:.05} side={THREE.DoubleSide}/></mesh>)}
+    <mesh geometry={batches[0]} receiveShadow><meshStandardMaterial vertexColors roughness={.88} metalness={.02} envMapIntensity={.1} side={THREE.DoubleSide} /></mesh>
+    <mesh geometry={batches[1]} receiveShadow><meshStandardMaterial vertexColors roughness={.62} metalness={.3} side={THREE.DoubleSide} /></mesh>
+    <mesh geometry={batches[2]}><meshBasicMaterial vertexColors color={[2,2,2]} toneMapped={false} side={THREE.DoubleSide} /></mesh>
+    <mesh geometry={batches[3]} receiveShadow><meshStandardMaterial vertexColors roughness={.6} side={THREE.DoubleSide} /></mesh>
+    <mesh geometry={batches[4]}><meshBasicMaterial vertexColors toneMapped={false} /></mesh>
   </group>
 }

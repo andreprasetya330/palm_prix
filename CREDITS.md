@@ -1,6 +1,10 @@
 # Palm Prix credits
 
-## Active stadium race assets
+## Active Afterglow City
+
+The neon city, stepped art-deco buildings, signs, beveled racers and pilots, geometric sunset, water shaders, elevated/banked road, suspension bridge, night-market arcade, observatory halo, planted city blocks, hazards and interface are original Palm Prix work. No extracted game models or panoramic background image are loaded by the active scene. Mario Kart was studied as a course-design reference; its artwork is not redistributed in this redesign.
+
+## Archived stadium race assets
 
 See [the complete asset attribution and reuse notes](public/assets/ASSET-CREDITS.md), also available through the in-game **Credits** button.
 

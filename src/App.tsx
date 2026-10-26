@@ -7,7 +7,6 @@ import {
   type RaceStatus,
 } from './game/raceLoop'
 import { RaceScene } from './scene/RaceScene'
-import {usePersonalAssets} from './scene/personalAssets'
 const AvatarStudio=lazy(()=>import('./ui/AvatarStudio').then(module=>({default:module.AvatarStudio})))
 import { CalibrateScreen } from './ui/CalibrateScreen'
 import { AssetLoadingOverlay } from './ui/AssetLoadingOverlay'
@@ -23,7 +22,6 @@ import { useRaceAudio } from './game/useRaceAudio'
 import './App.css'
 
 export default function App() {
-  const personalAssets=usePersonalAssets()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [cameraEnabled,setCameraEnabled] = useState(false)
   const { status, error, hands, retry } = useHandTracker(videoRef,cameraEnabled)
@@ -37,6 +35,7 @@ export default function App() {
     loadCachedAvatar(),
   )
   const [coins,setCoins] = useState(0)
+  const [impact,setImpact] = useState(false)
   const [reward,setReward] = useState<string|null>(null)
   const [race, setRace] = useState<RaceStatus>(() => createRaceStatus())
   const [kart, setKart] = useState<KartState>(DEFAULT_KART)
@@ -60,7 +59,7 @@ export default function App() {
     handsRef.current = hands
     runtime.readControls = (dtMs) => mergeControls(mapper.update(handsRef.current,calRef.current,dtMs),readKeyboard())
     runtime.publish = () => {
-      setCoins(runtime.rewards.coins)
+      setCoins(runtime.rewards.coins);setImpact(runtime.obstacles.flashTimer>0)
       setReward(runtime.rewards.lastReward)
       setKart({...runtime.kart})
       setRace({...runtime.race})
@@ -88,7 +87,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">Palm Prix</span>
-          <span className="brand-sub">CLOUD CARNIVAL</span>
+          <span className="brand-sub">AFTERGLOW CITY</span>
         </div>
         <div className="topbar-actions">
           <button className="retry-camera" onClick={()=>setShowCredits(v=>!v)}>Credits</button>
@@ -115,6 +114,7 @@ export default function App() {
               <Hud
                 race={race}
                 coins={coins}
+                impact={impact}
                 reward={reward}
                 kart={kart}
                 control={control}
@@ -140,10 +140,10 @@ export default function App() {
 
         {race.phase === 'menu' && (
           <div className="panel menu">
-            <div className="eyebrow"><span /> CLOUD CARNIVAL / VOL. 03</div>
-            <h1>HEAD IN THE CLOUDS.<br /><em>FULL THROTTLE.</em></h1>
-            <p className="menu-description">A grand prix above the clouds. Chase golden tokens past carousel gardens, wind-up airships and a shimmering waterfall tunnel.</p>
-            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Cloud Carnival</strong><span>Floating roads + waterfall tunnel · 3 laps · 6 racers</span></div><span className="difficulty">150<small>CC</small></span></div>
+            <div className="eyebrow"><span /> AFTERGLOW CITY / VOL. 03</div>
+            <h1>AFTER HOURS.<br /><em>FULL THROTTLE.</em></h1>
+            <p className="menu-description">Climb the coastal skyway, dive through the night market and sweep beneath the observatory halo. One city. Three levels. All afterglow.</p>
+            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Afterglow City</strong><span>Skyway · Night market · Waterfront · 3 laps</span></div><span className="difficulty">150<small>CC</small></span></div>
             <div className="row menu-actions">
               <button type="button" className="primary" onClick={startCountdown}>LET’S RACE <span>→</span></button>
               <button type="button" onClick={() => {setCameraEnabled(true);changePhase('calibrate')}}>Set up hand controls</button>
@@ -198,13 +198,13 @@ export default function App() {
         {inRace && <button className="exit-race" onClick={goMenu}>← Paddock</button>}
         {race.phase === 'menu' && <div className="edition">PALM PRIX <span>CHASE THE CHECKERED FLAG.</span></div>}
         {showCredits && <div className="credits-backdrop"><section className="panel credits-panel" role="dialog" aria-modal="true" aria-labelledby="credits-title">
-          <div className="eyebrow">ASSETS & CONTRIBUTORS</div><h2 id="credits-title">Built to race. Full credits.</h2>
-          <p>Karts, seated racers, wheels and color atlas by <a href="https://kenney.nl/assets/car-kit" target="_blank" rel="noreferrer">Kenney · Car Kit 3.1</a>.</p>
-          <p>Island garden trees and mushrooms by <a href="https://kenney.nl/assets/nature-kit" target="_blank" rel="noreferrer">Kenney · Nature Kit</a>.</p>
-          <p>Cliff surface detail from <a href="https://polyhaven.com/a/cliff_side" target="_blank" rel="noreferrer">Poly Haven</a>.</p>
-          <p>The Kenney and Poly Haven assets are released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0 1.0</a>, which permits personal and commercial reuse, modification and redistribution.</p>
-          {Object.keys(personalAssets).length>0&&<p>This personal build also loads Nintendo Mario Kart 8 models from <a href="https://models.spriters-resource.com/wii_u/mariokart8/" target="_blank" rel="noreferrer">The Models Resource</a>: Teddy Buggy (BillyGaming964), Sweet Sweet Balloon and Aqua Cup Ride (Centrixe the Dodo). These game extracts are not CC0 or cleared for commercial use. <a href="/assets/personal/CREDITS.md" target="_blank" rel="noreferrer">Personal asset notes ↗</a></p>}
-          <p>The floating circuit, original carousel and horses, wind-up airship, waterfall tunnel, signs and racing systems were built for Palm Prix. The cloud panorama is original AI-generated artwork. OpenWii was consulted as a handling reference.</p>
+          <div className="eyebrow">ASSETS & CONTRIBUTORS</div><h2 id="credits-title">Original art. Neon soul.</h2>
+          <p>The active city, angular racers, sunset geometry, road, signs and arcade effects are original Palm Prix artwork.</p>
+
+
+          <p>Earlier retained Kenney and Poly Haven assets are released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0 1.0</a>, which permits personal and commercial reuse, modification and redistribution.</p>
+
+          <p>OpenWii was consulted as a handling reference. The optional personal Nintendo models and older carnival artwork remain archived locally and are not loaded by this city course.</p>
           <p><a href="/assets/ASSET-CREDITS.md" target="_blank" rel="noreferrer">View full asset sources and license notes ↗</a></p>
           <button type="button" className="primary" onClick={()=>setShowCredits(false)}>Back to the game</button>
         </section></div>}

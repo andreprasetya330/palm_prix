@@ -1,6 +1,6 @@
-# Palm Prix — Cloud Carnival
+# Palm Prix — Afterglow City
 
-A Three.js kart racer controlled with your webcam or keyboard. The current course is a floating amusement park: a 397-metre ribbon road above painted cloud banks, with a moving carousel, sculpted horses, wind-up airship, balloon fleet, island gardens and a flowing waterfall tunnel.
+A Three.js kart racer controlled with your webcam or keyboard. Afterglow City is a cohesive neon sunset circuit with a coastal skyway, covered night market, terraced city blocks and an observatory halo. The sunset, architecture, racers and landmarks are modeled geometry and procedural materials; no surrounding photographic panorama is used.
 
 ## Run locally
 
@@ -24,15 +24,17 @@ Use Set up hand controls, keep your wrists and all fingers visible, close both f
 
 ## Course and graphics
 
-The 16-metre racing surface follows a shared flowing spline with changing corner direction. Four directional boost strips and eighteen collectible tokens per lap reward line choice. The race ends after three ordered laps against five scripted rivals.
+The 16-metre racing surface follows a 430.8-metre horizontal spline with changing corner direction. Smooth ramps climb to a ten-metre coastal skyway and a separate five-metre terrace. Modest banking, visible bridge supports, suspension cables, a roofed market arcade and planted city blocks give the lap distinct spaces. Four directional boost strips, eighteen collectible tokens per lap, two construction islands and a crossing traffic drone reward line choice. The race ends after three ordered laps against five scripted rivals.
 
-The active world uses original curved carnival architecture, instanced carousel horses, a decorated start gateway, a wind-up toy airship with animated propellers, floating textured islands, translucent animated water and a painted sky panorama. The older stadium and asphalt remain in the source tree but are not mounted. Driver avatar personalization is deferred.
+The active world uses original art-deco architecture and signs, beveled wedge karts with helmeted pilots, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Driver avatar personalization is deferred.
 
-Third-party assets are local CC0 Kenney kart/driver and garden models plus Poly Haven cliff textures. The sky painting is original AI-generated project artwork; it is documented separately from third-party CC0 assets. Use the in-game Credits button, [full asset credits](public/assets/ASSET-CREDITS.md), and [artwork provenance and generation prompt](public/assets/cloud-carnival/ARTWORK.md). The reusable checkout uses original and CC0 art. An optional personal-only model set is documented below.
+Active Afterglow City artwork was authored for this project. Older CC0 Kenney/Poly Haven assets and the Cloud Carnival painting remain archived in the source tree with their credits; they are not mounted by the active race. See the in-game Credits button and [full asset credits](public/assets/ASSET-CREDITS.md). No new third-party models were needed for this redesign.
 
 ## Performance and validation
 
 Physics uses a fixed 120Hz step with interpolation. The Three.js frame loop owns simulation and visual motion, and React receives HUD snapshots at 10Hz. Camera inference runs in a CPU worker with at most one resized 640px frame in flight. Deadline-based capture targets 30Hz, dropping to 20Hz when inference takes longer; stale frames never revive driving input.
+
+HDR bloom uses a shared postprocessing pipeline with two-sample antialiasing. After shader warm-up, sustained frame times above the 55fps budget gradually reduce only the 3D render targets to a minimum 75% resolution. The HTML HUD stays native and geometry/physics do not change. Fast displays can restore full resolution. `data-race-render-scale` exposes the current scale for profiling.
 
 ```sh
 npm test
@@ -40,7 +42,7 @@ npm run build
 npm run lint
 ```
 
-Tests cover acceleration and braking, reverse, drift rewards, frame-rate independence, barrier containment, ordered laps, the full-width course corridor, rotated fist poses, tracking identity and occlusion, capture cadence, runtime/HUD separation, boost/token sweeps and local asset resources. Lint reports existing React compiler warnings around imperative Three.js updates; production builds retain a main-chunk size warning.
+Tests cover acceleration and braking, reverse, drift rewards, frame-rate independence, barrier containment, ordered laps, the full-width course corridor, seamless elevation/grade/banking, elevated reward/hazard alignment, swept obstacle collisions and runtime reset, rotated fist poses, tracking identity and occlusion, capture cadence, runtime/HUD separation, boost/token sweeps and retained local asset resources. Lint reports existing React compiler warnings around imperative Three.js updates; production builds retain a main-chunk size warning.
 
 Development diagnostics are DOM data attributes on the page root: `data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, and `data-race-triangles`. They add no visible debug HUD.
 
@@ -52,9 +54,9 @@ Continuous tracking frames stay in the browser. The deferred avatar studio can s
 
 OpenWii was reviewed as a handling reference: https://github.com/pattssun/OpenWii. Handling was implemented independently.
 
-## Optional personal Nintendo models
+## Archived personal Nintendo models
 
-The owner's local noncommercial build additionally uses Models Resource's textured Teddy Buggy, Sweet Sweet hot-air balloon and Aqua Cup Ride. Nintendo owns the game artwork; uploaded-model contributor credits, source links and usage limits are in [personal model credits](public/assets/personal/CREDITS.md). These are **not CC0**. Downloaded archives, converted model binaries and the local manifest are excluded from Git; the regular checkout retains the original/CC0 fallback scene.
+The earlier local noncommercial Carnival scene used Models Resource's textured Teddy Buggy, Sweet Sweet hot-air balloon and Aqua Cup Ride. They are not loaded by Afterglow City, including when the older environment flag remains enabled. Nintendo owns that artwork; uploaded-model contributor credits, source links and usage limits are in [personal model credits](public/assets/personal/CREDITS.md). These are **not CC0**. Downloaded archives, converted model binaries and the local manifest remain excluded from Git.
 
 After downloading/extracting the archives as described in that credits file, run:
 
@@ -64,4 +66,4 @@ blender --background --python scripts/prepare-personal-props.py -- --asset aqua-
 blender --background --python scripts/prepare-personal-kart.py
 ```
 
-Create `public/assets/personal/manifest.json` with `balloon`, `cups` and `kart` pointing to `/assets/personal/sweet-balloon.glb`, `/assets/personal/aqua-cups.glb` and `/assets/personal/teddy-buggy.glb`. Set `VITE_PERSONAL_ASSETS=true` in the ignored `.env.local`, then restart or rebuild. Missing personal assets fall back to the regular art. Set the flag false before preparing a reusable/public build. The current local production preview is the personal build requested by the owner.
+The archived components read `public/assets/personal/manifest.json` and the older `VITE_PERSONAL_ASSETS` flag. Re-enabling those components requires an intentional scene change; that flag alone does not alter the active neon race.
