@@ -6,7 +6,7 @@ These local assets are game extracts, **not CC0** and not cleared for commercial
 
 - **Circuit Special** — Mario Kart 8 (Wii U), uploaded by **BillyGaming964**. https://models.spriters-resource.com/wii_u/mariokart8/asset/342345/
 - **Mii** — Mario Kart Tour (Mobile), uploaded by **Centrixe the Dodo**. https://models.spriters-resource.com/mobile/mariokarttour/asset/351442/
-- Tire, alloy wheel, groove, hub and neutral face geometry: original Palm Prix work. The supplied Mii suit/helmet prefab has no face geometry, so an original neutral face fills its opening. Face personalization remains deferred.
+- Tire, alloy wheel, groove, hub, subframe, rear axle, front wishbone/knuckle and neutral face geometry: original Palm Prix work. Tires are fitted beneath the fenders, with each hub connected to the chassis. The supplied Mii suit/helmet prefab has no face geometry, so an original neutral face fills its opening. Face personalization remains deferred.
 
 Converted with `scripts/prepare-circuit-racer.py`. Only the high-detail Circuit Special body/light meshes and Mii body are retained; overlapping LODs are removed. The Mii rig is posed into the seat and baked. Original albedo atlases and authored normals are retained; unsupported packed source normal maps are not used as standard tangent maps. The runtime recolors blue kart paint and red suit fabric selectively, preserving white markings, carbon, gloves and visor. The player is cyan; the five rivals use coral, yellow, blue, purple and mint kart/suit pairings. Wheels steer and spin independently.
 

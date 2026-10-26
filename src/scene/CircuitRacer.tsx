@@ -58,7 +58,7 @@ function LoadedCircuit({ color, motion }: { color: string; motion: NeonRacerProp
   const { scene } = useGLTF(MODEL)
   const prepared = useMemo(() => {
     const root = scene.clone(true)
-    const wheels: { steer: THREE.Group; spinner: THREE.Object3D; base: THREE.Quaternion; front: boolean }[] = []
+    const wheels: { steer: THREE.Group; spinner: THREE.Object3D; base: THREE.Quaternion; front: boolean; radius:number }[] = []
     const candidates: THREE.Object3D[] = []
     root.traverse(object => {
       if (object instanceof THREE.Mesh) {
@@ -74,7 +74,7 @@ function LoadedCircuit({ color, motion }: { color: string; motion: NeonRacerProp
       const base = steer.quaternion.clone()
       parent.add(steer); steer.add(wheel)
       wheel.position.set(0, 0, 0); wheel.quaternion.identity()
-      wheels.push({ steer, spinner: wheel, base, front: wheel.name.includes('-front-') })
+      wheels.push({ steer, spinner: wheel, base, front: wheel.name.includes('-front-'),radius:Number(wheel.userData.wheelRadius)||.33 })
     }
     return { root, wheels }
   }, [scene, color])
@@ -87,7 +87,7 @@ function LoadedCircuit({ color, motion }: { color: string; motion: NeonRacerProp
     steeringRotation.setFromAxisAngle(yAxis, steeringState.angle)
     for (const wheel of prepared.wheels) {
       if (wheel.front) wheel.steer.quaternion.copy(wheel.base).multiply(steeringRotation)
-      wheel.spinner.rotation.x += (motion?.speed ?? 0) / .33 * dt
+      wheel.spinner.rotation.x += (motion?.speed ?? 0) / wheel.radius * dt
     }
   })
   return <primitive object={prepared.root} dispose={null} />

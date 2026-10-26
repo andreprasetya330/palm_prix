@@ -133,40 +133,68 @@ def colored(obj,color):
  return obj
 def cylinder(radius,depth,location,color,vertices=24):
  bpy.ops.mesh.primitive_cylinder_add(vertices=vertices,radius=radius,depth=depth,location=location,rotation=(0,math.pi/2,0));return colored(bpy.context.object,color)
+
+# The kart source is only a body. Build a connected subframe rather than placing
+# independent tires beside it: rear live axle, front wishbones and hub knuckles.
+mounts=[]
+def link(a,b,radius=.028,color=(.10,.12,.16)):
+ a,b=Vector(a),Vector(b);direction=b-a
+ bpy.ops.mesh.primitive_cylinder_add(vertices=12,radius=radius,depth=direction.length,location=(a+b)/2)
+ obj=bpy.context.object;obj.rotation_euler=direction.to_track_quat('Z','Y').to_euler()
+ mounts.append(colored(obj,color))
+for side in [-1,1]:
+ link((side*.22,.90,.335),(side*.22,-.96,.335),.045)
+ # Both front arms end on the steering knuckle, whose center is the wheel pivot.
+ for height in [.255,.405]:
+  for anchor_y in [-.60,-1.10]:
+   link((side*.22,anchor_y,.335),(side*.66,-.90,height),.025)
+ link((side*.66,-.90,.23),(side*.66,-.90,.43),.045,(.25,.28,.32))
+ link((side*.23,.55,.335),(side*.62,.86,.35),.034)
+link((-.62,.86,.35),(.62,.86,.35),.06,(.18,.20,.24))
+link((-.22,-.82,.335),(.22,-.82,.335),.045)
+bpy.ops.object.select_all(action='DESELECT')
+for obj in mounts:obj.select_set(True)
+bpy.context.view_layer.objects.active=mounts[0];bpy.ops.object.join();bpy.context.object.name='chassis-mounts'
+
 for side,side_name in [(-1,'left'),(1,'right')]:
  for forward,axle in [(1,'front'),(-1,'rear')]:
-  center=Vector((side*.85,-forward*.87,.33));pieces=[]
+  front=axle=='front'
+  radius=.33 if front else .35
+  width=.24 if front else .36
+  center=Vector((side*(.66 if front else .62),-.90 if front else .86,radius));pieces=[]
+  radial_scale=radius/.33;axial_scale=width/.29
   # Lathed tire has rounded shoulders, stepped bead and a recessed center hub.
   profile=[(-.145,.23),(-.14,.29),(-.11,.325),(-.075,.33),(.075,.33),(.11,.325),(.14,.29),(.145,.23)]
   verts=[];faces=[];segments=40
-  for x,radius in profile:
+  for x,profile_radius in profile:
    for i in range(segments):
-    a=i/segments*math.tau;verts.append(tuple(center+Vector((x,math.cos(a)*radius,math.sin(a)*radius))))
+    a=i/segments*math.tau;verts.append(tuple(center+Vector((x*axial_scale,math.cos(a)*profile_radius*radial_scale,math.sin(a)*profile_radius*radial_scale))))
   for ring in range(len(profile)-1):
    for i in range(segments):
     a=ring*segments+i;b=ring*segments+(i+1)%segments;faces.append((a,b,b+segments,a+segments))
   m=bpy.data.meshes.new('tire');m.from_pydata(verts,[],faces);o=bpy.data.objects.new('tire',m);bpy.context.collection.objects.link(o);pieces.append(colored(o,(.012,.014,.024)))
   for face in [-1,1]:
-   x=center.x+face*.14
-   pieces.append(cylinder(.235,.016,(x,center.y,center.z),(.04,.12,.45)))
-   pieces.append(cylinder(.19,.02,(x+face*.012,center.y,center.z),(.025,.03,.05)))
-   pieces.append(cylinder(.065,.03,(x+face*.025,center.y,center.z),(.48,.51,.6),16))
+   x=center.x+face*.14*axial_scale
+   pieces.append(cylinder(.235*radial_scale,.016,(x,center.y,center.z),(.04,.12,.45)))
+   pieces.append(cylinder(.19*radial_scale,.02,(x+face*.012,center.y,center.z),(.025,.03,.05)))
+   pieces.append(cylinder(.065*radial_scale,.03,(x+face*.025,center.y,center.z),(.48,.51,.6),16))
    for spoke in range(5):
     a=spoke/5*math.tau
-    bpy.ops.mesh.primitive_cube_add(size=1,location=(x+face*.025,center.y+math.cos(a)*.13,center.z+math.sin(a)*.13))
-    s=bpy.context.object;s.dimensions=(.025,.17,.035);s.rotation_euler.x=a;bpy.ops.object.transform_apply(location=False,rotation=False,scale=True);pieces.append(colored(s,(.23,.29,.46)))
+    bpy.ops.mesh.primitive_cube_add(size=1,location=(x+face*.025,center.y+math.cos(a)*.13*radial_scale,center.z+math.sin(a)*.13*radial_scale))
+    s=bpy.context.object;s.dimensions=(.025,.17*radial_scale,.035*radial_scale);s.rotation_euler.x=a;bpy.ops.object.transform_apply(location=False,rotation=False,scale=True);pieces.append(colored(s,(.23,.29,.46)))
   for groove in [-.065,.065]:
-   bpy.ops.mesh.primitive_torus_add(major_segments=40,minor_segments=4,location=tuple(center+Vector((groove,0,0))),rotation=(0,math.pi/2,0),major_radius=.329,minor_radius=.004)
+   bpy.ops.mesh.primitive_torus_add(major_segments=40,minor_segments=4,location=tuple(center+Vector((groove*axial_scale,0,0))),rotation=(0,math.pi/2,0),major_radius=radius-.001,minor_radius=.004)
    pieces.append(colored(bpy.context.object,(.003,.004,.009)))
   bpy.ops.object.select_all(action='DESELECT')
   for p in pieces:p.select_set(True)
   bpy.context.view_layer.objects.active=pieces[0];bpy.ops.object.join();wheel=bpy.context.object
   wheel.name=f'wheel-{axle}-{side_name}'
+  wheel['wheelRadius']=radius
   bpy.context.scene.cursor.location=center;bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
 
 OUTPUT.parent.mkdir(parents=True,exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
-bpy.ops.export_scene.gltf(filepath=str(OUTPUT),export_format='GLB',export_animations=False,export_skins=False,export_morph=False,export_yup=True)
+bpy.ops.export_scene.gltf(filepath=str(OUTPUT),export_format='GLB',export_animations=False,export_skins=False,export_morph=False,export_yup=True,export_extras=True)
 for o in bpy.context.scene.objects:
  if o.type=='MESH':
   bounds=[o.matrix_world@Vector(c) for c in o.bound_box]

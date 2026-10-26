@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {readFileSync,readdirSync,existsSync} from 'node:fs'
 import {dirname,resolve,extname} from 'node:path'
 import {OPTIONAL_CIRCUIT_MODEL,isRequiredAssetError} from '../src/game/assetErrors'
+import {Matrix4,Quaternion,Vector3,Triangle} from 'three'
 assert(!isRequiredAssetError(OPTIONAL_CIRCUIT_MODEL),'Missing optional local model must not block its procedural fallback')
 assert(!isRequiredAssetError(`http://localhost:4173${OPTIONAL_CIRCUIT_MODEL}`))
 assert(isRequiredAssetError('/assets/racers/Textures/colormap.png'),'Required texture failures must remain visible')
@@ -55,7 +56,7 @@ for(const name of ['teddy-buggy','sweet-balloon','aqua-cups','circuit-special'])
  assert((json.images??[]).every((image:{uri?:string})=>!image.uri||image.uri.startsWith('data:')),'Personal model textures must be embedded')
  if(name==='circuit-special'){
   const nodes=json.nodes.map((n:{name?:string})=>n.name)
-  for(const node of ['body','driver','driver-face','wheel-front-left','wheel-front-right','wheel-rear-left','wheel-rear-right'])assert(nodes.includes(node),`Missing Circuit racer part ${node}`)
+  for(const node of ['body','driver','driver-face','chassis-mounts','wheel-front-left','wheel-front-right','wheel-rear-left','wheel-rear-right'])assert(nodes.includes(node),`Missing Circuit racer part ${node}`)
   assert.equal(nodes.filter((n:string)=>/^wheel-(front|rear)-(left|right)$/.test(n)).length,4)
   assert(!nodes.some((n:string)=>/LOD|Armature/.test(n)),'Overlapping LODs and skeletal runtime cost must be removed')
   const materials=json.materials.map((m:{name?:string})=>m.name)
@@ -66,7 +67,42 @@ for(const name of ['teddy-buggy','sweet-balloon','aqua-cups','circuit-special'])
   assert(primitives.length<=10,'Each racer should need at most ten material draws')
   const triangles=primitives.reduce((sum:number,p:{indices:number})=>sum+json.accessors[p.indices].count/3,0)
   assert(triangles<20000,'Six racers must retain a modest geometry budget')
+  // Check exported geometry, not just the conversion constants: every wheel hub
+  // must physically meet a chassis mount and each tire must rest on the road.
+  const binOffset=28+bytes.readUInt32LE(12)
+  const matrixFor=(index:number):Matrix4=>{
+   const n=json.nodes[index],local=n.matrix?new Matrix4().fromArray(n.matrix):new Matrix4().compose(new Vector3().fromArray(n.translation??[0,0,0]),new Quaternion().fromArray(n.rotation??[0,0,0,1]),new Vector3().fromArray(n.scale??[1,1,1]))
+   const parent=json.nodes.findIndex((p:{children?:number[]})=>p.children?.includes(index))
+   return parent<0?local:matrixFor(parent).multiply(local)
+  }
+  const readAccessor=(id:number)=>{
+   const a=json.accessors[id],view=json.bufferViews[a.bufferView],components=a.type==='VEC3'?3:1,componentBytes=a.componentType===5123?2:4
+   const offset=binOffset+(view.byteOffset??0)+(a.byteOffset??0),stride=view.byteStride??components*componentBytes
+   return Array.from({length:a.count},(_,i)=>Array.from({length:components},(_,j)=>{
+    const at=offset+i*stride+j*componentBytes
+    return a.componentType===5126?bytes.readFloatLE(at):a.componentType===5123?bytes.readUInt16LE(at):bytes.readUInt32LE(at)
+   }))
+  }
+  const mountIndex=nodes.indexOf('chassis-mounts'),mount=json.meshes[json.nodes[mountIndex].mesh].primitives[0],mountMatrix=matrixFor(mountIndex)
+  const mountVertices=readAccessor(mount.attributes.POSITION).map(p=>new Vector3().fromArray(p).applyMatrix4(mountMatrix))
+  const mountIndices=readAccessor(mount.indices).flat(),triangle=new Triangle(),closest=new Vector3()
+  for(let i=0;i<json.nodes.length;i++){
+   const n=json.nodes[i]
+   if(!/^wheel-(front|rear)-(left|right)$/.test(n.name??''))continue
+   const matrix=matrixFor(i),center=new Vector3().setFromMatrixPosition(matrix),radius=n.extras?.wheelRadius
+   assert(radius>.25&&radius<.4,`Invalid rolling radius: ${n.name}`)
+   assert(Math.abs(center.y-radius)<.005,`Tire must meet the ground: ${n.name}`)
+   let gap=Infinity
+   for(let k=0;k<mountIndices.length;k+=3){
+    triangle.set(mountVertices[mountIndices[k]],mountVertices[mountIndices[k+1]],mountVertices[mountIndices[k+2]])
+    triangle.closestPointToPoint(center,closest);gap=Math.min(gap,closest.distanceTo(center))
+   }
+   assert(gap<.065,`Wheel hub is detached from chassis: ${n.name}, gap=${gap}`)
+   const primitive=json.meshes[n.mesh].primitives[0]
+   const wheelVertices=readAccessor(primitive.attributes.POSITION).map(p=>new Vector3().fromArray(p).applyMatrix4(matrix))
+   assert(Math.max(...wheelVertices.map(p=>Math.abs(p.x)))<.88,`Wheel must tuck within the fender/body silhouette: ${n.name}`)
+  }
   assert(personalCredits.includes('BillyGaming964')&&personalCredits.includes('Centrixe the Dodo')&&personalCredits.includes('342345')&&personalCredits.includes('351442'))
-  console.log(`Circuit racer checks passed: embedded atlases, posed driver, four wheel pivots, ${Math.round(triangles)} triangles, ${primitives.length} material draws.`)
+  console.log(`Circuit racer checks passed: embedded atlases, posed driver, attached wheel hubs, grounded/fitted tires, ${Math.round(triangles)} triangles, ${primitives.length} material draws.`)
  }
 }
