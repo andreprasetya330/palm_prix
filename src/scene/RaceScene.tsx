@@ -17,7 +17,7 @@ import { Track } from './Track'
 import { RaceEffects } from './RaceEffects'
 import { RaceSimulation } from './RaceSimulation'
 import { FrameDiagnostics } from './FrameDiagnostics'
-import {NeonRacer} from './NeonRacer'
+import {CircuitRacer} from './CircuitRacer'
 
 type Props={runtime:RaceRuntime;showcase?:boolean}
 function Environment(){
@@ -79,20 +79,20 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
       const road=getRoadPose(k.x,k.z),delta=k.yaw-road.yaw
       const pitch=Math.atan(road.grade*Math.cos(delta)+Math.tan(road.bank)*Math.sin(delta))
       const roll=Math.atan(-road.grade*Math.sin(delta)+Math.tan(road.bank)*Math.cos(delta))
-      root.position.set(k.x,road.height+.08,k.z);root.rotation.set(-pitch,k.yaw,roll+(k.steering??0)*Math.min(.045,Math.abs(k.speed)*.002),'YXZ')
+      root.position.set(k.x,road.height+.02,k.z);root.rotation.set(-pitch,k.yaw,roll+(k.steering??0)*Math.min(.045,Math.abs(k.speed)*.002),'YXZ')
       motion.speed=k.speed;motion.steering=k.steering??0
     }else{
       const rival=RIVALS[index],angle=rivalAngle(index,runtime.race.elapsed)
       const lane=(rival.lane-18.5)*.75+Math.sin(angle*2+index)*.25
       const surface=getTrackSurface(angle/(Math.PI*2),lane)
-      root.position.copy(surface.point);root.position.y+=.08;root.rotation.set(-surface.pitch,surface.yaw,surface.bank,'YXZ')
+      root.position.copy(surface.point);root.position.y+=.02;root.rotation.set(-surface.pitch,surface.yaw,surface.bank,'YXZ')
       motion.speed=runtime.race.phase==='racing'?Math.min(24,root.position.distanceTo(previous.current)/Math.max(.001,dt)):0
       motion.steering=Math.sin(angle)*.15;previous.current.copy(root.position)
     }
   },-20)
   return <group ref={group}>
-    <mesh position={[0,-.055,.12]} rotation={[-Math.PI/2,0,0]} renderOrder={1}><planeGeometry args={[2.1,2.9]}/><meshBasicMaterial map={contact} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1}/></mesh>
-    <NeonRacer player={index<0} variant={Math.max(0,index)} motion={motion}/>
+    <mesh position={[0,-.01,.12]} rotation={[-Math.PI/2,0,0]} renderOrder={1}><planeGeometry args={[2.1,2.9]}/><meshBasicMaterial map={contact} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1}/></mesh>
+    <CircuitRacer player={index<0} variant={index<0?0:index} color={index<0?'#49dce8':RIVALS[index].color} motion={motion}/>
   </group>
 }
 /** A stable scene: HUD and camera results cannot rebuild the world while driving. */
@@ -121,4 +121,3 @@ export const RaceScene=memo(function RaceScene({runtime,showcase=false}:Props){
     <NeonPostFX/>
   </Canvas>
 })
-

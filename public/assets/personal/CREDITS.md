@@ -2,6 +2,18 @@
 
 These local assets are game extracts, **not CC0** and not cleared for commercial use. Original Mario Kart 8 artwork and designs are copyright Nintendo. This optional asset set is used for the owner's personal, noncommercial project following their explicit request.
 
+## Active personal Afterglow City racers
+
+- **Circuit Special** — Mario Kart 8 (Wii U), uploaded by **BillyGaming964**. https://models.spriters-resource.com/wii_u/mariokart8/asset/342345/
+- **Mii** — Mario Kart Tour (Mobile), uploaded by **Centrixe the Dodo**. https://models.spriters-resource.com/mobile/mariokarttour/asset/351442/
+- Tire, alloy wheel, groove, hub and neutral face geometry: original Palm Prix work. The supplied Mii suit/helmet prefab has no face geometry, so an original neutral face fills its opening. Face personalization remains deferred.
+
+Converted with `scripts/prepare-circuit-racer.py`. Only the high-detail Circuit Special body/light meshes and Mii body are retained; overlapping LODs are removed. The Mii rig is posed into the seat and baked. Original albedo atlases and authored normals are retained; unsupported packed source normal maps are not used as standard tangent maps. The runtime recolors blue kart paint and red suit fabric selectively, preserving white markings, carbon, gloves and visor. The player is cyan; the five rivals use coral, yellow, blue, purple and mint kart/suit pairings. Wheels steer and spin independently.
+
+Download the two ZIP archives through their source pages, extract into `assets/source/personal/circuit-special/` and `assets/source/personal/tour-mii/`, then run `blender --background --python scripts/prepare-circuit-racer.py`. Set `VITE_PERSONAL_ASSETS=true` in ignored `.env.local` and rebuild. The exported `public/assets/personal/circuit-special.glb` embeds its textures and remains ignored by Git. Public checkouts use the original neon racer fallback; extracted model data is not pushed.
+
+## Archived Carnival assets
+
 - **Teddy Buggy** — Mario Kart 8 (Wii U), uploaded by **BillyGaming964**. https://models.spriters-resource.com/wii_u/mariokart8/asset/353826/
 - **Hot Air Balloon (Sweet Sweet)** — Mario Kart 8 (Wii U), uploaded by **Centrixe the Dodo**. https://models.spriters-resource.com/wii_u/mariokart8/asset/314945/
 - **Aqua Cup Ride** — Mario Kart 8 (Wii U), uploaded by **Centrixe the Dodo**. https://models.spriters-resource.com/wii_u/mariokart8/asset/316567/

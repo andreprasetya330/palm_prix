@@ -26,9 +26,9 @@ Use Set up hand controls, keep your wrists and all fingers visible, close both f
 
 The 16-metre racing surface follows a 430.8-metre horizontal spline with changing corner direction. Smooth ramps climb to a ten-metre coastal skyway and a separate five-metre terrace. Modest banking, visible bridge supports, suspension cables, a roofed market arcade and planted city blocks give the lap distinct spaces. Four directional boost strips, eighteen collectible tokens per lap, two construction islands and a crossing traffic drone reward line choice. The race ends after three ordered laps against five scripted rivals.
 
-The active world uses original art-deco architecture and signs, beveled wedge karts with helmeted pilots, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Driver avatar personalization is deferred.
+The active world uses original art-deco architecture and signs, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. Original beveled racers remain the public fallback. The owner's optional personal build uses Circuit Special bodies and posed Mario Kart Tour Mii drivers, with distinct matching kart/suit colors for every rival and original Palm Prix wheels/tires. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Driver face personalization is deferred.
 
-Active Afterglow City artwork was authored for this project. Older CC0 Kenney/Poly Haven assets and the Cloud Carnival painting remain archived in the source tree with their credits; they are not mounted by the active race. See the in-game Credits button and [full asset credits](public/assets/ASSET-CREDITS.md). No new third-party models were needed for this redesign.
+Afterglow City's environment was authored for this project. Optional Nintendo racers are local personal assets, not CC0; they and their original contributors are credited in [personal model credits](public/assets/personal/CREDITS.md). Extracted binaries are ignored by Git. Older CC0 Kenney/Poly Haven assets and the Cloud Carnival painting remain archived with their credits. See the in-game Credits button and [full asset credits](public/assets/ASSET-CREDITS.md).
 
 ## Performance and validation
 
@@ -54,7 +54,17 @@ Continuous tracking frames stay in the browser. The deferred avatar studio can s
 
 OpenWii was reviewed as a handling reference: https://github.com/pattssun/OpenWii. Handling was implemented independently.
 
-## Archived personal Nintendo models
+## Optional personal Circuit Special / Mii racers
+
+Download Circuit Special (Models Resource asset342345) and Mario Kart Tour Mii (asset351442), extract into `assets/source/personal/circuit-special/` and `assets/source/personal/tour-mii/`, then run:
+
+```sh
+blender --background --python scripts/prepare-circuit-racer.py
+```
+
+Set `VITE_PERSONAL_ASSETS=true` in ignored `.env.local` and rebuild. This loads the local embedded-texture `public/assets/personal/circuit-special.glb`. Without the flag or model, each racer safely falls back to the original model. The player is cyan; CORAL, VOLT, AZURE, ORCHID and MINT have matching paint, suit and rim accents. Skin/visor, white stripes and dark carbon remain unchanged. All six instances share geometry/maps and animate only steering/spinning wheel pivots. Nintendo owns the source art; full contributor credits and personal-use notes are retained in [personal/CREDITS.md](public/assets/personal/CREDITS.md).
+
+## Archived personal Carnival models
 
 The earlier local noncommercial Carnival scene used Models Resource's textured Teddy Buggy, Sweet Sweet hot-air balloon and Aqua Cup Ride. They are not loaded by Afterglow City, including when the older environment flag remains enabled. Nintendo owns that artwork; uploaded-model contributor credits, source links and usage limits are in [personal model credits](public/assets/personal/CREDITS.md). These are **not CC0**. Downloaded archives, converted model binaries and the local manifest remain excluded from Git.
 
@@ -66,4 +76,4 @@ blender --background --python scripts/prepare-personal-props.py -- --asset aqua-
 blender --background --python scripts/prepare-personal-kart.py
 ```
 
-The archived components read `public/assets/personal/manifest.json` and the older `VITE_PERSONAL_ASSETS` flag. Re-enabling those components requires an intentional scene change; that flag alone does not alter the active neon race.
+The archived Carnival components read `public/assets/personal/manifest.json`. They are not mounted in the active city. The personal-assets flag now selects the Circuit Special/Mii racer; restoring the older Carnival props requires an intentional scene change.

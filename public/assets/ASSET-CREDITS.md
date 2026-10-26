@@ -1,6 +1,6 @@
 # Palm Prix — asset sources and reuse permissions
 
-The active Afterglow City scene uses original Palm Prix geometry, shaders and graphics: art-deco city, racers, striped sun, elevated roadway, suspension bridge, market arcade, observatory halo and terraced streetscape. It loads no extracted Nintendo models and no panorama image. The following external assets are retained for archived scenes and the deferred garage with their original attribution and licenses. This file is shipped with the game; the Credits button provides an in-game attribution panel.
+Afterglow City uses original Palm Prix geometry, shaders and graphics for its art-deco city, striped sun, elevated roadway, suspension bridge, market arcade, observatory halo and terraced streetscape. The owner's optional personal build uses Nintendo's Circuit Special and Mario Kart Tour Mii models from Models Resource, with coordinated team liveries and original Palm Prix wheels; these are **not CC0**, and their sources/contributor credits are in [personal/CREDITS.md](personal/CREDITS.md). Extracted binaries are local-only and ignored by Git; regular checkouts use the original neon racer fallback. No panorama image is mounted. The following older external assets remain with their original attribution and licenses. This file is shipped with the game; the Credits button provides an in-game attribution panel.
 
 ## Kenney — Car Kit 3.1
 - Author: Kenney (https://kenney.nl).

@@ -199,12 +199,13 @@ export default function App() {
         {race.phase === 'menu' && <div className="edition">PALM PRIX <span>CHASE THE CHECKERED FLAG.</span></div>}
         {showCredits && <div className="credits-backdrop"><section className="panel credits-panel" role="dialog" aria-modal="true" aria-labelledby="credits-title">
           <div className="eyebrow">ASSETS & CONTRIBUTORS</div><h2 id="credits-title">Original art. Neon soul.</h2>
-          <p>The active city, angular racers, sunset geometry, road, signs and arcade effects are original Palm Prix artwork.</p>
+          <p>The city, sunset geometry, road, signs, arcade effects and fallback racers are original Palm Prix artwork.</p>
 
 
           <p>Earlier retained Kenney and Poly Haven assets are released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0 1.0</a>, which permits personal and commercial reuse, modification and redistribution.</p>
 
-          <p>OpenWii was consulted as a handling reference. The optional personal Nintendo models and older carnival artwork remain archived locally and are not loaded by this city course.</p>
+          <p>The optional personal build uses Nintendo’s Circuit Special (Mario Kart 8), uploaded by BillyGaming964, and Mii (Mario Kart Tour), uploaded by Centrixe the Dodo, via Models Resource. Their matching kart/suit colors are adapted for this project; the wheels are original Palm Prix art. These extracts are not CC0 and remain local to the owner’s noncommercial build.</p>
+          <p><a href="/assets/personal/CREDITS.md" target="_blank" rel="noreferrer">Personal model sources and contributor credits ↗</a>. OpenWii was consulted as a handling reference.</p>
           <p><a href="/assets/ASSET-CREDITS.md" target="_blank" rel="noreferrer">View full asset sources and license notes ↗</a></p>
           <button type="button" className="primary" onClick={()=>setShowCredits(false)}>Back to the game</button>
         </section></div>}

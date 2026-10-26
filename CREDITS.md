@@ -2,7 +2,7 @@
 
 ## Active Afterglow City
 
-The neon city, stepped art-deco buildings, signs, beveled racers and pilots, geometric sunset, water shaders, elevated/banked road, suspension bridge, night-market arcade, observatory halo, planted city blocks, hazards and interface are original Palm Prix work. No extracted game models or panoramic background image are loaded by the active scene. Mario Kart was studied as a course-design reference; its artwork is not redistributed in this redesign.
+The neon city, stepped art-deco buildings, signs, fallback racers and pilots, geometric sunset, water shaders, elevated/banked road, suspension bridge, night-market arcade, observatory halo, planted city blocks, hazards and interface are original Palm Prix work. The owner's personal build now uses **Circuit Special** (Mario Kart 8, uploader **BillyGaming964**) and **Mii** (Mario Kart Tour, uploader **Centrixe the Dodo**) from Models Resource, with original Palm Prix wheels and matching team paint/suit colors. Nintendo owns those game assets; extracted binaries are local-only and excluded from Git. Sources and conversion notes: [personal model credits](public/assets/personal/CREDITS.md). Public checkouts retain the original racer fallback.
 
 ## Archived stadium race assets
 
