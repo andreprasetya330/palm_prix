@@ -77,3 +77,11 @@ blender --background --python scripts/prepare-personal-kart.py
 ```
 
 The archived Carnival components read `public/assets/personal/manifest.json`. They are not mounted in the active city. The personal-assets flag now selects the Circuit Special/Mii racer; restoring the older Carnival props requires an intentional scene change.
+
+## Afterglow Grand Prix
+
+The expanded circuit is 764 metres per lap across seven connected districts: Marina Launch, Coastal Skyway, Sunset Switchbacks, Uptown Ascent, Rooftop Run, Night Market and Neon Mile. The road climbs through smooth banked ramps to 24 metres. Explore the circuit from the menu to preview each section.
+
+Collect amber Turbo or cyan Phase Shield cells, then press Space (or use the hand item gesture) to activate the held ability. Turbo lasts two seconds; Phase Shield passes through course hazards for 4.5 seconds. With an empty slot, Space uses the rechargeable boost. Hold Shift while turning to charge one of three drift tiers, then release for a mini turbo.
+
+The new score, wind/road layers, engine voices, pickup chimes and drift cues are original procedural WebAudio; no external recording or music download is used. Sound begins after pressing Let's Race and can be muted in the header. The UI stays at full resolution while the 3D render budget adapts under sustained load.

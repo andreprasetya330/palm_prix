@@ -81,7 +81,8 @@ function integrate(kart: KartState, control: ControlState, dt: number): KartStat
   vz = forwardZ * longitudinal - forwardX * lateral
   x += vx * dt; z += vz * dt
   const road = nearestTrack(x, z)
-  const limit = ROAD_HALF_WIDTH + 1.65
+  // Leave room for the complete kart footprint inside the visible guardrail.
+  const limit = ROAD_HALF_WIDTH + .65
   if (road.distance > limit) {
     const side = Math.sign(road.signedDistance) || 1
     x = road.point.x + road.normal.x * limit * side

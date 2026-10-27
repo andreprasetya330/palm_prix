@@ -11,6 +11,9 @@ const AvatarStudio=lazy(()=>import('./ui/AvatarStudio').then(module=>({default:m
 import { CalibrateScreen } from './ui/CalibrateScreen'
 import { AssetLoadingOverlay } from './ui/AssetLoadingOverlay'
 import { Hud } from './ui/Hud'
+import {RaceMenu} from './ui/RaceMenu'
+import {CourseTour} from './ui/CourseTour'
+import {COURSE_SECTORS} from './game/trackLayout'
 import { WebcamPip } from './ui/WebcamPip'
 import { loadCalibration, type Calibration } from './vision/calibration'
 import { GestureMapper, mergeControls } from './vision/gestureMapper'
@@ -19,6 +22,7 @@ import { useKeyboardControls } from './vision/useKeyboardControls'
 import { loadDriverStyle, saveDriverStyle, type DriverStyle } from './avatar/driverStyle'
 import { createRuntime, resetRuntime } from './game/runtime'
 import { useRaceAudio } from './game/useRaceAudio'
+import {createAbilityState} from './game/abilities'
 import './App.css'
 
 export default function App() {
@@ -47,9 +51,11 @@ export default function App() {
   })
   const [driverStyle, setDriverStyle] = useState<DriverStyle>(loadDriverStyle)
   const updateDriverStyle = (style: DriverStyle) => { setDriverStyle(style); saveDriverStyle(style) }
-  const audio = useRaceAudio(kart, race,coins)
+  const [abilities,setAbilities]=useState(createAbilityState)
+  const audio = useRaceAudio(kart, race,coins,abilities)
   const [showCredits,setShowCredits] = useState(false)
   const [showPip, setShowPip] = useState(true)
+  const [tourSector,setTourSector]=useState<number|null>(null)
 
   const runtime = useMemo(()=>createRuntime(), [])
   const calRef = useRef(calibration)
@@ -64,10 +70,12 @@ export default function App() {
       setKart({...runtime.kart})
       setRace({...runtime.race})
       setControl({...runtime.control})
+      setAbilities({...runtime.abilities})
     }
   }, [runtime, mapper, readKeyboard, calibration, hands])
 
   const startCountdown = () => {
+    setTourSector(null)
     void audio.enable()
     mapper.reset()
     resetRuntime(runtime,true)
@@ -110,12 +118,13 @@ export default function App() {
         {cameraEnabled && error && <div className="tracking-error" role="alert"><strong>Hand controls need attention</strong><p>{error}</p><button type="button" onClick={retry}>Retry camera</button></div>}
         {(
           <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
-            <RaceScene runtime={runtime} showcase={race.phase === 'menu'} />
+            <RaceScene runtime={runtime} showcase={race.phase === 'menu'} previewT={tourSector===null?undefined:(COURSE_SECTORS[tourSector].start+COURSE_SECTORS[tourSector].end)/2} />
             {inRace && (
               <Hud
                 race={race}
                 coins={coins}
                 impact={impact}
+                abilities={abilities}
                 reward={reward}
                 kart={kart}
                 control={control}
@@ -141,25 +150,7 @@ export default function App() {
           />
         </div>
 
-        {race.phase === 'menu' && (
-          <div className="panel menu">
-            <div className="eyebrow"><span /> AFTERGLOW CITY / VOL. 03</div>
-            <h1>AFTER HOURS.<br /><em>FULL THROTTLE.</em></h1>
-            <p className="menu-description">Climb the coastal skyway, dive through the night market and sweep beneath the observatory halo. One city. Three levels. All afterglow.</p>
-            <div className="circuit-card"><span className="circuit-icon">↗</span><div><small>YOUR NEXT DESTINATION</small><strong>Afterglow City</strong><span>Skyway · Night market · Waterfront · 3 laps</span></div><span className="difficulty">150<small>CC</small></span></div>
-            <div className="row menu-actions">
-              <button type="button" className="primary" onClick={startCountdown}>LET’S RACE <span>→</span></button>
-              <button type="button" onClick={() => {setCameraEnabled(true);changePhase('calibrate')}}>Set up hand controls</button>
-            </div>
-            <div className="menu-secondary"><span>ARROWS / WASD · SHIFT TO DRIFT · SPACE TO BOOST</span><span>Two fists to accelerate · Open palm to brake, then reverse</span></div>
-            <p className="privacy-note">Hand tracking runs on your device. Your camera feed stays yours.</p>
-            {status === 'denied' && (
-              <p className="cam-error">
-                Camera denied — use keyboard, or allow webcam and reload.
-              </p>
-            )}
-          </div>
-        )}
+        {race.phase === 'menu' && (tourSector===null?<RaceMenu onRace={startCountdown} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
 
         {race.phase === 'avatar' && (
           <Suspense fallback={<div className="panel">Loading garage…</div>}><AvatarStudio

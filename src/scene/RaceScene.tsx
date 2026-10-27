@@ -18,8 +18,9 @@ import { RaceEffects } from './RaceEffects'
 import { RaceSimulation } from './RaceSimulation'
 import { FrameDiagnostics } from './FrameDiagnostics'
 import {CircuitRacer} from './CircuitRacer'
+import {AbilityEffects} from './AbilityEffects'
 
-type Props={runtime:RaceRuntime;showcase?:boolean}
+type Props={runtime:RaceRuntime;showcase?:boolean;previewT?:number}
 function Environment(){
   const {gl,scene}=useThree()
   useEffect(()=>{
@@ -102,7 +103,7 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
   </group>
 }
 /** A stable scene: HUD and camera results cannot rebuild the world while driving. */
-export const RaceScene=memo(function RaceScene({runtime,showcase=false}:Props){
+export const RaceScene=memo(function RaceScene({runtime,showcase=false,previewT}:Props){
   return <Canvas shadows camera={{position:[0,6,14],fov:54,near:.1,far:500}} dpr={1}
     style={{width:'100%',height:'100%'}}
     gl={{antialias:false,powerPreference:'high-performance',toneMapping:ACESFilmicToneMapping,toneMappingExposure:1.05}}>
@@ -118,12 +119,13 @@ export const RaceScene=memo(function RaceScene({runtime,showcase=false}:Props){
     <Suspense fallback={null}>
       <Track showcase={showcase}/>
       <CourseFun runtime={runtime}/>
+      <AbilityEffects runtime={runtime}/>
       <NeonCity/><CourseDistricts/><TrackObstacles runtime={runtime}/>
       <Racer runtime={runtime}/>
-      {RIVALS.map((r,i)=><Racer key={r.name} index={i} runtime={runtime}/>)}
+      {!showcase&&RIVALS.map((r,i)=><Racer key={r.name} index={i} runtime={runtime}/>)}
     </Suspense>
     <RaceEffects kart={runtime.visual}/>
-    <FollowCamera kart={runtime.visual} showcase={showcase}/>
+    <FollowCamera kart={runtime.visual} showcase={showcase} previewT={previewT}/>
     <NeonPostFX/>
   </Canvas>
 })
