@@ -12,18 +12,22 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
   const [error, setError] = useState<string | null>(null)
   const [trackingLatencyMs, setTrackingLatencyMs] = useState<number | null>(null)
   const [hands, setHands] = useState<HandSample[]>([])
+  const [stage, setStage] = useState('Camera off')
   useEffect(() => {
     let cancelled = false
     let raf = 0
     let videoFrame = 0
     let startupTimer = 0
     let frameTimer = 0
+    let captureTimer = 0
     let startupPhase: 'permission' | 'video' | 'model' = 'permission'
     let stream: MediaStream | null = null
     let worker: Worker | null = null
     let ready = false
     let inFlight = false
     let lastVideoTime = -1
+    let lastVideoCallback = -Infinity
+    let lastResultTime = 0
     const cadence = new FrameCadence()
     let staleCleared = true
     let lastSampleTime = 0
@@ -35,6 +39,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     const release = () => {
       window.clearTimeout(startupTimer)
       window.clearTimeout(frameTimer)
+      window.clearTimeout(captureTimer)
       cancelAnimationFrame(raf)
       if (videoFrame) video?.cancelVideoFrameCallback(videoFrame)
       worker?.terminate()
@@ -51,6 +56,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       const name = e instanceof Error ? e.name : ''
       const denied = name === 'NotAllowedError' || name === 'SecurityError'
       setStatus(denied ? 'denied' : 'error')
+      setStage(denied ? 'Camera blocked' : 'Tracking unavailable')
       setError(name === 'TimeoutError'
         ? startupPhase === 'permission'
           ? 'Camera permission is still waiting. Allow access in your browser, then retry. Keyboard racing is ready.'
@@ -102,12 +108,23 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     // the only trigger for inference. Keep one bitmap/inference in flight.
     const onVideoFrame = () => {
       if (cancelled || !video) return
-      capture(performance.now())
+      lastVideoCallback = performance.now()
+      capture(lastVideoCallback)
       videoFrame = video.requestVideoFrameCallback(onVideoFrame)
+    }
+    const pollCamera = () => {
+      if (cancelled) return
+      const now = performance.now()
+      // Some browsers throttle presentation callbacks for a hidden preview.
+      // Poll independently of scene painting when those callbacks stop.
+      if (now-lastVideoCallback > 100) capture(now)
+      captureTimer = window.setTimeout(pollCamera,1000/30)
     }
     const loop = (now: number) => {
       if (cancelled) return
-      if (!video?.requestVideoFrameCallback) capture(now)
+      if (ready && !document.hidden && !inFlight && now-lastResultTime > 5000) {
+        setStage('Waiting for camera frames — try Reset tracking')
+      }
       if (!staleCleared && now - lastSampleTime > 250) {
         staleCleared = true
         setHands([])
@@ -117,6 +134,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     }
     async function start() {
       setStatus('loading')
+      setStage('Allow camera access')
       setError(null)
       setHands([]); setTrackingLatencyMs(null)
       armTimeout(20000)
@@ -127,12 +145,14 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
         stream = acquired
         if (!video) throw new Error('Video element missing')
         startupPhase = 'video'
+        setStage('Opening camera')
         armTimeout(10000)
         video.srcObject = stream
         await video.play()
         if (cancelled) return
         stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => fail(new Error('Camera disconnected'))))
         startupPhase = 'model'
+        setStage('Loading hand detector')
         armTimeout(30000)
         worker = new Worker(new URL('./handTracking.worker.ts', import.meta.url), { type: 'module' })
         worker.onerror = () => fail(new Error('Hand tracking worker failed'))
@@ -144,7 +164,10 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
             ready = true
             window.clearTimeout(startupTimer)
             setStatus('ready')
+            setStage('Finding hands')
+            lastResultTime = performance.now()
             if (video.requestVideoFrameCallback) videoFrame = video.requestVideoFrameCallback(onVideoFrame)
+            pollCamera()
             raf = requestAnimationFrame(loop)
           } else {
             inFlight = false
@@ -157,6 +180,9 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
             else if (averageDetectionMs < 28 && ++fastFrames >= 60) { captureWidth = 960; fastFrames = 0 }
             else if (averageDetectionMs >= 28) fastFrames = 0
             const latency = performance.now() - data.timestamp
+            if (latency > 180) { captureWidth = 640; fastFrames = 0 }
+            lastResultTime = performance.now()
+            setStage(latency > 250 ? 'Tracking is catching up' : data.hands.length ? 'Hands detected' : 'Show both palms to the camera')
             setTrackingLatencyMs(latency)
             lastSampleTime = data.timestamp
             staleCleared = document.hidden || latency > 250 || data.hands.length === 0
@@ -168,10 +194,10 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       } catch (e) { fail(e) }
     }
     if (enabled) void start()
-    else { setStatus('idle'); setError(null); setHands([]); setTrackingLatencyMs(null) }
+    else { setStatus('idle'); setStage('Camera off'); setError(null); setHands([]); setTrackingLatencyMs(null) }
     return () => { cancelled = true; release(); document.removeEventListener('visibilitychange', visibility) }
   }, [videoRef, attempt, enabled])
-  return { status, error, hands, retry, trackingLatencyMs }
+  return { status, stage, error, hands, retry, trackingLatencyMs }
 }
 
 

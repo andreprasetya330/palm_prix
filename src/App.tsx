@@ -24,7 +24,7 @@ import './App.css'
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [cameraEnabled,setCameraEnabled] = useState(false)
-  const { status, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled)
+  const { status, stage, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled)
   const readKeyboard = useKeyboardControls()
   const mapper = useMemo(() => new GestureMapper(), [])
 
@@ -101,12 +101,13 @@ export default function App() {
             />
             Camera view
           </label>}
-          <span className={`cam-status ${status}`}>{status === 'ready' ? 'Hands ready' : status === 'loading' ? 'Connecting camera' : 'Keyboard ready'}</span>
+          <span className={`cam-status ${status}`}>{cameraEnabled ? stage : 'Keyboard ready'}</span>
           {(status === 'error' || status === 'denied') && <button className="retry-camera" onClick={retry} title={error ?? 'Retry camera'}>Retry camera</button>}
         </div>
       </header>
 
       <main className={`stage ${inRace ? 'racing' : ''}`}>
+        {cameraEnabled && error && <div className="tracking-error" role="alert"><strong>Hand controls need attention</strong><p>{error}</p><button type="button" onClick={retry}>Retry camera</button></div>}
         {(
           <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
             <RaceScene runtime={runtime} showcase={race.phase === 'menu'} />
@@ -127,7 +128,7 @@ export default function App() {
 
         <div
           className={`pip-dock ${inRace ? 'corner' : 'hero'} ${race.phase === 'menu' ? 'menu-pip' : ''}`}
-          style={showPip && status === 'ready' ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          style={showPip && cameraEnabled ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         >
           <WebcamPip
             videoRef={videoRef}
@@ -136,8 +137,8 @@ export default function App() {
             compact={inRace}
             trackingLatencyMs={trackingLatencyMs}
             onRetry={retry}
+            stage={stage}
           />
-          {error && showPip && <p className="cam-error">{error}</p>}
         </div>
 
         {race.phase === 'menu' && (
