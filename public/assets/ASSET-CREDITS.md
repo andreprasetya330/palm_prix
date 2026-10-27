@@ -48,3 +48,9 @@ CC0 legal text and summary: https://creativecommons.org/publicdomain/zero/1.0/
 
 ## Optional local Models Resource set
 The owner explicitly requested a personal, noncommercial build using Mario Kart 8 assets from The Models Resource. Teddy Buggy, Sweet Sweet Balloon and Aqua Cup Ride remain Nintendo artwork; they are NOT CC0. Upload contributors, exact source pages and limitations are documented at personal/CREDITS.md. Original archives, converted GLBs and the personal manifest are excluded from Git. The reusable source checkout uses the original/CC0 fallbacks; the personal flag must be disabled for a reusable/public build.
+
+## On-device face customizer
+- Face landmark inference: Google MediaPipe Tasks Vision / Face Landmarker, https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker/web_js.
+- The model and WASM runtime load from their official Google/MediaPipe distributions. No model binary is redistributed in this repository.
+- The personalized face geometry, toon treatment, glasses, customizer interface and feature-mapping code are original Palm Prix work. The scan does not modify or redistribute the optional Nintendo source models.
+- User photos stay in the local browser and are not included in the repository or saved as assets.

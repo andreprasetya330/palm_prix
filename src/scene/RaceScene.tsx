@@ -19,8 +19,10 @@ import { RaceSimulation } from './RaceSimulation'
 import { FrameDiagnostics } from './FrameDiagnostics'
 import {CircuitRacer} from './CircuitRacer'
 import {AbilityEffects} from './AbilityEffects'
+import type {FaceProfile} from '../avatar/faceProfile'
+import type {DriverStyle} from '../avatar/driverStyle'
 
-type Props={runtime:RaceRuntime;showcase?:boolean;previewT?:number}
+type Props={runtime:RaceRuntime;showcase?:boolean;previewT?:number;faceProfile?:FaceProfile|null;driverStyle?:DriverStyle;paused?:boolean}
 function Environment(){
   const {gl,scene}=useThree()
   useEffect(()=>{
@@ -52,16 +54,16 @@ function RaceLighting({runtime}:{runtime:RaceRuntime}){
     shadow-camera-near={1} shadow-camera-far={140} shadow-camera-left={-30}
     shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30}/></>
 }
-function PauseHiddenRenderer(){
+function PauseHiddenRenderer({paused=false}:{paused?:boolean}){
   const setFrameloop=useThree(state=>state.setFrameloop)
   useEffect(()=>{
-    const sync=()=>setFrameloop(document.hidden?'never':'always')
+    const sync=()=>setFrameloop(document.hidden||paused?'never':'always')
     sync();document.addEventListener('visibilitychange',sync)
     return()=>document.removeEventListener('visibilitychange',sync)
-  },[setFrameloop])
+  },[setFrameloop,paused])
   return null
 }
-function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
+function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;index?:number;faceProfile?:FaceProfile|null;driverStyle?:DriverStyle}){
   const group=useRef<Group>(null)
   const motion=useMemo(()=>({speed:0,steering:0}),[])
   const contact=useMemo(()=>{
@@ -102,15 +104,15 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
   },-20)
   return <group ref={group}>
     <mesh position={[0,.004,.12]} rotation={[-Math.PI/2,0,0]} renderOrder={1}><planeGeometry args={[2.1,2.9]}/><meshBasicMaterial map={contact} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1}/></mesh>
-    <CircuitRacer player={index<0} variant={index<0?0:index} color={index<0?'#49dce8':RIVALS[index].color} motion={motion}/>
+    <CircuitRacer player={index<0} variant={index<0?0:index} color={index<0?'#49dce8':RIVALS[index].color} motion={motion} faceProfile={index<0?faceProfile:null} driverStyle={index<0?driverStyle:undefined}/>
   </group>
 }
 /** A stable scene: HUD and camera results cannot rebuild the world while driving. */
-export const RaceScene=memo(function RaceScene({runtime,showcase=false,previewT}:Props){
+export const RaceScene=memo(function RaceScene({runtime,showcase=false,previewT,faceProfile,driverStyle,paused=false}:Props){
   return <Canvas shadows camera={{position:[0,6,14],fov:54,near:.1,far:500}} dpr={1}
     style={{width:'100%',height:'100%'}}
     gl={{antialias:false,powerPreference:'high-performance',toneMapping:ACESFilmicToneMapping,toneMappingExposure:1.05}}>
-    <PauseHiddenRenderer/><RaceSimulation runtime={runtime}/><FrameDiagnostics/>
+    <PauseHiddenRenderer paused={paused}/><RaceSimulation runtime={runtime}/><FrameDiagnostics/>
     <color attach="background" args={['#24102f']}/>
     <hemisphereLight args={['#b7bafa','#351330',.85]}/>
     <ambientLight intensity={.25} color="#bca0ff"/>
@@ -124,7 +126,7 @@ export const RaceScene=memo(function RaceScene({runtime,showcase=false,previewT}
       <CourseFun runtime={runtime}/>
       <AbilityEffects runtime={runtime}/>
       <NeonCity/><CourseDistricts/><TrackObstacles runtime={runtime}/>
-      <Racer runtime={runtime}/>
+      <Racer runtime={runtime} faceProfile={faceProfile} driverStyle={driverStyle}/>
       {!showcase&&RIVALS.map((r,i)=><Racer key={r.name} index={i} runtime={runtime}/>)}
     </Suspense>
     <RaceEffects kart={runtime.visual}/>

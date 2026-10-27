@@ -1,5 +1,5 @@
 export type DriverStyle = { helmet: string; suit: string }
-export const DEFAULT_DRIVER_STYLE: DriverStyle = { helmet: '#fff3e4', suit: '#c4254a' }
+export const DEFAULT_DRIVER_STYLE: DriverStyle = { helmet: '#49dce8', suit: '#49dce8' }
 const KEY = 'palm-prix-driver-style-v1'
 export function loadDriverStyle(): DriverStyle {
   try {

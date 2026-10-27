@@ -7,7 +7,7 @@ const project=(x:number,z:number)=>[160+(x-(TRACK_BOUNDS.minX+TRACK_BOUNDS.maxX)
 const path=TRACK_SAMPLES.map((s,i)=>`${i?'L':'M'}${project(s.point.x,s.point.z).join(',')}`).join(' ')+' Z'
 const summit=Math.round(Math.max(...TRACK_SAMPLES.map(s=>s.height)))
 
-export function RaceMenu({onRace,onSetup,onTour}:{onRace:()=>void;onSetup:()=>void;onTour:()=>void}){
+export function RaceMenu({onRace,onSetup,onTour,onCustomize}:{onRace:()=>void;onSetup:()=>void;onTour:()=>void;onCustomize:()=>void}){
  return <div className="race-menu">
   <section className="race-menu-copy" aria-labelledby="race-menu-title">
    <div className="race-menu-kicker"><span/>THE AFTERGLOW GRAND PRIX</div>
@@ -17,7 +17,7 @@ export function RaceMenu({onRace,onSetup,onTour}:{onRace:()=>void;onSetup:()=>vo
    <div className="race-menu-actions"><button type="button" className="primary" onClick={onRace}>LET’S RACE <span aria-hidden="true">↗</span></button><button type="button" onClick={onSetup}>SET UP HAND CONTROLS</button></div>
    <p className="race-menu-controls"><strong>WASD / ARROWS</strong> DRIVE <b>·</b> <strong>SHIFT</strong> DRIFT <b>·</b> <strong>SPACE</strong> ABILITY</p>
    <p className="race-menu-hands">Two fists accelerate. Open palm brakes, then reverses.<br/>Your camera feed stays on your device.</p>
-   <button className="race-menu-tour" type="button" onClick={onTour}>EXPLORE THE CIRCUIT <span aria-hidden="true">→</span></button>
+   <div className="race-menu-extras"><button className="race-menu-tour" type="button" onClick={onTour}>EXPLORE THE CIRCUIT <span aria-hidden="true">→</span></button><button className="race-menu-tour race-menu-driver" type="button" onClick={onCustomize}>CREATE YOUR DRIVER <span aria-hidden="true">↗</span></button></div>
   </section>
   <aside className="race-menu-course" aria-label="Course preview">
    <div className="race-menu-course-top"><span>01 / CITY CIRCUIT</span><span className="race-menu-course-live">NIGHT RACE</span></div>

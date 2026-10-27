@@ -1,5 +1,6 @@
 import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { loadCachedAvatar } from './avatar/stylizeClient'
+import {clearCachedAvatar} from './avatar/stylizeClient'
+import {loadFaceProfile,saveFaceProfile,clearFaceProfile,type FaceProfile} from './avatar/faceProfile'
 import { type ControlState } from './game/controlState'
 import { DEFAULT_KART, type KartState } from './game/kartPhysics'
 import {
@@ -28,20 +29,18 @@ import './App.css'
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [cameraEnabled,setCameraEnabled] = useState(false)
-  const { status, stage, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled)
+  const [race, setRace] = useState<RaceStatus>(() => createRaceStatus())
+  const { status, stage, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled&&race.phase!=='avatar')
   const readKeyboard = useKeyboardControls()
   const mapper = useMemo(() => new GestureMapper(), [])
 
   const [calibration, setCalibration] = useState<Calibration>(() =>
     loadCalibration(),
   )
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() =>
-    loadCachedAvatar(),
-  )
+  const [faceProfile,setFaceProfile]=useState(loadFaceProfile)
   const [coins,setCoins] = useState(0)
   const [impact,setImpact] = useState(false)
   const [reward,setReward] = useState<string|null>(null)
-  const [race, setRace] = useState<RaceStatus>(() => createRaceStatus())
   const [kart, setKart] = useState<KartState>(DEFAULT_KART)
   const [control, setControl] = useState<ControlState>({
     steer: 0,
@@ -51,6 +50,7 @@ export default function App() {
   })
   const [driverStyle, setDriverStyle] = useState<DriverStyle>(loadDriverStyle)
   const updateDriverStyle = (style: DriverStyle) => { setDriverStyle(style); saveDriverStyle(style) }
+  const applyDriver=(profile:FaceProfile,style:DriverStyle)=>{setFaceProfile(profile);updateDriverStyle(style);return saveFaceProfile(profile)}
   const [abilities,setAbilities]=useState(createAbilityState)
   const audio = useRaceAudio(kart, race,coins,abilities)
   const [showCredits,setShowCredits] = useState(false)
@@ -100,7 +100,7 @@ export default function App() {
         <div className="topbar-actions">
           <button className="retry-camera" onClick={()=>setShowCredits(v=>!v)}>Credits</button>
           <button className="retry-camera" onClick={audio.toggleMute}>{audio.muted ? 'Sound off' : 'Sound on'}</button>
-          <button className="retry-camera" onClick={()=>setCameraEnabled(v=>!v)}>{cameraEnabled ? 'Disable hands' : 'Enable hand controls'}</button>
+          {race.phase!=='avatar'&&<><button className="retry-camera" onClick={()=>setCameraEnabled(v=>!v)}>{cameraEnabled ? 'Disable hands' : 'Enable hand controls'}</button>
           {cameraEnabled && <label className="toggle">
             <input
               type="checkbox"
@@ -111,6 +111,7 @@ export default function App() {
           </label>}
           <span className={`cam-status ${status}`}>{cameraEnabled ? stage : 'Keyboard ready'}</span>
           {(status === 'error' || status === 'denied') && <button className="retry-camera" onClick={retry} title={error ?? 'Retry camera'}>Retry camera</button>}
+          </>}
         </div>
       </header>
 
@@ -118,7 +119,7 @@ export default function App() {
         {cameraEnabled && error && <div className="tracking-error" role="alert"><strong>Hand controls need attention</strong><p>{error}</p><button type="button" onClick={retry}>Retry camera</button></div>}
         {(
           <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
-            <RaceScene runtime={runtime} showcase={race.phase === 'menu'} previewT={tourSector===null?undefined:(COURSE_SECTORS[tourSector].start+COURSE_SECTORS[tourSector].end)/2} />
+            <RaceScene runtime={runtime} showcase={race.phase === 'menu'} paused={race.phase==='avatar'} faceProfile={faceProfile} driverStyle={driverStyle} previewT={tourSector===null?undefined:(COURSE_SECTORS[tourSector].start+COURSE_SECTORS[tourSector].end)/2} />
             {inRace && (
               <Hud
                 race={race}
@@ -137,7 +138,7 @@ export default function App() {
 
         <div
           className={`pip-dock ${inRace ? 'corner' : 'hero'} ${race.phase === 'menu' ? 'menu-pip' : ''}`}
-          style={showPip && cameraEnabled ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          style={showPip && cameraEnabled && race.phase!=='avatar' ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         >
           <WebcamPip
             videoRef={videoRef}
@@ -150,18 +151,15 @@ export default function App() {
           />
         </div>
 
-        {race.phase === 'menu' && (tourSector===null?<RaceMenu onRace={startCountdown} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
+        {race.phase === 'menu' && (tourSector===null?<RaceMenu onRace={startCountdown} onCustomize={()=>changePhase('avatar')} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
 
         {race.phase === 'avatar' && (
           <Suspense fallback={<div className="panel">Loading garage…</div>}><AvatarStudio
-            videoRef={videoRef}
-            currentAvatar={avatarUrl}
+            currentProfile={faceProfile}
             currentStyle={driverStyle}
-            onStyleChange={updateDriverStyle}
-            onEnableCamera={()=>{setCameraEnabled(true);retry()}}
-            onAvatar={setAvatarUrl}
+            onApply={applyDriver}
+            onClear={()=>{clearFaceProfile();clearCachedAvatar();setFaceProfile(null)}}
             onBack={goMenu}
-            onDone={() => changePhase('calibrate')}
           /></Suspense>
         )}
 

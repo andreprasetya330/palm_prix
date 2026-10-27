@@ -2,8 +2,11 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import type {FaceProfile} from '../avatar/faceProfile'
+import type {DriverStyle} from '../avatar/driverStyle'
+import {StylizedFace} from '../avatar/StylizedFace'
 
-export type NeonRacerProps = { player?: boolean; variant?: number; color?: string; motion?: { speed: number; steering?: number } }
+export type NeonRacerProps = { player?: boolean; variant?: number; color?: string; motion?: { speed: number; steering?: number };faceProfile?:FaceProfile|null;driverStyle?:DriverStyle }
 type Part = THREE.BufferGeometry
 const teamColors = ['#6833c8', '#ce347e', '#197cbd', '#e47825', '#318c80', '#a634cf']
 const glowColors = ['#55f7ff', '#ffe17b', '#ff6bbd', '#7cffff', '#d7ff65', '#ff8aca']
@@ -69,8 +72,8 @@ const bodyMaterial = new THREE.MeshToonMaterial({vertexColors:true,gradientMap:r
 const glowMaterial = new THREE.MeshBasicMaterial({vertexColors:true,toneMapped:false,color:new THREE.Color(2.2,2.2,2.2)})
 const visorMaterial = new THREE.MeshStandardMaterial({color:'#111624',metalness:.8,roughness:.19})
 const assets = new Map<string, { body: Part; glow: Part; driver: Part; visor: Part }>()
-function prepare(team: string, glow: string) {
-  const key=team+glow, cached=assets.get(key)
+function prepare(team: string, glow: string,helmetAccent=team,personalized=false,suitColor=team) {
+  const key=team+glow+helmetAccent+suitColor+Number(personalized), cached=assets.get(key)
   if(cached)return cached
   const body:Part[]=[], lights:Part[]=[], driver:Part[]=[], glass:Part[]=[]
   body.push(painted(nose(),team),painted(slab(1.5,2.48,.1,.025),ink,[0,.29,0]))
@@ -104,22 +107,27 @@ function prepare(team: string, glow: string) {
   for(const [x,z,w,d] of segments)body.push(painted(box(w,.012,d),white,[.17+x,.663,.84+z],[.3,0,0]))
   body.push(painted(box(.1,.012,.018),white,[.34,.69,.75]),painted(box(.018,.012,.18),white,[.38,.66,.85],[.3,0,0]))
   // Seated pilot: angular shoulders, bent sleeves, gloves, helmet chin and ear pods.
-  driver.push(painted(new THREE.CylinderGeometry(.2,.27,.33,6),team,[0,.94,-.21]))
+  driver.push(painted(new THREE.CylinderGeometry(.2,.27,.33,6),suitColor,[0,.94,-.21]))
   driver.push(painted(box(.16,.21,.18),white,[0,.97,-.04]))
   for(const side of [-1,1]) {
-    driver.push(painted(box(.14,.17,.24),team,[side*.24,.98,-.03],[.45,0,side*.2]))
+    driver.push(painted(box(.14,.17,.24),suitColor,[side*.24,.98,-.03],[.45,0,side*.2]))
     driver.push(painted(box(.12,.11,.13),ink,[side*.2,.93,.14]))
     driver.push(painted(box(.06,.12,.13),white,[side*.255,1.31,-.18]))
   }
-  const helmet=new THREE.SphereGeometry(1,12,8);helmet.scale(.25,.27,.27)
+  const helmet=personalized?new THREE.SphereGeometry(1,20,12,Math.PI/2+.68,Math.PI*2-1.36):new THREE.SphereGeometry(1,12,8);helmet.scale(.25,.27,.27)
   driver.push(painted(helmet,white,[0,1.31,-.2]))
+  if(personalized){
+    for(const [start,length]of [[0,.85],[2.35,Math.PI-2.35]]){
+      const guard=new THREE.SphereGeometry(1,12,6,Math.PI/2-.68,1.36,start,length);guard.scale(.25,.27,.27);driver.push(painted(guard,white,[0,1.31,-.2]))
+    }
+  }
   const helmetStripe=new THREE.SphereGeometry(1,4,8,Math.PI*1.39,Math.PI*.22,.12,2.3)
   helmetStripe.scale(.255,.275,.275)
-  driver.push(painted(helmetStripe,team,[0,1.31,-.2]))
+  driver.push(painted(helmetStripe,helmetAccent,[0,1.31,-.2]))
   for(let i=0;i<3;i++)driver.push(painted(box(.13,.016,.016),ink,[0,1.28+i*.035,-.471]))
   for(const side of [-1,1])lights.push(painted(box(.018,.06,.02),glow,[side*.107,1.31,-.455]))
-  driver.push(painted(box(.13,.035,.4),team,[0,1.558,-.2]))
-  driver.push(painted(slab(.39,.19,.085,.02),team,[0,1.13,-.005]))
+  driver.push(painted(box(.13,.035,.4),helmetAccent,[0,1.558,-.2]))
+  driver.push(painted(slab(.39,.19,.085,.02),helmetAccent,[0,1.13,-.005]))
   const visor=new THREE.SphereGeometry(1,12,4,0,Math.PI,.62,1.55);visor.scale(.256,.22,.278)
   glass.push(painted(visor,ink,[0,1.32,-.2]))
   lights.push(painted(box(.24,.016,.02),glow,[0,1.36,.076]))
@@ -130,10 +138,11 @@ function prepare(team: string, glow: string) {
 }
 
 /** Eight draw calls per racer: four static batches plus four independently steered wheels. */
-export function NeonRacer({player=false,variant=0,color,motion}:NeonRacerProps) {
+export function NeonRacer({player=false,variant=0,color,motion,faceProfile,driverStyle}:NeonRacerProps) {
   const index=player?0:((variant%5)+5)%5+1
   const team=color??teamColors[index],glow=glowColors[index]
-  const model=useMemo(()=>prepare(team,glow),[team,glow])
+  const personalized=Boolean(player&&faceProfile)
+  const model=useMemo(()=>prepare(team,glow,player?driverStyle?.helmet:undefined,personalized,player?driverStyle?.suit:undefined),[team,glow,player,driverStyle,personalized])
   const pivots=useRef<(THREE.Group|null)[]>([]),spinners=useRef<(THREE.Mesh|null)[]>([])
   useFrame((_,delta)=>{
     const dt=Math.min(delta,.05)
@@ -147,7 +156,7 @@ export function NeonRacer({player=false,variant=0,color,motion}:NeonRacerProps) 
     <mesh geometry={model.body} material={bodyMaterial} castShadow receiveShadow/>
     <mesh geometry={model.glow} material={glowMaterial}/>
     <mesh geometry={model.driver} material={bodyMaterial} castShadow receiveShadow/>
-    <mesh geometry={model.visor} material={visorMaterial}/>
+    {player&&faceProfile?<StylizedFace profile={faceProfile} position={[0,1.31,-.10]}/>:<mesh geometry={model.visor} material={visorMaterial}/>}
     {[-1,1,-1,1].map((side,i)=><group key={i} position={[side*.79,.32,i<2?.79:-.8]} ref={node=>{pivots.current[i]=node}}>
       <mesh ref={node=>{spinners.current[i]=node}} geometry={wheel} material={bodyMaterial} castShadow receiveShadow/>
     </group>)}

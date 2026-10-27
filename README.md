@@ -24,17 +24,17 @@ Use Set up hand controls, keep your wrists and all fingers visible, close both f
 
 ## Course and graphics
 
-The 16-metre racing surface follows a 430.8-metre horizontal spline with changing corner direction. Smooth ramps climb to a ten-metre coastal skyway and a separate five-metre terrace. Modest banking, visible bridge supports, suspension cables, a roofed market arcade and planted city blocks give the lap distinct spaces. Four directional boost strips, eighteen collectible tokens per lap, two construction islands and a crossing traffic drone reward line choice. The race ends after three ordered laps against five scripted rivals.
+The 16-metre racing surface follows a 764-metre horizontal spline across seven districts. Smooth ramps climb through a coastal skyway and terraces to a 24-metre rooftop run. Modest banking, visible bridge supports, suspension cables, a roofed market arcade and planted city blocks give the lap distinct spaces. Four directional boost strips, eighteen collectible tokens per lap, two construction islands and a crossing traffic drone reward line choice. The race ends after three ordered laps against five competitive CPU rivals.
 
-The active world uses original art-deco architecture and signs, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. Original beveled racers remain the public fallback. The owner's optional personal build uses Circuit Special bodies and posed Mario Kart Tour Mii drivers, with distinct matching kart/suit colors for every rival and original Palm Prix wheels/tires. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Driver face personalization is deferred.
+The active world uses original art-deco architecture and signs, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. Original beveled racers remain the public fallback. The owner's optional personal build uses Circuit Special bodies and posed Mario Kart Tour Mii drivers, with distinct matching kart/suit colors for every rival and original Palm Prix wheels/tires. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Create your driver from the menu to personalize the actual player face, helmet accent and suit.
 
 Afterglow City's environment was authored for this project. Optional Nintendo racers are local personal assets, not CC0; they and their original contributors are credited in [personal model credits](public/assets/personal/CREDITS.md). Extracted binaries are ignored by Git. Older CC0 Kenney/Poly Haven assets and the Cloud Carnival painting remain archived with their credits. See the in-game Credits button and [full asset credits](public/assets/ASSET-CREDITS.md).
 
 ## Performance and validation
 
-Physics uses a fixed 120Hz step with interpolation. The Three.js frame loop owns simulation and visual motion, and React receives HUD snapshots at 10Hz. Camera inference runs in a CPU worker with at most one resized 640px frame in flight. Deadline-based capture targets 30Hz, dropping to 20Hz when inference takes longer; stale frames never revive driving input.
+Physics uses a fixed 120Hz step with interpolation. The Three.js frame loop owns simulation and visual motion, and React receives HUD snapshots at 10Hz. Camera inference runs in a CPU worker with at most one resized frame in flight, retaining up to 960px of detail and adapting down on slower devices. Deadline-based capture targets 30Hz, dropping to 20Hz when inference takes longer; stale frames never revive driving input.
 
-HDR bloom uses a shared postprocessing pipeline with two-sample antialiasing. After shader warm-up, sustained frame times above the 55fps budget gradually reduce only the 3D render targets to a minimum 75% resolution. The HTML HUD stays native and geometry/physics do not change. Fast displays can restore full resolution. `data-race-render-scale` exposes the current scale for profiling.
+HDR bloom uses a shared postprocessing pipeline with two-sample antialiasing. After shader warm-up, sustained frame times above the 50fps budget gradually reduce only the 3D render targets to a minimum 65% resolution. The HTML HUD stays native and geometry/physics do not change. Fast displays can restore full resolution. `data-race-render-scale` exposes the current scale for profiling.
 
 ```sh
 npm test
@@ -46,11 +46,15 @@ Tests cover acceleration and braking, reverse, drift rewards, frame-rate indepen
 
 Development diagnostics are DOM data attributes on the page root: `data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, and `data-race-triangles`. They add no visible debug HUD.
 
-This remains an evolving browser racing game. Rivals are scripted; kart-to-kart collision, weapon items and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
+This remains an evolving browser racing game. Rivals follow simulated racing lines; physical kart-to-kart collision, weapon items and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
 
-## Privacy and optional avatar backend
+## On-device AI driver studio
 
-Continuous tracking frames stay in the browser. The deferred avatar studio can send one explicitly approved still to the optional Express `/api/stylize` endpoint. `npm run dev` also starts that server on port8787; it is not required for keyboard racing or hand detection. Set `FAL_KEY` in the server environment to enable its cloud generation path; never expose a secret through a `VITE_` variable. `/api/health` reports backend availability.
+Choose **Create your driver** from the main menu. Enable the webcam and capture a still, or choose a photo, then select **Scan & create driver**. MediaPipe Face Landmarker runs in a short-lived local worker and measures face proportions; sampled skin and hair colours and those proportions create an original stylized 3D face. The actual Circuit Special/Mii player model is previewed in the studio; regular builds personalize the original fallback racer. NPC faces and liveries stay independent.
+
+Adjust face proportions, hair silhouette, skin/hair/eye colours, glasses, helmet accent and suit, then **Apply to player**. Settings persist on this device and can be cleared from the studio. The still and raw landmarks are not saved or uploaded. The model downloads from Google/MediaPipe as needed; no server key or paid image-generation API is needed. This is a parametric 3D avatar built from an AI landmark scan, not a photorealistic reconstruction or identity-recognition system. Racing and continuous hand inference pause while the garage is open.
+
+The older optional cloud portrait proxy remains under `server/` for legacy use; the current studio does not call it. If using that proxy separately, keep `FAL_KEY` server-only and never prefix secrets with `VITE_`.
 
 OpenWii was reviewed as a handling reference: https://github.com/pattssun/OpenWii. Handling was implemented independently.
 

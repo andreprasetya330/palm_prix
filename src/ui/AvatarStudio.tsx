@@ -1,122 +1,98 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
-import * as THREE from 'three'
-import { Driver } from '../aaa/kart/Driver'
-import { clearCachedAvatar, saveCachedAvatar, stylizeSelfie } from '../avatar/stylizeClient'
-import { DEFAULT_DRIVER_STYLE, type DriverStyle } from '../avatar/driverStyle'
+import {Suspense,useEffect,useRef,useState} from 'react'
+import {Canvas,useThree} from '@react-three/fiber'
+import {OrbitControls} from '@react-three/drei'
+import {CircuitRacer} from '../scene/CircuitRacer'
+import {DEFAULT_FACE,type FaceProfile} from '../avatar/faceProfile'
+import {scanFace} from '../avatar/scanFace'
+import {DEFAULT_DRIVER_STYLE,type DriverStyle} from '../avatar/driverStyle'
+import './AvatarStudio.css'
 
-type Props = {
-  videoRef: React.RefObject<HTMLVideoElement | null>
-  currentAvatar: string | null
-  onAvatar: (url: string | null) => void
-  onDone: () => void
-  onBack: () => void
-  onEnableCamera?: () => void
-  currentStyle?: DriverStyle
-  onStyleChange?: (style: DriverStyle) => void
+type Props={currentProfile:FaceProfile|null;currentStyle:DriverStyle;onApply:(profile:FaceProfile,style:DriverStyle)=>boolean;onClear:()=>void;onBack:()=>void}
+const palette=['#49dce8','#f36bb7','#a28bff','#ffb65e','#e4e5f4','#26263e']
+const headHeight=import.meta.env.VITE_PERSONAL_ASSETS==='true'?1.06:1.32
+function PreviewCamera({close}:{close:boolean}){
+ const {camera,invalidate}=useThree()
+ useEffect(()=>{camera.position.set(...(close?[0,headHeight+.06,1.6]:[2.2,1.7,3.1]) as [number,number,number]);camera.lookAt(0,close?headHeight:.7,.1);camera.updateProjectionMatrix();invalidate()},[camera,invalidate,close])
+ return <OrbitControls makeDefault target={[0,close?headHeight:.7,.1]} enablePan={false} minDistance={close?.9:2} maxDistance={close?2.5:5} minPolarAngle={.45} maxPolarAngle={1.85}/>
 }
-const colors = ['#fff3e4', '#c4254a', '#1d7182', '#2945a3', '#e6ab39', '#292e3c']
-function DriverPreview({ url, style }: { url: string | null; style: DriverStyle }) {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null)
-  useEffect(() => {
-    setTexture(null)
-    if (!url) return
-    let active = true
-    const loaded = new THREE.TextureLoader().load(url, result => {
-      result.colorSpace = THREE.SRGBColorSpace
-      if (active) setTexture(result)
-    })
-    return () => { active = false; loaded.dispose() }
-  }, [url])
-  return <Canvas camera={{position:[0,0,2],fov:36}} dpr={[1,1.5]} style={{height:240,background:'#213c44',borderRadius:16}}>
-    <ambientLight intensity={1.5}/><directionalLight position={[2,3,4]} intensity={2.5}/><directionalLight position={[-3,1,1]} intensity={1}/>
-    <Suspense fallback={null}><group position={[0,-0.87,0]} rotation={[0,-0.15,0]}><Driver texture={texture} envMap={null} style={style}/></group></Suspense>
-  </Canvas>
+function DriverPreview({profile,style,close}:{profile:FaceProfile;style:DriverStyle;close:boolean}){
+ return <Canvas frameloop="demand" camera={{position:[0,1.12,1.6],fov:34}} dpr={[1,1.5]} aria-label="Actual personalized player model. Drag to rotate.">
+  <color attach="background" args={['#141329']}/><hemisphereLight args={['#d6dcff','#54405e',1.4]}/><ambientLight intensity={.7}/>
+  <directionalLight position={[2,4,5]} intensity={2.5} color="#ffdfc7"/><directionalLight position={[-3,2,1]} intensity={1.7} color="#7ae8ff"/>
+  <Suspense fallback={null}><CircuitRacer player faceProfile={profile} driverStyle={style} color="#49dce8"/></Suspense>
+  <PreviewCamera close={close}/>
+ </Canvas>
 }
-export function AvatarStudio({videoRef,currentAvatar,onAvatar,onDone,onBack,onEnableCamera,currentStyle=DEFAULT_DRIVER_STYLE,onStyleChange}:Props) {
-  const [preview,setPreview] = useState<string|null>(null)
-  const [result,setResult] = useState<string|null>(currentAvatar)
-  const [busy,setBusy] = useState(false)
-  const [status,setStatus] = useState<string|null>(null)
-  const [optIn,setOptIn] = useState(false)
-  const [ready,setReady] = useState(false)
-  const [cloudAvailable,setCloudAvailable] = useState<boolean|null>(null)
-  const [style,setStyle] = useState(currentStyle)
-  const still = useRef<Blob|null>(null)
-  const live = useRef<HTMLVideoElement>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    let active=true
-    fetch('/api/health').then(r=>r.ok?r.json():null).then(data=>{if(active)setCloudAvailable(Boolean(data?.falConfigured))}).catch(()=>{if(active)setCloudAvailable(false)})
-    const update=()=>{
-      const source=videoRef.current, target=live.current
-      const stream=source?.srcObject
-      if(target && stream && target.srcObject!==stream) {target.srcObject=stream;void target.play().catch(()=>{})}
-      setReady(Boolean(source && source.readyState>=2 && source.videoWidth>0))
-    }
-    update();const interval=window.setInterval(update,500)
-    return()=>{active=false;clearInterval(interval)}
-  },[videoRef])
-  const setPhoto = async (blob:Blob)=>{
-    try {
-      const image=await createImageBitmap(blob), size=Math.min(image.width,image.height)
-      const canvas=document.createElement('canvas');canvas.width=canvas.height=512
-      canvas.getContext('2d')!.drawImage(image,(image.width-size)/2,(image.height-size)/2,size,size,0,0,512,512)
-      image.close()
-      const prepared=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92))
-      if(!prepared)throw new Error('Could not prepare this photo.')
-      still.current=prepared;setPreview(canvas.toDataURL('image/jpeg',0.92));setOptIn(false)
-      setStatus('Still captured locally. Choose a portrait style below; nothing has been uploaded.')
-    } catch {setStatus('Could not read that photo. Please choose a JPEG, PNG or WebP image.')}
-  }
-  const capture=()=>{
-    const source=videoRef.current
-    if(!source || source.readyState<2 || !source.videoWidth){setStatus('Camera is not ready. Enable it or choose a photo.');return}
-    const canvas=document.createElement('canvas');canvas.width=source.videoWidth;canvas.height=source.videoHeight
-    canvas.getContext('2d')!.drawImage(source,0,0)
-    canvas.toBlob(blob=>{if(blob)void setPhoto(blob)},'image/jpeg',0.92)
-  }
-  const create=async(mode:'local'|'cloud')=>{
-    if(!still.current || (mode==='cloud'&&!optIn))return
-    setBusy(true);setStatus(mode==='cloud'?'Creating your AI portrait. This can take up to two minutes…':'Creating a local illustrated portrait…')
-    try {
-      const response=await stylizeSelfie(still.current,mode)
-      if(!response.ok){setStatus(response.error);return}
-      setResult(response.imageUrl);onAvatar(response.imageUrl)
-      const saved=saveCachedAvatar(response.imageUrl)
-      setStatus(`${response.source==='fal'?'AI portrait':'Local portrait effect (not AI)'} applied to your 3D driver.${saved?' Saved on this device.':' Active for this session; browser storage is unavailable.'}`)
-    } finally {setBusy(false)}
-  }
-  const changeStyle=(next:DriverStyle)=>{setStyle(next);onStyleChange?.(next)}
-  return <div className="panel avatar-studio" style={{maxWidth:1050,maxHeight:'calc(100vh - 110px)',overflowY:'auto'}}>
-    <div className="eyebrow">DRIVER GARAGE</div><h2>Your face. Your racing colors.</h2>
-    <p className="privacy">Create a portrait for the face inside your driver’s helmet. Camera capture and the local effect stay on your device. Cloud AI sends one selected still to our server and fal only with your consent.</p>
-    <div className="avatar-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:18}}>
-      <section><p className="label">01 / Frame your face</p>
-        <div style={{position:'relative',height:240,background:'#142c34',borderRadius:16,overflow:'hidden'}}>
-          <video ref={live} autoPlay muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',transform:'scaleX(-1)',opacity:ready?1:0}}/>
-          {ready?<div aria-hidden="true" style={{position:'absolute',inset:'12% 25%',border:'2px dashed #e8ff86',borderRadius:'50%'}}/>:<div style={{position:'absolute',inset:24,display:'grid',placeItems:'center',textAlign:'center'}}>Enable your camera or choose a photo.</div>}
-        </div>
-        <p className="hint">Center one face, look forward, and fill the oval. Use even lighting.</p>
-        <div className="row"><button onClick={ready?capture:onEnableCamera} disabled={busy||(!ready&&!onEnableCamera)}>{ready?'Capture face':'Enable camera'}</button><button disabled={busy} onClick={()=>fileInput.current?.click()}>Choose photo</button></div>
-        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={event=>{const file=event.target.files?.[0];if(file){if(file.size>10*1024*1024)setStatus('Choose a photo smaller than 10 MB.');else void setPhoto(file)}event.target.value=''}}/>
-      </section>
-      <section><p className="label">02 / Your selected still</p>
-        {preview?<img src={preview} alt="Selected face portrait, stored locally" style={{width:'100%',height:240,objectFit:'cover',borderRadius:16}}/>:<div className="avatar-placeholder" style={{height:240}}>Capture or choose a photo</div>}
-        <p className="hint">This is the exact still used for the portrait. Retake it anytime.</p>
-        <button disabled={busy||!preview} onClick={()=>void create('local')}>Use local portrait · no upload</button>
-      </section>
-      <section><p className="label">03 / Your actual 3D driver</p><DriverPreview url={result} style={style}/>
-        <p className="hint">The same helmet, face and suit appear in your kart.</p>
-        {(['helmet','suit'] as const).map(part=><fieldset key={part} style={{border:0,padding:0,margin:'10px 0'}}><legend style={{fontSize:12,textTransform:'capitalize',marginBottom:6}}>{part} color</legend><div style={{display:'flex',gap:8}}>{colors.map(color=><button key={color} aria-label={`${part} ${color}`} aria-pressed={style[part]===color} onClick={()=>changeStyle({...style,[part]:color})} style={{background:color,width:26,height:26,minWidth:26,padding:0,borderRadius:'50%',border:style[part]===color?'3px solid #e8ff86':'2px solid #ffffff44'}}/>)}</div></fieldset>)}
-      </section>
-    </div>
-    <div style={{margin:'20px 0',padding:16,background:'#ffffff08',border:'1px solid #ffffff22',borderRadius:12}}>
-      <label className="opt-in"><input type="checkbox" checked={optIn} disabled={busy||!preview} onChange={event=>setOptIn(event.target.checked)}/>I agree to send this one still to fal through the game server to create an AI portrait.</label>
-      <button className="primary" disabled={busy||!preview||!optIn||cloudAvailable===false} onClick={()=>void create('cloud')}>{busy?'Creating portrait…':'Create AI portrait'}</button>
-      {cloudAvailable===false&&<p className="hint">Cloud AI is unavailable on this server. The local portrait effect works now; it is not an AI face scan.</p>}
-    </div>
-    {status&&<p className="status" role="status">{status}</p>}
-    <div className="row"><button onClick={onBack} disabled={busy}>Back</button><button className="primary" disabled={busy} onClick={onDone}>Save driver & continue</button><button disabled={busy} onClick={()=>{clearCachedAvatar();setResult(null);setPreview(null);still.current=null;setOptIn(false);onAvatar(null);setStatus('Saved portrait and captured still cleared from this device. Cloud-provider retention is separate.')}}>Clear my portrait</button></div>
+async function preparePhoto(blob:Blob){
+ const bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas'),scale=Math.min(512/bitmap.width,512/bitmap.height)
+ canvas.width=canvas.height=512;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#141329';ctx.fillRect(0,0,512,512)
+ ctx.drawImage(bitmap,(512-bitmap.width*scale)/2,(512-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);bitmap.close()
+ const photo=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',.92))
+ if(!photo)throw new Error('Could not prepare that image. Try a JPEG, PNG or WebP photo.')
+ return photo
+}
+export function AvatarStudio({currentProfile,currentStyle,onApply,onClear,onBack}:Props){
+ const [draft,setDraft]=useState<FaceProfile>(currentProfile??{...DEFAULT_FACE}),[style,setStyle]=useState(currentStyle??DEFAULT_DRIVER_STYLE)
+ const [cameraOn,setCameraOn]=useState(false),[ready,setReady]=useState(false),[photo,setPhoto]=useState<Blob|null>(null),[preview,setPreview]=useState<string|null>(null)
+ const [busy,setBusy]=useState(false),[status,setStatus]=useState('Capture one face or choose a photo. Your image stays on this device.')
+ const [scanned,setScanned]=useState(Boolean(currentProfile)),[points,setPoints]=useState<{x:number;y:number}[]>([]),[close,setClose]=useState(true)
+ const video=useRef<HTMLVideoElement>(null),file=useRef<HTMLInputElement>(null),request=useRef<AbortController|null>(null),active=useRef(true),modelSection=useRef<HTMLElement>(null)
+ useEffect(()=>{active.current=true;return()=>{active.current=false;request.current?.abort()}},[])
+ useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview])
+ useEffect(()=>{
+  if(!cameraOn)return
+  const target=video.current
+  let cancelled=false,stream:MediaStream|null=null
+  void(async()=>{try{
+   if(!navigator.mediaDevices?.getUserMedia)throw new Error('Camera access requires localhost or HTTPS in a current browser.')
+   stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:960},height:{ideal:720},facingMode:'user'},audio:false})
+   if(cancelled){stream.getTracks().forEach(t=>t.stop());return}
+   if(target){target.srcObject=stream;await target.play()}
+   if(!cancelled){setReady(true);setStatus('Look forward with your face inside the guide, then capture.')}
+  }catch(e){if(!cancelled){setCameraOn(false);setStatus(e instanceof DOMException&&e.name==='NotAllowedError'?'Camera permission is blocked. Allow access in the browser or choose a photo.':e instanceof Error?e.message:'The camera could not start. Choose a photo instead.')}}})()
+  return()=>{cancelled=true;setReady(false);stream?.getTracks().forEach(t=>t.stop());if(target&&target.srcObject===stream)target.srcObject=null}
+ },[cameraOn])
+ const selectPhoto=async(blob:Blob)=>{
+  try{if(!['image/jpeg','image/png','image/webp'].includes(blob.type))throw new Error('Choose a JPEG, PNG or WebP photo.');const prepared=await preparePhoto(blob);if(!active.current)return;setPhoto(prepared);setPreview(URL.createObjectURL(prepared));setPoints([]);setStatus('Still selected locally. Scan it to create your 3D racer.')}catch(e){if(active.current)setStatus(e instanceof Error?e.message:'Could not read that photo.')}
+ }
+ const capture=()=>{
+  const source=video.current;if(!source||!ready||!source.videoWidth)return
+  const canvas=document.createElement('canvas'),size=Math.min(source.videoWidth,source.videoHeight);canvas.width=canvas.height=512;canvas.getContext('2d')!.drawImage(source,(source.videoWidth-size)/2,(source.videoHeight-size)/2,size,size,0,0,512,512)
+  canvas.toBlob(blob=>{if(blob)void selectPhoto(blob)},'image/jpeg',.92)
+ }
+ const scan=async()=>{
+  if(!photo||busy)return
+  setBusy(true);request.current?.abort();const controller=new AbortController();request.current=controller
+  try{const result=await scanFace(photo,setStatus,controller.signal);setDraft(result.profile);setPoints(result.landmarks);setScanned(true);setClose(true);setStatus('Scan complete. Your face proportions and colours are now a stylized 3D racer. Fine-tune, then apply.');if(window.matchMedia('(max-width:620px)').matches)requestAnimationFrame(()=>modelSection.current?.scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}))}
+  catch(e){if(!controller.signal.aborted)setStatus(e instanceof Error?e.message:'Face scan failed. Please retry.')}
+  finally{if(!controller.signal.aborted)setBusy(false)}
+ }
+ const change=(patch:Partial<FaceProfile>)=>setDraft(p=>({...p,...patch}))
+ const sliders=[['faceWidth','Face width',.85,1.12],['jaw','Jaw shape',.78,1.12],['eyeSpacing','Eye spacing',.8,1.2],['noseWidth','Nose shape',.75,1.3],['mouthWidth','Smile width',.75,1.3],['smile','Expression',0,1]] as const
+ return <section className="avatar-studio panel" aria-labelledby="avatar-title">
+  <header className="avatar-heading"><div><small>AFTERGLOW / DRIVER STUDIO</small><h1 id="avatar-title">Your face. <em>Neon soul.</em></h1><p>On-device AI turns one camera still into your stylized 3D driver.</p></div><button type="button" onClick={onBack}>← BACK TO GRID</button></header>
+  <div className="avatar-workspace">
+   <section className="avatar-capture"><h2><span>01</span> Capture your likeness</h2><div className={`avatar-camera ${busy?'is-scanning':''}`}>
+    <video ref={video} autoPlay muted playsInline style={{opacity:ready&&!preview?1:0}}/>
+    {preview?<img src={preview} alt="Selected still, kept locally"/>:<>{!ready&&<div className="avatar-camera-empty"><span aria-hidden="true">◎</span><strong>Meet your next racer.</strong><p>Enable the webcam or choose a photo.</p></div>}<div className="avatar-face-guide" aria-hidden="true"/></>}
+    {points.length>0&&<svg viewBox="0 0 512 512" aria-label="Face landmarks detected by the on-device model">{[10,152,234,454,33,133,362,263,1,61,291,70,300].map(i=><circle key={i} cx={points[i].x*512} cy={points[i].y*512} r="3"/>)}</svg>}
+    {busy&&<div className="avatar-scan-line" aria-hidden="true"/>}<span className="avatar-local">● LOCAL ONLY</span>
+   </div><p className="avatar-hint">One face, straight on, in even light. Keep forehead and chin in view.</p>
+   <div className="avatar-capture-actions"><button type="button" disabled={busy} onClick={()=>{if(preview){setPreview(null);setPhoto(null);setPoints([])}else if(ready)capture();else {setStatus('Connecting camera…');setCameraOn(true)}}}>{preview?'Retake':ready?'Capture face':'Enable webcam'}</button><button type="button" disabled={busy} onClick={()=>file.current?.click()}>Choose photo</button></div>
+   <input ref={file} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{const selected=e.target.files?.[0];if(selected){if(selected.size>10*1024*1024)setStatus('Choose a photo smaller than 10 MB.');else void selectPhoto(selected)}e.target.value=''}}/>
+   <button className="avatar-scan primary" type="button" disabled={!photo||busy} onClick={()=>void scan()}>{busy?'BUILDING YOUR RACER…':'SCAN & CREATE DRIVER'}<span aria-hidden="true">↗</span></button>
+   <p className="avatar-privacy">The face model downloads once. Your still and face measurements are processed here, without an upload. Only your editable avatar settings are saved.</p>
+   {cameraOn&&<button className="avatar-camera-off" type="button" onClick={()=>setCameraOn(false)}>Turn off webcam</button>}
+   </section>
+   <section ref={modelSection} className="avatar-model"><h2><span>02</span> {scanned?'Your personalized driver':'Style preview'}</h2><div className="avatar-model-stage"><DriverPreview profile={draft} style={style} close={close}/><div className="avatar-view-toggle"><button type="button" aria-pressed={close} onClick={()=>setClose(true)}>FACE</button><button type="button" aria-pressed={!close} onClick={()=>setClose(false)}>FULL KART</button></div><small>ACTUAL PLAYER MODEL · DRAG TO ROTATE</small></div></section>
+   <section className="avatar-tuning"><h2><span>03</span> Make it yours</h2>
+    <div className="avatar-color-row">{(['skin','hair','eyes']as const).map(key=><label key={key}><input type="color" aria-label={`${key} colour`} value={draft[key]} onChange={e=>change({[key]:e.target.value})}/><span>{key}</span></label>)}</div>
+    <fieldset><legend>Hair silhouette</legend><div className="avatar-segments">{(['swept','cropped','none']as const).map(hairStyle=><button key={hairStyle} type="button" aria-pressed={draft.hairStyle===hairStyle} onClick={()=>change({hairStyle})}>{hairStyle}</button>)}</div></fieldset>
+    <label className="avatar-glasses"><input type="checkbox" checked={draft.glasses} onChange={e=>change({glasses:e.target.checked})}/> Neon glasses</label>
+    <div className="avatar-sliders">{sliders.map(([key,label,min,max])=><label key={key}><span>{label}</span><input type="range" min={min} max={max} step="0.01" value={draft[key]} onChange={e=>change({[key]:Number(e.target.value)})}/></label>)}</div>
+    {(['helmet','suit']as const).map(part=><fieldset key={part}><legend>{part==='helmet'?'Helmet accent':'Race suit'}</legend><div className="avatar-swatches">{palette.map(color=><button key={color} type="button" aria-label={`${part} ${color}`} aria-pressed={style[part]===color} onClick={()=>setStyle(s=>({...s,[part]:color}))} style={{background:color}}/>)}</div></fieldset>)}
+   </section>
   </div>
+  <footer className="avatar-footer"><p role="status" aria-live="polite">{status}</p><div><button type="button" disabled={busy} onClick={()=>{request.current?.abort();onClear();setDraft({...DEFAULT_FACE});setScanned(false);setPhoto(null);setPreview(null);setPoints([]);setStatus('Saved face settings and the captured still have been cleared.')}}>Clear saved face</button><button className="primary" type="button" disabled={busy} onClick={()=>{const saved=onApply(draft,style);setStatus(saved?'Applied to your player. Saved on this device—return to the grid when ready.':'Applied to your player for this session. Browser storage is unavailable.')}}>APPLY TO PLAYER ↗</button></div></footer>
+ </section>
 }
