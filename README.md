@@ -85,3 +85,7 @@ The expanded circuit is 764 metres per lap across seven connected districts: Mar
 Collect amber Turbo or cyan Phase Shield cells, then press Space (or use the hand item gesture) to activate the held ability. Turbo lasts two seconds; Phase Shield passes through course hazards for 4.5 seconds. With an empty slot, Space uses the rechargeable boost. Hold Shift while turning to charge one of three drift tiers, then release for a mini turbo.
 
 The new score, wind/road layers, engine voices, pickup chimes and drift cues are original procedural WebAudio; no external recording or music download is used. Sound begins after pressing Let's Race and can be muted in the header. The UI stays at full resolution while the 3D render budget adapts under sustained load.
+
+## CPU racing
+
+Rivals use a shared fixed-step race state for their rendered positions, minimap and standings. Each driver has a different straight-line pace and cornering grip. They anticipate bends, choose lanes around hazards and traffic, draft, and deploy short boosts on straights. Their bounded pace adjustment (at most 2.2 m/s) responds to a moving player's gap; it never changes their position directly. CPU boost speed stays below the player's boost speed. Finished rivals retain their finishing order, and every rematch starts from a fresh grid.

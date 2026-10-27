@@ -5,12 +5,12 @@ import {NeonCity} from './NeonCity'
 import {NeonPostFX} from './NeonPostFX'
 import {TrackObstacles} from './TrackObstacles'
 import {CourseDistricts} from './CourseDistricts'
-import { ACESFilmicToneMapping, Group, Vector3, DirectionalLight, Object3D, CanvasTexture } from 'three'
+import { ACESFilmicToneMapping, Group, DirectionalLight, Object3D, CanvasTexture } from 'three'
 import { PMREMGenerator } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { RaceRuntime } from '../game/runtime'
-import { RIVALS, rivalAngle } from '../game/raceLoop'
-import { getRoadPose, getTrackSurface } from '../game/trackLayout'
+import { RIVALS } from '../game/raceLoop'
+import { getRoadPose, getTrackSurface,TRACK_LENGTH } from '../game/trackLayout'
 import { FollowCamera } from './FollowCamera'
 import { CourseFun } from './CourseFun'
 import { Track } from './Track'
@@ -64,7 +64,6 @@ function PauseHiddenRenderer(){
 function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
   const group=useRef<Group>(null)
   const motion=useMemo(()=>({speed:0,steering:0}),[])
-  const previous=useRef(new Vector3())
   const contact=useMemo(()=>{
     const canvas=document.createElement('canvas');canvas.width=canvas.height=128
     const ctx=canvas.getContext('2d')!,shade=ctx.createRadialGradient(64,64,8,64,64,63)
@@ -78,7 +77,7 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
     return new CanvasTexture(canvas)
   },[])
   useEffect(()=>()=>contact.dispose(),[contact])
-  useFrame((_,dt)=>{
+  useFrame(()=>{
     const root=group.current;if(!root)return
     if(index<0){
       const k=runtime.visual
@@ -89,12 +88,16 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
       root.position.set(k.x,road.height+.005,k.z);root.rotation.set(-pitch,k.yaw,roll,'YXZ')
       motion.speed=k.speed;motion.steering=k.steering??0
     }else{
-      const rival=RIVALS[index],angle=rivalAngle(index,runtime.race.elapsed)
-      const lane=(rival.lane-18.5)*.75+Math.sin(angle*2+index)*.25
-      const surface=getTrackSurface(angle/(Math.PI*2),lane)
-      root.position.copy(surface.point);root.position.y+=.005;root.rotation.set(-surface.pitch,surface.yaw,surface.bank,'YXZ')
-      motion.speed=runtime.race.phase==='racing'?Math.min(24,root.position.distanceTo(previous.current)/Math.max(.001,dt)):0
-      motion.steering=Math.sin(angle)*.15;previous.current.copy(root.position)
+      const rival=runtime.race.rivals[index]
+      const remainder=1/60-runtime.race.rivalAccumulator
+      const distance=rival.distance-rival.speed*remainder,lane=rival.lane-rival.laneVelocity*remainder
+      const surface=getTrackSurface(distance/TRACK_LENGTH,lane)
+      const delta=Math.atan2(rival.laneVelocity,Math.max(1,rival.speed)),heading=surface.yaw+delta
+      const pitch=Math.atan(surface.grade*Math.cos(delta)+Math.tan(surface.bank)*Math.sin(delta))
+      const bank=Math.atan(-surface.grade*Math.sin(delta)+Math.tan(surface.bank)*Math.cos(delta))
+      root.position.copy(surface.point);root.position.y+=.005;root.rotation.set(-pitch,heading,bank,'YXZ')
+      motion.speed=runtime.race.phase==='racing'?rival.speed:0
+      motion.steering=rival.steering
     }
   },-20)
   return <group ref={group}>

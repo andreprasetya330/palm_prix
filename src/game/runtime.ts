@@ -3,7 +3,9 @@ import {createCourseRewards,updateCourseRewards,type CourseRewards} from './cour
 import type { ControlState } from './controlState'
 import { ZERO_CONTROL } from './controlState'
 import { DEFAULT_KART, FIXED_STEP, stepKart, type KartState } from './kartPhysics'
-import { createRaceStatus, updateCheckpoints, type RaceStatus } from './raceLoop'
+import { createRaceStatus, updateCheckpoints,playerProgressDistance, type RaceStatus } from './raceLoop'
+import {advanceRivals} from './rivalAI'
+import {nearestTrack} from './trackLayout'
 import {createObstacleState,updateObstacles,type ObstacleState} from './obstacles'
 
 /** Stable, mutable frame data: rendering never waits for a React state commit. */
@@ -61,6 +63,7 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     const boosted=updateCourseRewards(runtime.rewards,Math.floor(runtime.race.checkpointsHit/4),previousX,previousZ,runtime.kart.x,runtime.kart.z,runtime.kart.speed,dt)
     if(boosted)runtime.kart.boostTimer=Math.max(runtime.kart.boostTimer,.9)
     runtime.race.elapsed+=dt
+    advanceRivals(runtime.race,{distance:playerProgressDistance(runtime.race,runtime.kart.x,runtime.kart.z),lane:nearestTrack(runtime.kart.x,runtime.kart.z).signedDistance,speed:runtime.kart.speed},runtime.race.elapsed,dt)
     Object.assign(runtime.race,updateCheckpoints(runtime.race,runtime.kart.x,runtime.kart.z))
   }
   const k=runtime.kart,alpha=Math.min(1,(k.physicsRemainder??0)/FIXED_STEP)

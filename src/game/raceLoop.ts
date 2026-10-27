@@ -1,10 +1,13 @@
 import { nearestTrack, ROAD_HALF_WIDTH, TRACK_LENGTH } from './trackLayout'
+import {createRivalStates,type RivalState} from './rivalAI'
+import {RIVALS} from './rivalRoster'
+export {RIVALS} from './rivalRoster'
 export type RacePhase = 'menu' | 'avatar' | 'calibrate' | 'countdown' | 'racing' | 'finish'
-export type RaceStatus = { phase: RacePhase; countdown: number; lap: number; totalLaps: number; elapsed: number; checkpointsHit: number }
+export type RaceStatus = { phase: RacePhase; countdown: number; lap: number; totalLaps: number; elapsed: number; checkpointsHit: number;rivals:RivalState[];rivalAccumulator:number }
 export const TOTAL_LAPS = 3
 // Start is t=0; a lap counts only after all four ordered sectors.
 export const CHECKPOINT_ANGLES = [Math.PI / 2, Math.PI, Math.PI * 1.5, 0]
-export function createRaceStatus(): RaceStatus { return { phase: 'menu', countdown: 3, lap: 1, totalLaps: TOTAL_LAPS, elapsed: 0, checkpointsHit: 0 } }
+export function createRaceStatus(): RaceStatus { return { phase: 'menu', countdown: 3, lap: 1, totalLaps: TOTAL_LAPS, elapsed: 0, checkpointsHit: 0,rivals:createRivalStates(),rivalAccumulator:0 } }
 export function kartAngle(x: number, z: number): number { return nearestTrack(x, z).t * Math.PI * 2 }
 export function updateCheckpoints(status: RaceStatus, x: number, z: number): RaceStatus {
   if (status.phase !== 'racing') return status
@@ -17,25 +20,23 @@ export function updateCheckpoints(status: RaceStatus, x: number, z: number): Rac
   const lap = Math.floor(checkpointsHit / 4) + 1
   return { ...status, checkpointsHit, lap: Math.min(lap, status.totalLaps), phase: lap > status.totalLaps ? 'finish' : status.phase }
 }
-export const RIVALS = [
-  { name: 'CORAL', color: '#ff597b', speed: 0.94, offset: -0.28, lane: 16.4 },
-  { name: 'VOLT', color: '#ffd34e', speed: 0.98, offset: -0.43, lane: 19.8 },
-  { name: 'AZURE', color: '#538dff', speed: 0.90, offset: -0.59, lane: 17.9 },
-  { name: 'ORCHID', color: '#c088ff', speed: 0.87, offset: -0.74, lane: 20.5 },
-  { name: 'MINT', color: '#52e4b2', speed: 0.92, offset: -0.88, lane: 16.5 },
-]
-export function rivalAngle(index: number, elapsed: number) {
+export function rivalAngle(index: number, elapsed: number,rivals?:readonly RivalState[]) {
+  if(rivals)return rivals[index].distance/TRACK_LENGTH*Math.PI*2
   const r = RIVALS[index]
   // Acceleration from the grid, shared by rendering and leaderboard.
   return r.offset * 0.4 + (r.speed * 20 / TRACK_LENGTH * Math.PI * 2) * (elapsed - 1.5 * (1 - Math.exp(-elapsed / 1.5)))
 }
-export function racePosition(status: RaceStatus, x: number, z: number) {
+export function playerProgressDistance(status:RaceStatus,x:number,z:number){
   const angle = kartAngle(x, z)
   const completed = Math.floor(status.checkpointsHit / 4)
   let progress = completed * Math.PI * 2 + angle
   if (status.checkpointsHit === 0 && angle > Math.PI * 1.5) progress -= Math.PI * 2
   // Sector four can be registered just before crossing the line.
   if (status.checkpointsHit > 0 && status.checkpointsHit % 4 === 0 && angle > Math.PI * 1.5) progress -= Math.PI * 2
-  return 1 + RIVALS.filter((_, i) => rivalAngle(i, status.elapsed) > progress).length
+  return progress/(Math.PI*2)*TRACK_LENGTH
+}
+export function racePosition(status: RaceStatus, x: number, z: number) {
+  const progress=playerProgressDistance(status,x,z)
+  return 1+status.rivals.filter(r=>r.finishedAt!==null||r.distance>progress).length
 }
 
