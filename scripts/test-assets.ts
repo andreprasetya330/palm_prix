@@ -90,7 +90,7 @@ for(const name of ['teddy-buggy','sweet-balloon','aqua-cups','circuit-special'])
    const n=json.nodes[i]
    if(!/^wheel-(front|rear)-(left|right)$/.test(n.name??''))continue
    const matrix=matrixFor(i),center=new Vector3().setFromMatrixPosition(matrix),radius=n.extras?.wheelRadius
-   assert(radius>.25&&radius<.4,`Invalid rolling radius: ${n.name}`)
+   assert(radius>=.24&&radius<.4,`Invalid rolling radius: ${n.name}`)
    assert(Math.abs(center.y-radius)<.005,`Tire must meet the ground: ${n.name}`)
    let gap=Infinity
    for(let k=0;k<mountIndices.length;k+=3){
@@ -102,7 +102,14 @@ for(const name of ['teddy-buggy','sweet-balloon','aqua-cups','circuit-special'])
    const wheelVertices=readAccessor(primitive.attributes.POSITION).map(p=>new Vector3().fromArray(p).applyMatrix4(matrix))
    assert(Math.max(...wheelVertices.map(p=>Math.abs(p.x)))<.88,`Wheel must tuck within the fender/body silhouette: ${n.name}`)
   }
+  const bodyIndex=nodes.indexOf('body'),bodyPrimitive=json.meshes[json.nodes[bodyIndex].mesh].primitives[0]
+  const bodyVertices=readAccessor(bodyPrimitive.attributes.POSITION).map(p=>new Vector3().fromArray(p).applyMatrix4(matrixFor(bodyIndex)))
+  const floor=Math.min(...bodyVertices.map(p=>p.y)),wing=Math.max(...bodyVertices.map(p=>p.y))
+  assert(floor>.045&&floor<.095,`Chassis must have a low racing stance, not ride at axle height: ${floor}`)
+  assert(wing<.95,`Rear body/wing should sit low between the rear tires: ${wing}`)
+  const frontRadius=json.nodes[nodes.indexOf('wheel-front-left')].extras.wheelRadius,rearRadius=json.nodes[nodes.indexOf('wheel-rear-left')].extras.wheelRadius
+  assert(frontRadius/rearRadius<.8,'Front tires should be visibly smaller than the broad rear slicks')
   assert(personalCredits.includes('BillyGaming964')&&personalCredits.includes('Centrixe the Dodo')&&personalCredits.includes('342345')&&personalCredits.includes('351442'))
-  console.log(`Circuit racer checks passed: embedded atlases, posed driver, attached wheel hubs, grounded/fitted tires, ${Math.round(triangles)} triangles, ${primitives.length} material draws.`)
+  console.log(`Circuit racer checks passed: low chassis (${(floor*100).toFixed(1)}cm), smaller front tires, attached/grounded wheel hubs, ${Math.round(triangles)} triangles, ${primitives.length} material draws.`)
  }
 }

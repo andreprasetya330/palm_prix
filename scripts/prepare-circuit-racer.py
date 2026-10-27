@@ -11,6 +11,12 @@ ROOT=Path(__file__).resolve().parents[1]
 KART=ROOT/'assets/source/personal/circuit-special/Circuit Special'
 MII=ROOT/'assets/source/personal/tour-mii/Mii'
 OUTPUT=ROOT/'public/assets/personal/circuit-special.glb'
+# Keep the tires on the road while dropping the cockpit and engine between them.
+# Translating the whole racer would bury its tires instead of lowering its stance.
+BODY_DROP=.255
+FRONT_RADIUS=.25
+REAR_RADIUS=.35
+FRAME_HEIGHT=.105
 bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
 
 def texture_material(name,path,roughness=.55,metallic=.12):
@@ -39,7 +45,7 @@ for name,material,target in [('BodyK_Fml__m_Body-mesh',body_material,'body'),('B
  stride=max(int(i.get('offset')) for i in inputs)+1;indices=list(map(int,triangles.findtext('c:p',namespaces=ns).split()))
  vertices=[];uvs=[];normals=[]
  for i in range(0,len(indices),stride):
-  p=positions[indices[i]];vertices.append((p[0]*.125,-p[2]*.125,p[1]*.125+.43))
+  p=positions[indices[i]];vertices.append((p[0]*.125,-p[2]*.125,p[1]*.125+.43-BODY_DROP))
   for entry in inputs:
    if entry.get('semantic')=='TEXCOORD' and entry.get('set','0')=='0':uvs.append(sources[entry.get('source')[1:]][indices[i+int(entry.get('offset'))]][:2])
    if entry.get('semantic')=='NORMAL':
@@ -76,7 +82,7 @@ bpy.context.view_layer.update()
 hip=rig.matrix_world@rig.pose.bones['Hip'].matrix.translation
 dg=bpy.context.evaluated_depsgraph_get();data=bpy.data.meshes.new_from_object(driver.evaluated_get(dg));data.transform(driver.matrix_world)
 factor=1.46/standing_height
-target_hip=Vector((0,-.15,.71))
+target_hip=Vector((0,-.15,.71-BODY_DROP))
 head_anchor=(rig.matrix_world@rig.pose.bones['Head'].matrix.translation-hip)*factor+target_hip
 for v in data.vertices:v.co=(v.co-hip)*factor+target_hip
 driver.data=data;driver.parent=None;driver.matrix_world=Matrix.Identity(4);driver.modifiers.clear();driver.name='driver'
@@ -143,15 +149,18 @@ def link(a,b,radius=.028,color=(.10,.12,.16)):
  obj=bpy.context.object;obj.rotation_euler=direction.to_track_quat('Z','Y').to_euler()
  mounts.append(colored(obj,color))
 for side in [-1,1]:
- link((side*.22,.90,.335),(side*.22,-.96,.335),.045)
+ link((side*.22,.90,FRAME_HEIGHT),(side*.22,-.96,FRAME_HEIGHT),.028)
  # Both front arms end on the steering knuckle, whose center is the wheel pivot.
- for height in [.255,.405]:
+ for height in [FRONT_RADIUS-.075,FRONT_RADIUS+.075]:
   for anchor_y in [-.60,-1.10]:
-   link((side*.22,anchor_y,.335),(side*.66,-.90,height),.025)
- link((side*.66,-.90,.23),(side*.66,-.90,.43),.045,(.25,.28,.32))
- link((side*.23,.55,.335),(side*.62,.86,.35),.034)
-link((-.62,.86,.35),(.62,.86,.35),.06,(.18,.20,.24))
-link((-.22,-.82,.335),(.22,-.82,.335),.045)
+   link((side*.22,anchor_y,FRAME_HEIGHT),(side*.66,-.90,height),.022)
+ link((side*.66,-.90,FRONT_RADIUS-.10),(side*.66,-.90,FRONT_RADIUS+.10),.04,(.25,.28,.32))
+ link((side*.23,.55,FRAME_HEIGHT),(side*.62,.86,REAR_RADIUS),.028)
+ # Gold dampers beside the exhausts echo the compact rear silhouette of the reference.
+ link((side*.33,.62,.50),(side*.58,.86,.29),.032,(.58,.36,.045))
+ link((side*.33,.62,.50),(side*.455,.74,.395),.041,(.75,.53,.08))
+link((-.62,.86,REAR_RADIUS),(.62,.86,REAR_RADIUS),.045,(.12,.14,.18))
+link((-.22,-.82,FRAME_HEIGHT),(.22,-.82,FRAME_HEIGHT),.028)
 bpy.ops.object.select_all(action='DESELECT')
 for obj in mounts:obj.select_set(True)
 bpy.context.view_layer.objects.active=mounts[0];bpy.ops.object.join();bpy.context.object.name='chassis-mounts'
@@ -159,8 +168,8 @@ bpy.context.view_layer.objects.active=mounts[0];bpy.ops.object.join();bpy.contex
 for side,side_name in [(-1,'left'),(1,'right')]:
  for forward,axle in [(1,'front'),(-1,'rear')]:
   front=axle=='front'
-  radius=.33 if front else .35
-  width=.24 if front else .36
+  radius=FRONT_RADIUS if front else REAR_RADIUS
+  width=.22 if front else .40
   center=Vector((side*(.66 if front else .62),-.90 if front else .86,radius));pieces=[]
   radial_scale=radius/.33;axial_scale=width/.29
   # Lathed tire has rounded shoulders, stepped bead and a recessed center hub.

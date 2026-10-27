@@ -67,8 +67,13 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
   const contact=useMemo(()=>{
     const canvas=document.createElement('canvas');canvas.width=canvas.height=128
     const ctx=canvas.getContext('2d')!,shade=ctx.createRadialGradient(64,64,8,64,64,63)
-    shade.addColorStop(0,'rgba(17,29,43,.55)');shade.addColorStop(.45,'rgba(17,29,43,.3)');shade.addColorStop(1,'rgba(17,29,43,0)')
+    shade.addColorStop(0,'rgba(2,3,12,.6)');shade.addColorStop(.45,'rgba(2,3,12,.35)');shade.addColorStop(1,'rgba(2,3,12,0)')
     ctx.fillStyle=shade;ctx.fillRect(0,0,128,128)
+    for(const x of [26,102])for(const y of [26,102]){
+      const tire=ctx.createRadialGradient(x,y,1,x,y,12)
+      tire.addColorStop(0,'rgba(0,0,5,.55)');tire.addColorStop(1,'rgba(0,0,5,0)')
+      ctx.fillStyle=tire;ctx.fillRect(x-12,y-12,24,24)
+    }
     return new CanvasTexture(canvas)
   },[])
   useEffect(()=>()=>contact.dispose(),[contact])
@@ -79,19 +84,20 @@ function Racer({runtime,index=-1}:{runtime:RaceRuntime;index?:number}){
       const road=getRoadPose(k.x,k.z),delta=k.yaw-road.yaw
       const pitch=Math.atan(road.grade*Math.cos(delta)+Math.tan(road.bank)*Math.sin(delta))
       const roll=Math.atan(-road.grade*Math.sin(delta)+Math.tan(road.bank)*Math.cos(delta))
-      root.position.set(k.x,road.height+.02,k.z);root.rotation.set(-pitch,k.yaw,roll+(k.steering??0)*Math.min(.045,Math.abs(k.speed)*.002),'YXZ')
+      // Follow the road bank without leaning the wheel assembly off the tarmac.
+      root.position.set(k.x,road.height+.005,k.z);root.rotation.set(-pitch,k.yaw,roll,'YXZ')
       motion.speed=k.speed;motion.steering=k.steering??0
     }else{
       const rival=RIVALS[index],angle=rivalAngle(index,runtime.race.elapsed)
       const lane=(rival.lane-18.5)*.75+Math.sin(angle*2+index)*.25
       const surface=getTrackSurface(angle/(Math.PI*2),lane)
-      root.position.copy(surface.point);root.position.y+=.02;root.rotation.set(-surface.pitch,surface.yaw,surface.bank,'YXZ')
+      root.position.copy(surface.point);root.position.y+=.005;root.rotation.set(-surface.pitch,surface.yaw,surface.bank,'YXZ')
       motion.speed=runtime.race.phase==='racing'?Math.min(24,root.position.distanceTo(previous.current)/Math.max(.001,dt)):0
       motion.steering=Math.sin(angle)*.15;previous.current.copy(root.position)
     }
   },-20)
   return <group ref={group}>
-    <mesh position={[0,-.01,.12]} rotation={[-Math.PI/2,0,0]} renderOrder={1}><planeGeometry args={[2.1,2.9]}/><meshBasicMaterial map={contact} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1}/></mesh>
+    <mesh position={[0,.004,.12]} rotation={[-Math.PI/2,0,0]} renderOrder={1}><planeGeometry args={[2.1,2.9]}/><meshBasicMaterial map={contact} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1}/></mesh>
     <CircuitRacer player={index<0} variant={index<0?0:index} color={index<0?'#49dce8':RIVALS[index].color} motion={motion}/>
   </group>
 }
