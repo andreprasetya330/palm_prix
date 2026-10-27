@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { getTrackSample, nearestTrack, ROAD_HALF_WIDTH, TRACK_LENGTH, TRACK_BOUNDS, getTrackSurface, getRoadPose, ELEVATION_PROFILE } from '../src/game/trackLayout'
+import { getTrackSample, nearestTrack, ROAD_HALF_WIDTH, TRACK_LENGTH, TRACK_BOUNDS, getTrackSurface, getRoadPose, ELEVATION_PROFILE, COURSE_SECTORS, getCourseSector } from '../src/game/trackLayout'
 import { createRaceStatus, updateCheckpoints, type RaceStatus } from '../src/game/raceLoop'
 const count = 256
 const borders = [-1, 1].map(side => Array.from({ length: count }, (_, i) => { const s = getTrackSample(i / count); return s.point.clone().addScaledVector(s.normal, side * (ROAD_HALF_WIDTH + 2)) }))
@@ -11,7 +11,7 @@ for (let a = 0; a < 2; a++) for (let b = a; b < 2; b++) for (let i = 0; i < coun
 }
 console.log('PASS full-width road and two-metre runoff have no self-intersections')
 assert.equal(ROAD_HALF_WIDTH, 8)
-assert(TRACK_LENGTH > 400 && TRACK_LENGTH < 500)
+assert(TRACK_LENGTH > 740 && TRACK_LENGTH < 850,'Full city tour must remain substantially longer than the former 431m loop')
 for (let i = 0; i < count; i++) for (const side of [-1, 1]) {
   const s = getTrackSample(i / count), p = s.point.clone().addScaledVector(s.normal, side * ROAD_HALF_WIDTH)
   const nearest = nearestTrack(p.x, p.z)
@@ -53,7 +53,7 @@ for (let i = 0; i < 2000; i++) {
   const near = nearestTrack(s.point.x, s.point.z)
   assert(Math.abs(near.point.y - s.height) < .015)
 }
-assert(minHeight === 0 && maxHeight >= 9.99)
+assert(minHeight === 0 && maxHeight >= 23.99)
 assert(maxGrade <= .38)
 for (const t of [0, 1]) {
   const s = getTrackSurface(t)
@@ -65,3 +65,14 @@ for (const [t] of ELEVATION_PROFILE) {
   assert(Math.abs(a.grade - b.grade) < .0001)
 }
 console.log(`PASS seamless C2 ramps, horizontal physics frames, bank and surface projection; height ${minHeight}–${maxHeight}m, max grade ${maxGrade.toFixed(3)}`)
+assert.equal(COURSE_SECTORS.length,7)
+for(let i=0;i<COURSE_SECTORS.length;i++){
+  const sector=COURSE_SECTORS[i]
+  assert(sector.end>sector.start)
+  assert.equal(sector.start,i===0?0:COURSE_SECTORS[i-1].end)
+  assert.equal(getCourseSector((sector.start+sector.end)/2).name,sector.name)
+}
+assert.equal(COURSE_SECTORS.at(-1)!.end,1)
+assert.equal(getCourseSector(1).name,COURSE_SECTORS[0].name)
+assert.equal(getCourseSector(-.01).name,COURSE_SECTORS.at(-1)!.name)
+console.log('PASS seven connected named districts cover the complete course without metadata gaps')

@@ -1,15 +1,27 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
 
 export const ROAD_HALF_WIDTH = 8
-/** Neon city circuit: waterfront sweep, inland S, broad return hairpin and tunnel straight. */
+/** A full city tour: waterfront launch, coastal bridge, northern switchbacks and rooftop return. */
 const curve = new CatmullRomCurve3([
-  [0,48],[35,48],[64,30],[66,0],[42,-8],[37,-34],[62,-52],[51,-79],
-  [15,-89],[-21,-76],[-28,-50],[-58,-53],[-78,-25],[-73,11],[-48,26],[-32,50],[-12,52],
+  [0,64],[35,64],[65,46],[70,12],[62,-25],[72,-63],[58,-104],
+  [28,-125],[0,-115],[-20,-150],[-60,-170],[-100,-155],[-114,-120],
+  [-91,-91],[-100,-60],[-140,-57],[-164,-22],[-158,23],[-128,42],
+  [-112,78],[-78,100],[-45,86],[-25,65],
 ].map(([x,z]) => new Vector3(x,0,z)).map((p,i,nodes) => p.clone().multiplyScalar(.5).addScaledVector(nodes[(i+nodes.length-1)%nodes.length],.25).addScaledVector(nodes[(i+1)%nodes.length],.25)),true,'centripetal')
 curve.arcLengthDivisions = 2048
 export const TRACK_LENGTH = curve.getLength()
 const wrap = (t: number) => ((t % 1) + 1) % 1
-export const ELEVATION_PROFILE = [[0,0],[.04,0],[.20,10],[.36,10],[.50,0],[.64,5],[.70,5],[.86,0],[1,0]] as const
+export const COURSE_SECTORS = [
+  {name:'Marina Launch',start:0,end:.15,label:'WATERFRONT / 01'},
+  {name:'Coastal Skyway',start:.15,end:.34,label:'SUSPENSION BRIDGE / 02'},
+  {name:'Sunset Switchbacks',start:.34,end:.49,label:'NORTH SHORE / 03'},
+  {name:'Uptown Ascent',start:.49,end:.61,label:'CITY CLIMB / 04'},
+  {name:'Rooftop Run',start:.61,end:.73,label:'SKYLINE / 05'},
+  {name:'Night Market',start:.73,end:.89,label:'COVERED ARCADE / 06'},
+  {name:'Neon Mile',start:.89,end:1,label:'HOME STRAIGHT / 07'},
+] as const
+export function getCourseSector(t:number){return COURSE_SECTORS.find(sector=>wrap(t)<sector.end)??COURSE_SECTORS[0]}
+export const ELEVATION_PROFILE = [[0,0],[.035,0],[.19,18],[.33,18],[.445,6],[.59,24],[.70,24],[.865,0],[1,0]] as const
 /** Quintic ramps have zero slope and curvature at each plateau transition. */
 function elevation(t: number) {
   t = wrap(t)
@@ -19,8 +31,8 @@ function elevation(t: number) {
     const u = (t - a) / (b - a), blend = u * u * u * (u * (u * 6 - 15) + 10)
     const height = low + (high - low) * blend
     const grade = (high - low) * 30 * u * u * (u - 1) * (u - 1) / ((b - a) * TRACK_LENGTH)
-    const bank = .07 * Math.sin(t * Math.PI * 2) * height / 10
-    const bankDerivative = .07 * (Math.PI * 2 * Math.cos(t * Math.PI * 2) * height / 10 + Math.sin(t * Math.PI * 2) * grade * TRACK_LENGTH / 10) / TRACK_LENGTH
+    const bank = .095 * Math.sin(t * Math.PI * 2) * height / 24
+    const bankDerivative = .095 * (Math.PI * 2 * Math.cos(t * Math.PI * 2) * height / 24 + Math.sin(t * Math.PI * 2) * grade * TRACK_LENGTH / 24) / TRACK_LENGTH
     return { height, grade, bank, bankDerivative }
   }
   return { height: 0, grade: 0, bank: 0, bankDerivative: 0 }
@@ -42,7 +54,7 @@ export function getTrackSurface(t: number, lane = 0) {
   const grade = e.grade + lane * e.bankDerivative / Math.cos(e.bank) ** 2
   sample.point.addScaledVector(sample.normal, lane); sample.point.y = height
   return { ...sample, height, grade, pitch: Math.atan(grade), lane }
-}const COUNT = 512
+}const COUNT = 1024
 export const TRACK_SAMPLES = Array.from({ length: COUNT + 1 }, (_, i) => getTrackSample(i / COUNT))
 export const TRACK_BOUNDS = {
   minX: Math.min(...TRACK_SAMPLES.map(s => s.point.x)) - ROAD_HALF_WIDTH,

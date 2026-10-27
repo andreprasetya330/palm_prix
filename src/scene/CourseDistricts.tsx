@@ -28,9 +28,9 @@ export function CourseDistricts(){
   const tube=(batch:number,points:THREE.Vector3[],radius:number,color:string)=>add(batch,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),Math.max(8,points.length*3),radius,5,false),color)
   // Streets, raised planted blocks, stepped kerbs and recessed paving fill the city between roads.
   // Each entire block is checked against the racing corridor, so no building platform clips a turn.
-  for(let x=-156;x<=73;x+=12)for(let z=-147;z<=137;z+=12){
+  for(let x=-204;x<=84;x+=12)for(let z=-204;z<=144;z+=12){
    const radius=6.9,s=nearestTrack(x,z)
-   if(s.distance<ROAD_HALF_WIDTH+radius+2)continue
+   if(s.distance<ROAD_HALF_WIDTH+radius+2||s.distance>58)continue
    const seed=Math.abs(Math.round(x*3+z)),park=seed%5===0
    box(0,new THREE.Vector3(x,-.16,z),[11.6,.22,11.6],'#29253e')
    box(0,new THREE.Vector3(x,.04,z),[10.7,.22,10.7],'#52506c')
@@ -116,9 +116,45 @@ export function CourseDistricts(){
    }
    tube(1,cable,.075,side<0?'#ee67bb':'#53dce8')
   }
+  // The rooftop run is carried by an inhabited podium, rather than floating
+  // above a plain floor. Its glazed floors and mechanical roofs read at speed.
+  for(let i=0;i<22;i++){
+   const t=.598+i/21*.12,s=getTrackSample(t),top=s.height-1.65
+   box(0,new THREE.Vector3(s.point.x,top/2,s.point.z),[20.5,top,5.4],i%3?'#302a49':'#44334f',s.yaw)
+   box(0,at(t,0,-1.45),[24,.3,5.5],'#65566e',s.yaw)
+   for(const side of [-1,1]){
+    for(const floor of [4,8,12,16,20]){
+     if(floor>top-1)continue
+     const p=at(t,side*10.29,0);p.y=floor
+     box(2,p,[.035,1.05,3.9],i%4?'#6a80aa':'#dba8c6',s.yaw)
+    }
+    box(1,at(t,side*11.7,-1.2),[.09,.08,4.9],side<0?'#f66da8':'#6bdde6',s.yaw)
+    if(i%4===0){
+     box(0,at(t,side*11.3,-.7),[2.4,1.9,3],'#3a405a',s.yaw)
+     box(0,at(t,side*11.3,.32),[2.8,.15,3.4],'#96808c',s.yaw)
+     for(let slat=-1;slat<=1;slat++)box(2,at(t,side*11.3,.42+slat*.01).addScaledVector(s.tangent,slat*.6),[1.9,.04,.12],'#29354b',s.yaw)
+    }
+   }
+  }
+  // North-shore switchbacks sit in stepped sea walls. The lower road and
+  // continuous stepped landscape stay visible beneath the high coastal bridge.
+  for(let i=0;i<24;i++){
+   const t=.345+i/23*.14,s=getTrackSample(t)
+   for(const side of [-1,1]){
+    const p=at(t,side*14,0),h=Math.max(1,s.height-1)
+    box(0,new THREE.Vector3(p.x,h/2-.4,p.z),[5,h,4.5],'#5a4564',s.yaw)
+    box(0,at(t,side*14,-.8),[5.4,.35,4.6],'#8d647f',s.yaw)
+    box(1,at(t,side*12.1,-.58),[.07,.09,4.3],i%3?'#ff9a8d':'#80dae9',s.yaw)
+    if(i%4===0){
+     box(0,at(t,side*15.2,.15),[2.1,1.2,2.1],'#332941',s.yaw)
+     const cap=at(t,side*15.2,.9)
+     add(2,new THREE.CylinderGeometry(.8,.95,.3,8).translate(cap.x,cap.y,cap.z),'#e18aa5')
+    }
+   }
+  }
   // Night-market arcade: a genuinely covered sequence with repeated angled roof ribs.
   for(let i=0;i<=13;i++){
-   const t=.48+i/13*.11,s=getTrackSample(t)
+   const t=.74+i/13*.135,s=getTrackSample(t)
    for(const side of [-1,1]){
     box(0,at(t,side*11,3.7),[.55,7.8,.65],'#3b3b5b',s.yaw)
     box(1,at(t,side*10.68,3.7),[.09,6.8,.15],side<0?'#e968aa':'#58cbd5',s.yaw)
@@ -131,11 +167,11 @@ export function CourseDistricts(){
    if(i%3!==1)box(0,at(t,0,9.45),[12,.18,3.8],'#262c49',s.yaw)
   }
   // Observatory ring over the western return creates a unique navigation landmark.
-  const ring=getTrackSample(.79),center=at(.79,0,11.6)
+  const ring=getTrackSample(.645),center=at(.645,0,11.6)
   const halo=new THREE.TorusGeometry(12.3,.22,6,64).rotateY(ring.yaw).translate(center.x,center.y,center.z)
   add(1,halo,'#f36aab')
-  for(const side of [-1,1])box(0,at(.79,side*12,5.5),[.8,12,1.2],'#4b4266',ring.yaw)
-  for(const [i,t,height] of [[0,.17,10.7],[1,.48,6.7],[2,.79,11]]){
+  for(const side of [-1,1])box(0,at(.645,side*12,5.5),[.8,12,1.2],'#4b4266',ring.yaw)
+  for(const [i,t,height] of [[0,.17,10.7],[1,.74,6.7],[2,.645,11]]){
    const sample=getTrackSample(t),p=at(t,0,height),g=new THREE.PlaneGeometry(i===2?15:16,1.7),uv=g.attributes.uv
    for(let v=0;v<uv.count;v++)uv.setY(v,(uv.getY(v)+2-i)/3)
    g.rotateY(sample.yaw+Math.PI);g.translate(p.x,p.y,p.z);parts[4].push(g)
