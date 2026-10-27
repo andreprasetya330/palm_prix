@@ -121,3 +121,18 @@ const reacquired = new GestureMapper()
 update(reacquired,[{...hand(0.2,0.4),trackingId:1},{...hand(0.8,0.4),trackingId:2}])
 update(reacquired,[{...hand(0.2,0.4),trackingId:2},{...hand(0.8,0.7),trackingId:3}])
 assert.ok(reacquired.debug.wheelAngle! > 0.1, "A new pair must not reuse the surviving hand for both wheel grips")
+
+// Natural steering grips can bend mainly at the MCP knuckles. The old
+// PIP/DIP-only test rejected these even with all 21 landmarks present.
+const knuckleGrip = fixture(true)
+for (const base of [5,9,13,17]) for (let joint=1;joint<=3;joint++) {
+  knuckleGrip[base+joint] = {x:knuckleGrip[base].x,y:1-joint*0.1,z:joint*0.12}
+}
+for (const angle of [0,0.7,1.5,2.4]) {
+  const turned = knuckleGrip.map(({x,y,z})=>({x:x*Math.cos(angle)-z*Math.sin(angle),y,z:x*Math.sin(angle)+z*Math.cos(angle)}))
+  assert.equal(classifyPose(turned),'fist','Knuckle-dominant grips must accelerate while turning')
+}
+const partialOpen = fixture(false)
+for (const base of [5,9]) for(let i=1;i<=3;i++) partialOpen[base+i] = {...partialOpen[base]}
+assert.equal(classifyPose(partialOpen),'uncertain','Two visible fingers cannot trigger reverse')
+console.log('Natural knuckle grips, turned grips and incomplete open palm regressions passed.')

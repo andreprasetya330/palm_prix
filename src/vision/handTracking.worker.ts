@@ -39,7 +39,9 @@ scope.onmessage = async ({ data }) => {
           delegate: 'CPU',
         },
         runningMode: 'VIDEO', numHands: 2,
-        minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.45,
+        // Let the landmark model evaluate smaller/turned hands instead of
+        // rejecting them at the palm gate. Pose validation still gates driving.
+        minHandDetectionConfidence: 0.4, minHandPresenceConfidence: 0.4, minTrackingConfidence: 0.35,
       })
       scope.postMessage({ type: 'ready' })
     } catch (error) {

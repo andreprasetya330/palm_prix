@@ -62,7 +62,7 @@ export function CalibrateScreen({
       </p>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '18px 0' }}>
         <div aria-hidden="true" style={{ width: 70, height: 70, flexShrink: 0, border: '5px solid #78f7d5', borderRadius: '50%', transform: `rotate(${control.steer * 55}deg)`, display: 'grid', placeItems: 'center', boxShadow: '0 0 25px #78f7d522', transition: 'transform 80ms linear' }}><div style={{ width: 58, height: 5, background: '#78f7d5' }} /></div>
-        <div><strong>{debug.fists >= 2 ? 'Wheel connected' : debug.handsVisible ? 'Close your fists' : 'Let’s find your hands'}</strong><p style={{ margin: '5px 0', fontSize: 13 }}>Light your hands from the front. Keep both fists shoulder-width apart, with wrists and fingers fully visible. Hold level until both grips register, then save. Avoid overlapping hands.</p></div>
+        <div><strong>{debug.fists >= 2 ? 'Wheel connected' : debug.handsVisible ? 'Close your fists' : 'Let’s find your hands'}</strong><p style={{ margin: '5px 0', fontSize: 13 }}>Start with both palms facing the camera, then close your fists. Keep your hands shoulder-width apart with wrists in view, and light them from the front. If the finger outlines disappear, move closer or use Reset tracking in the camera view.</p></div>
       </div>
       <div className="hud-stats">
         <span>Mode: {debug.mode}</span>

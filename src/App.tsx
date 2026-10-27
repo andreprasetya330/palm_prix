@@ -24,7 +24,7 @@ import './App.css'
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [cameraEnabled,setCameraEnabled] = useState(false)
-  const { status, error, hands, retry } = useHandTracker(videoRef,cameraEnabled)
+  const { status, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled)
   const readKeyboard = useKeyboardControls()
   const mapper = useMemo(() => new GestureMapper(), [])
 
@@ -134,6 +134,8 @@ export default function App() {
             hands={hands}
             wheelAngle={mapper.debug.wheelAngle}
             compact={inRace}
+            trackingLatencyMs={trackingLatencyMs}
+            onRetry={retry}
           />
           {error && showPip && <p className="cam-error">{error}</p>}
         </div>

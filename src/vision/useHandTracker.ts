@@ -15,6 +15,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
   useEffect(() => {
     let cancelled = false
     let raf = 0
+    let videoFrame = 0
     let startupTimer = 0
     let frameTimer = 0
     let startupPhase: 'permission' | 'video' | 'model' = 'permission'
@@ -27,12 +28,15 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
     let staleCleared = true
     let lastSampleTime = 0
     let frameInterval = 1000 / 30
-    let lastResult = 0
+    let captureWidth = 960
+    let averageDetectionMs = 0
+    let fastFrames = 0
     const video = videoRef.current
     const release = () => {
       window.clearTimeout(startupTimer)
       window.clearTimeout(frameTimer)
       cancelAnimationFrame(raf)
+      if (videoFrame) video?.cancelVideoFrameCallback(videoFrame)
       worker?.terminate()
       worker = null
       stream?.getTracks().forEach((track) => track.stop())
@@ -74,7 +78,8 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       // Covers both a stalled bitmap conversion and a stalled worker inference.
       frameTimer = window.setTimeout(() => fail(new DOMException('Tracking frame timed out', 'TimeoutError')), 5000)
       try {
-        const bitmap = await createImageBitmap(v, { resizeWidth: 640, resizeHeight: Math.max(1, Math.round(640 * v.videoHeight / v.videoWidth)), resizeQuality: 'low' })
+        const width = Math.min(captureWidth,v.videoWidth)
+        const bitmap = await createImageBitmap(v, { resizeWidth: width, resizeHeight: Math.max(1, Math.round(width * v.videoHeight / v.videoWidth)), resizeQuality: 'low' })
         if (cancelled || !worker) { bitmap.close(); return }
         if (document.hidden) {
           bitmap.close()
@@ -86,13 +91,23 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
         try { worker.postMessage(request, [bitmap]) } catch (e) { bitmap.close(); throw e }
       } catch (e) { fail(e) }
     }
-    const loop = (now: number) => {
-      if (cancelled) return
+    const capture = (now: number) => {
       if (!document.hidden && video && ready && !inFlight && video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime && cadence.consume(now, frameInterval)) {
         lastVideoTime = video.currentTime
 
         void sendFrame(video, now)
       }
+    }
+    // Camera frames have their own clock; a busy Three.js render must not be
+    // the only trigger for inference. Keep one bitmap/inference in flight.
+    const onVideoFrame = () => {
+      if (cancelled || !video) return
+      capture(performance.now())
+      videoFrame = video.requestVideoFrameCallback(onVideoFrame)
+    }
+    const loop = (now: number) => {
+      if (cancelled) return
+      if (!video?.requestVideoFrameCallback) capture(now)
       if (!staleCleared && now - lastSampleTime > 250) {
         staleCleared = true
         setHands([])
@@ -107,7 +122,7 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
       armTimeout(20000)
       try {
         if (!navigator.mediaDevices?.getUserMedia || typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined') throw new Error('Camera tracking requires a modern secure browser')
-        const acquired = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user', frameRate: { ideal: 30, max: 30 } }, audio: false })
+        const acquired = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user', frameRate: { ideal: 30, max: 30 } }, audio: false })
         if (cancelled) { acquired.getTracks().forEach((track) => track.stop()); return }
         stream = acquired
         if (!video) throw new Error('Video element missing')
@@ -128,15 +143,20 @@ export function useHandTracker(videoRef: React.RefObject<HTMLVideoElement | null
           if (data.type === 'ready') {
             ready = true
             window.clearTimeout(startupTimer)
-            lastResult = performance.now()
             setStatus('ready')
+            if (video.requestVideoFrameCallback) videoFrame = video.requestVideoFrameCallback(onVideoFrame)
             raf = requestAnimationFrame(loop)
           } else {
             inFlight = false
             window.clearTimeout(frameTimer)
-            lastResult = performance.now()
-            frameInterval = data.detectionMs < 40 ? 1000 / 30 : 50
-            const latency = lastResult - data.timestamp
+            averageDetectionMs = averageDetectionMs ? averageDetectionMs*0.8+data.detectionMs*0.2 : data.detectionMs
+            frameInterval = averageDetectionMs < 40 ? 1000 / 30 : 50
+            // Keep extra finger detail on capable devices, with hysteresis so
+            // a slower machine doesn't accumulate latency or oscillate sizes.
+            if (averageDetectionMs > 55) { captureWidth = 640; fastFrames = 0 }
+            else if (averageDetectionMs < 28 && ++fastFrames >= 60) { captureWidth = 960; fastFrames = 0 }
+            else if (averageDetectionMs >= 28) fastFrames = 0
+            const latency = performance.now() - data.timestamp
             setTrackingLatencyMs(latency)
             lastSampleTime = data.timestamp
             staleCleared = document.hidden || latency > 250 || data.hands.length === 0

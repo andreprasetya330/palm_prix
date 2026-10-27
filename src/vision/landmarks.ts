@@ -56,10 +56,17 @@ export function classifyPose(points: Vec3[]): 'fist' | 'open' | 'uncertain' {
   let curled = 0, extended = 0
   for (const base of [5,9,13,17]) {
     const [mcp,pip,dip,tip] = points.slice(base,base+4)
+    // A steering grip can fold mostly at the knuckle while the other joints
+    // remain fairly straight. Check that bend as well as the finger joints.
+    const knuckle = bend(points[0],mcp,pip)
     const flexion = bend(mcp,pip,dip) + bend(pip,dip,tip)
     const reach = distance(tip, points[0]) / scale
-    if (flexion > 1.05 && reach < 2.0) curled++
-    if (flexion < 0.75 && reach > 1.5) extended++
+    const length = distance(mcp,pip) + distance(pip,dip) + distance(dip,tip)
+    // Collapsed landmarks from occlusion are not evidence of a grip.
+    if (Math.min(distance(mcp,pip),distance(pip,dip),distance(dip,tip)) < scale*0.035) continue
+    const foldedIntoPalm = distance(tip,mcp) < length*0.7
+    if ((flexion > 1.05 || knuckle > 1.15 && (foldedIntoPalm || reach < 1.35)) && reach < 2.0) curled++
+    if (flexion < 0.75 && knuckle < 1.0 && reach > 1.5) extended++
   }
   return curled >= 3 ? 'fist' : extended >= 3 ? 'open' : 'uncertain'
 }
