@@ -10,3 +10,5 @@
 .avatar-model-stage{height:min(420px,52vh);min-height:300px}.avatar-footer{position:sticky;bottom:-24px;z-index:4;background:#151126f5;padding:14px 0 4px}.avatar-footer>p{max-width:600px}@media(max-width:620px){.avatar-footer{bottom:-16px}.avatar-model-stage{height:330px}}
 
 @media(max-width:620px){.avatar-model{order:0}.avatar-camera{width:min(100%,300px);max-height:none;margin-inline:auto}}
+
+@media(min-width:1001px) and (max-height:800px){.avatar-heading h1{font-size:32px;margin:6px 0}.avatar-heading{margin-bottom:16px}.avatar-camera{width:240px;margin-inline:auto}.avatar-hint{font-size:9px;line-height:1.5;margin:8px 0}.avatar-model-stage{height:350px}}
