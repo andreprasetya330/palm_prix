@@ -1,4 +1,5 @@
 import {FilesetResolver,FaceLandmarker} from '@mediapipe/tasks-vision'
+import {inferFacialHair} from './faceAppearance'
 import {profileFromLandmarks} from './faceProfile'
 const scope=self as unknown as {import?:(url:string)=>Promise<void>;dbg?:(message:string)=>void;onmessage:((event:MessageEvent<{bitmap:ImageBitmap}>)=>void)|null;postMessage:(data:unknown)=>void}
 scope.dbg=message=>console.debug(message)
@@ -34,7 +35,15 @@ scope.onmessage=async({data:{bitmap}})=>{
   const hairSamples=[.12,.18,.24,.28].flatMap(rise=>[-.06,0,.06].map(side=>sampleColor(pixels,bitmap.width,bitmap.height,(forehead.x+side*Math.abs(points[234].x-points[454].x))*bitmap.width,(forehead.y-(chin.y-forehead.y)*rise)*bitmap.height,radius)))
   const brightness=(color:string)=>parseInt(color.slice(1,3),16)*.21+parseInt(color.slice(3,5),16)*.72+parseInt(color.slice(5,7),16)*.07
   const hair=hairSamples.sort((a,b)=>brightness(a)-brightness(b))[3]
-  const profile={...profileFromLandmarks(points,bitmap.width,bitmap.height,{skin,hair}),hairStyle:'cropped'}
+  const at=(index:number)=>sampleColor(pixels,bitmap.width,bitmap.height,points[index].x*bitmap.width,points[index].y*bitmap.height,Math.max(1,Math.round(radius*.6)))
+  const grooming=inferFacialHair(skin,[at(186),at(410),at(164)],[at(58),at(288),at(148),at(377)])
+  // Iris-ring samples avoid the central pupil and bright catchlights.
+  const irisSamples=points.length>=478?[468,473].flatMap(center=>[1,2,3,4].map(offset=>{
+   const edge=points[center+offset],iris=points[center]
+   return sampleColor(pixels,bitmap.width,bitmap.height,(iris.x*.35+edge.x*.65)*bitmap.width,(iris.y*.35+edge.y*.65)*bitmap.height,0)
+  })).filter(color=>brightness(color)>12&&brightness(color)<200).sort((a,b)=>brightness(a)-brightness(b)):[]
+  const eyes=irisSamples[Math.floor(irisSamples.length/2)]??'#403048'
+  const profile={...profileFromLandmarks(points,bitmap.width,bitmap.height,{skin,hair}),eyes,...grooming,hairStyle:'cropped'}
   scope.postMessage({type:'result',profile,landmarks:points.map(p=>({x:p.x,y:p.y}))})
  }catch(e){scope.postMessage({type:'error',message:e instanceof Error?e.message:'Face scan failed. Please retry.'})}
  finally{bitmap.close();detector?.close()}
