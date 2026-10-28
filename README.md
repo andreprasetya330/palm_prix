@@ -93,3 +93,9 @@ The new score, wind/road layers, engine voices, pickup chimes and drift cues are
 ## CPU racing
 
 Rivals use a shared fixed-step race state for their rendered positions, minimap and standings. Each driver has a different straight-line pace and cornering grip. They anticipate bends, choose lanes around hazards and traffic, draft, and deploy short boosts on straights. Their bounded pace adjustment (at most 2.2 m/s) responds to a moving player's gap; it never changes their position directly. CPU boost speed stays below the player's boost speed. Finished rivals retain their finishing order, and every rematch starts from a fresh grid.
+
+### Optional Mii-style creator
+
+Run `python scripts/prepare-mii-creator.py` to install the 347 static parts from the pinned old Mii Creator repository into the ignored local personal-assets directory. See `public/assets/personal/CREDITS.md` for provenance and restrictions. The public checkout retains the original sculpted avatar when that library is absent.
+
+Create Your Driver provides category galleries for every installed part, colour palettes, independent feature position/scale/stretch/rotation, hair parting flip, beauty mark, nickname and validated JSON settings import/export. Face capture is optional and supplies a starting set of measured proportions. Face preview removes the helmet for editing; Full Kart shows the same selected face on the seated racer. Headwear can be edited in the creator, while the kart keeps its racing helmet. Saved settings contain part IDs and colours, never source photos or raw landmarks.

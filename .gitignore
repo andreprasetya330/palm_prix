@@ -37,3 +37,6 @@ assets/*-review*.png
 assets/source/personal/
 public/assets/personal/*.glb
 public/assets/personal/manifest.json
+
+# Optional personal Mii Creator part artwork (not a reusable asset license).
+public/assets/personal/mii-maker/

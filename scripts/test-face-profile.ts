@@ -30,7 +30,7 @@ face.dispose();different.dispose()
 console.log('Face customizer passed: scale-independent scan measurements, validation, local save/clear, no stored photos and bounded personalized 3D geometry.')
 
 const legacy={...DEFAULT_FACE} as Record<string,unknown>
-for(const key of ['look','eyeHeight','noseHeight','mouthHeight','eyeShape','eyeAspect','eyeTilt','noseLength','noseProjection','lipFullness','browWeight','facialHair','facialHairColor'])delete legacy[key]
+for(const key of ['creator','look','eyeHeight','noseHeight','mouthHeight','eyeShape','eyeAspect','eyeTilt','noseLength','noseProjection','lipFullness','browWeight','facialHair','facialHairColor'])delete legacy[key]
 assert.equal(validateFaceProfile(legacy)?.eyeShape,'almond','Earlier saved drivers migrate without losing likeness')
 assert.equal(validateFaceProfile({...DEFAULT_FACE,facialHair:'invalid'}),null)
 assert.equal(validateFaceProfile({...DEFAULT_FACE,eyeShape:'invalid'}),null)
