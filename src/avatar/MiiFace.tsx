@@ -2,8 +2,10 @@ import {useEffect,useMemo,useState} from 'react'
 import {useThree} from '@react-three/fiber'
 import * as THREE from 'three'
 import {buildFaceGeometry} from './faceGeometry'
-import {buildRoundHead} from './roundHeadGeometry'
-import {partUrl,type PartCategory,type MovablePart} from './creatorParts'
+import {buildRoundHead,outlineFromPoints} from './roundHeadGeometry'
+import {buildCreatorHair} from './creatorHairGeometry'
+import {SVGLoader} from 'three/addons/loaders/SVGLoader.js'
+import {eyeIsMirrored,partUrl,type PartCategory,type MovablePart} from './creatorParts'
 import type {FaceProfile} from './faceProfile'
 const sourceCache=new Map<string,Promise<string>>()
 function source(category:PartCategory,id:number){const url=partUrl(category,id);let result=sourceCache.get(url);if(!result){result=fetch(url).then(r=>{if(!r.ok)throw new Error('Local Mii Creator parts are not installed.');return r.text()});sourceCache.set(url,result);result.catch(()=>sourceCache.delete(url))}return result}
@@ -56,7 +58,19 @@ function bounds(canvas:HTMLCanvasElement){if(boundsCache.has(canvas))return boun
 async function build(p:FaceProfile){
  const c=p.creator!,categories=Object.keys({face:1,hair:1,eyes:1,eyebrows:1,nose:1,mouth:1,glasses:1,mustache:1,goatee:1,makeup:1,wrinkles:1,hat:1}) as PartCategory[]
  const raw=Object.fromEntries(await Promise.all(categories.filter(k=>k!=='hat'||c.hat>0).map(async k=>[k,await source(k,c[k])]))) as Record<PartCategory,string>
- const {head,patch}=buildRoundHead(p)
+ const loader=new SVGLoader(),facePath=loader.parse(raw.face).paths.find(path=>(path.userData?.style as {fill?:string})?.fill==='white')
+ if(!facePath)throw new Error('Creator face outline missing')
+ const outline=outlineFromPoints(facePath.toShapes()[0].getPoints(48)),{head,patch}=buildRoundHead(p,outline)
+ const hairPaths=loader.parse(raw.hair).paths,faceIndex=hairPaths.findIndex(path=>(path.userData?.style as {fill?:string})?.fill==='white')
+ const hairShapes:THREE.Shape[]=[],allHairShapes:THREE.Shape[]=[]
+ for(const [index,path]of hairPaths.entries()){
+  const fill=(path.userData?.style as {fill?:string})?.fill
+  if(!fill||fill==='none'||fill==='white')continue
+  const shapes=path.toShapes();allHairShapes.push(...shapes)
+  // Back-of-head thumbnail silhouettes become rear volume, never face-shaped rings.
+  if(index>faceIndex||faceIndex<0)hairShapes.push(...shapes)
+ }
+ const hair=buildCreatorHair(hairShapes,p,head,outline,allHairShapes)
  const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const ctx=canvas.getContext('2d')!
  const draw=async(k:PartCategory,x:number,y:number,w:number,h?:number,mirror=false,adjust?:MovablePart)=>{
   const img=await raster(raw[k],k,p),ink=bounds(img);if(!ink)return
@@ -69,21 +83,20 @@ async function build(p:FaceProfile){
  await draw('makeup',0,0,.51,.55);await draw('wrinkles',0,0,.51,.55)
  await draw('goatee',0,.010,.54,.58)
  for(const side of [-1,1]){
-  await draw('eyes',side*.061*p.eyeSpacing,p.eyeHeight,.062*p.eyeSize,undefined,side===1,'eyes')
+  await draw('eyes',side*.061*p.eyeSpacing,p.eyeHeight,.062*p.eyeSize,undefined,eyeIsMirrored(side,c.mirrorEyes),'eyes')
   await draw('eyebrows',side*.061*p.eyeSpacing,p.eyeHeight+.039,.069,undefined,side===1,'eyebrows')
  }
  await draw('nose',0,p.noseHeight,.043*p.noseWidth,.052*p.noseLength,false,'nose')
  await draw('mouth',0,p.mouthHeight,.093*p.mouthWidth,undefined,false,'mouth')
  await draw('mustache',0,p.mouthHeight+.022,.115,undefined,false,'mustache')
- await draw('hair',0,.025,.64*p.faceWidth,.62*p.faceHeight,c.mirrorHair)
  await draw('glasses',0,p.eyeHeight,.21,undefined,false,'glasses')
  if(c.hat>0)await draw('hat',0,.025,.64,.62)
  if(c.mole){ctx.fillStyle='#4a3035';ctx.beginPath();ctx.arc((.5+c.moleX/.52)*1024,(.5-c.moleY/.60)*1024,5,0,Math.PI*2);ctx.fill()}
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4
- return {head,patch,texture}
+ return {head,patch,texture,hair}
 }
 type Built=Awaited<ReturnType<typeof build>>
-const dispose=(v:Built)=>{v.head.dispose();v.patch.dispose();v.texture.dispose()}
+const dispose=(v:Built)=>{v.head.dispose();v.patch.dispose();v.texture.dispose();v.hair?.dispose()}
 export function MiiFace({profile}:{profile:FaceProfile}){
  const [failed,setFailed]=useState(false)
  const fallback=useMemo(()=>buildFaceGeometry(profile),[profile])
@@ -94,5 +107,5 @@ export function MiiFace({profile}:{profile:FaceProfile}){
   return()=>{cancelled=true;if(owned)dispose(owned)}
  },[profile,invalidate])
  if(failed)return <mesh geometry={fallback}><meshToonMaterial vertexColors/></mesh>
- return <group name="mii-creator-face">{model&&<><mesh geometry={model.head} castShadow><meshToonMaterial color={profile.skin}/></mesh><mesh geometry={model.patch} renderOrder={2}><meshBasicMaterial map={model.texture} transparent alphaTest={.025} depthWrite={false}/></mesh></>}<mesh position={[0,-.17,-.055]} scale={[.055,.075,.055]}><sphereGeometry args={[1,12,8]}/><meshToonMaterial color={profile.skin}/></mesh></group>
+ return <group name="mii-creator-face">{model&&<><mesh geometry={model.head} castShadow><meshToonMaterial color={profile.skin}/></mesh><mesh geometry={model.patch} renderOrder={2}><meshBasicMaterial map={model.texture} transparent alphaTest={.025} depthWrite={false}/></mesh>{model.hair&&<mesh geometry={model.hair} castShadow><meshToonMaterial color={profile.hair} side={THREE.DoubleSide}/></mesh>}</>}<mesh position={[0,-.17,-.055]} scale={[.055,.075,.055]}><sphereGeometry args={[1,12,8]}/><meshToonMaterial color={profile.skin}/></mesh></group>
 }

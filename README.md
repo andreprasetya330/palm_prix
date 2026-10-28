@@ -100,4 +100,6 @@ Run `python scripts/prepare-mii-creator.py` to install the 347 static parts from
 
 Create Your Driver provides category galleries for every installed part, colour palettes, independent feature position/scale/stretch/rotation, hair parting flip, beauty mark, nickname and validated JSON settings import/export. Face capture is optional and supplies a starting set of measured proportions. Face preview removes the helmet for editing; Full Kart shows the same selected face on the seated racer. Headwear can be edited in the creator, while the kart keeps its racing helmet. Saved settings contain part IDs and colours, never source photos or raw landmarks.
 
-Creator heads use a closed rounded 3D surface with facial artwork projected onto the front hemisphere. Face presets adjust rounded proportions; the back has no repeated facial features.
+Creator heads use a closed rounded 3D surface with facial artwork projected onto the front hemisphere. The selected SVG face outline drives cheek and jaw cross-sections while retaining rounded depth; the back has no repeated facial features.
+
+Hairstyles use shaded geometry derived from the selected hair paths, with a rounded rear volume rather than a face-texture hair layer. Eyes use corrected left/right source mirroring; the Eyes category also offers a horizontal flip override. Existing avatar settings migrate automatically.
