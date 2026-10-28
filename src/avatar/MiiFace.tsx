@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from 'react'
 import {useThree} from '@react-three/fiber'
 import * as THREE from 'three'
 import {buildFaceGeometry} from './faceGeometry'
-import {SVGLoader} from 'three/addons/loaders/SVGLoader.js'
+import {buildRoundHead} from './roundHeadGeometry'
 import {partUrl,type PartCategory,type MovablePart} from './creatorParts'
 import type {FaceProfile} from './faceProfile'
 const sourceCache=new Map<string,Promise<string>>()
@@ -56,16 +56,7 @@ function bounds(canvas:HTMLCanvasElement){if(boundsCache.has(canvas))return boun
 async function build(p:FaceProfile){
  const c=p.creator!,categories=Object.keys({face:1,hair:1,eyes:1,eyebrows:1,nose:1,mouth:1,glasses:1,mustache:1,goatee:1,makeup:1,wrinkles:1,hat:1}) as PartCategory[]
  const raw=Object.fromEntries(await Promise.all(categories.filter(k=>k!=='hat'||c.hat>0).map(async k=>[k,await source(k,c[k])]))) as Record<PartCategory,string>
- const face=new SVGLoader().parse(raw.face).paths.find(path=>(path.userData?.style as {fill?:string})?.fill==='white')
- if(!face)throw new Error('Creator face outline missing')
- const head=new THREE.ExtrudeGeometry(face.toShapes(),{depth:.13,bevelEnabled:true,bevelThickness:.015,bevelSize:1,bevelSegments:3,steps:1,curveSegments:12})
- const v=head.attributes.position
- // Imported silhouette, with the same world-space envelope as the seated driver.
- const box=new THREE.Box3().setFromBufferAttribute(v as THREE.BufferAttribute),cx=(box.min.x+box.max.x)/2,cy=(box.min.y+box.max.y)/2
- for(let i=0;i<v.count;i++)v.setXYZ(i,(v.getX(i)-cx)/((box.max.x-box.min.x)/2)*.153*p.faceWidth,-(v.getY(i)-cy)/((box.max.y-box.min.y)/2)*.17*p.faceHeight,v.getZ(i)-.03)
- // Reflecting SVG Y reverses winding; restore outward-facing cap triangles.
- head.setIndex(Array.from({length:v.count},(_,i)=>i%3===1?i+1:i%3===2?i-1:i))
- head.computeVertexNormals()
+ const {head,patch}=buildRoundHead(p)
  const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const ctx=canvas.getContext('2d')!
  const draw=async(k:PartCategory,x:number,y:number,w:number,h?:number,mirror=false,adjust?:MovablePart)=>{
   const img=await raster(raw[k],k,p),ink=bounds(img);if(!ink)return
@@ -89,9 +80,7 @@ async function build(p:FaceProfile){
  if(c.hat>0)await draw('hat',0,.025,.64,.62)
  if(c.mole){ctx.fillStyle='#4a3035';ctx.beginPath();ctx.arc((.5+c.moleX/.52)*1024,(.5-c.moleY/.60)*1024,5,0,Math.PI*2);ctx.fill()}
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4
- const patch=new THREE.PlaneGeometry(.52,.60,32,24),pv=patch.attributes.position
- for(let i=0;i<pv.count;i++)pv.setZ(i,.118-.010*(Math.abs(pv.getX(i))/.26)**2)
- patch.computeVertexNormals();return {head,patch,texture}
+ return {head,patch,texture}
 }
 type Built=Awaited<ReturnType<typeof build>>
 const dispose=(v:Built)=>{v.head.dispose();v.patch.dispose();v.texture.dispose()}
@@ -105,5 +94,5 @@ export function MiiFace({profile}:{profile:FaceProfile}){
   return()=>{cancelled=true;if(owned)dispose(owned)}
  },[profile,invalidate])
  if(failed)return <mesh geometry={fallback}><meshToonMaterial vertexColors/></mesh>
- return <group name="mii-creator-face">{model&&<><mesh geometry={model.head} castShadow><meshToonMaterial color={profile.skin}/></mesh><mesh geometry={model.patch} renderOrder={2}><meshBasicMaterial map={model.texture} transparent alphaTest={.025} depthWrite={false} side={THREE.DoubleSide}/></mesh></>}<mesh position={[0,-.17,-.055]} scale={[.055,.075,.055]}><sphereGeometry args={[1,12,8]}/><meshToonMaterial color={profile.skin}/></mesh></group>
+ return <group name="mii-creator-face">{model&&<><mesh geometry={model.head} castShadow><meshToonMaterial color={profile.skin}/></mesh><mesh geometry={model.patch} renderOrder={2}><meshBasicMaterial map={model.texture} transparent alphaTest={.025} depthWrite={false}/></mesh></>}<mesh position={[0,-.17,-.055]} scale={[.055,.075,.055]}><sphereGeometry args={[1,12,8]}/><meshToonMaterial color={profile.skin}/></mesh></group>
 }

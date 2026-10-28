@@ -99,3 +99,5 @@ Rivals use a shared fixed-step race state for their rendered positions, minimap 
 Run `python scripts/prepare-mii-creator.py` to install the 347 static parts from the pinned old Mii Creator repository into the ignored local personal-assets directory. See `public/assets/personal/CREDITS.md` for provenance and restrictions. The public checkout retains the original sculpted avatar when that library is absent.
 
 Create Your Driver provides category galleries for every installed part, colour palettes, independent feature position/scale/stretch/rotation, hair parting flip, beauty mark, nickname and validated JSON settings import/export. Face capture is optional and supplies a starting set of measured proportions. Face preview removes the helmet for editing; Full Kart shows the same selected face on the seated racer. Headwear can be edited in the creator, while the kart keeps its racing helmet. Saved settings contain part IDs and colours, never source photos or raw landmarks.
+
+Creator heads use a closed rounded 3D surface with facial artwork projected onto the front hemisphere. Face presets adjust rounded proportions; the back has no repeated facial features.

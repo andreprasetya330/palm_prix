@@ -21,3 +21,20 @@ assert(face?.creator);assert.deepEqual(validateFaceProfile(JSON.parse(JSON.strin
 assert.equal(validateFaceProfile({...DEFAULT_FACE,creator:{eyes:1}}),null)
 assert.equal(validateFaceProfile({...DEFAULT_FACE,creator:null})?.creator,null)
 console.log('Creator passed: 347 parts, safe local paths, validated IDs/placement/colours, old avatars and editable photo-free round trips.')
+
+// A face silhouette must never be extruded into a flat-ended barrel again.
+const {buildRoundHead,HEAD_CENTER_Z}=await import('../src/avatar/roundHeadGeometry')
+for(const [faceWidth,faceHeight]of [[1,1],[.85,1.12],[1.12,.88]]){
+ const {head,patch}=buildRoundHead({faceWidth,faceHeight})
+ const p=head.attributes.position,uv=patch.attributes.uv,rx=.165*faceWidth,ry=.165*faceHeight,rz=.165*Math.sqrt(faceWidth*faceHeight)
+ for(let i=0;i<p.count;i++){
+  const x=p.getX(i),y=p.getY(i),z=p.getZ(i)-HEAD_CENTER_Z
+  assert(Math.abs((x/rx)**2+(y/ry)**2+(z/rz)**2-1)<1e-5,'Every head vertex must lie on the rounded surface')
+  if(z< -1e-6)assert(uv.getX(i)===0&&uv.getY(i)===0,'No facial features on the back of the head')
+ }
+ const box=head.boundingBox!,depth=box.max.z-box.min.z,width=box.max.x-box.min.x
+ assert(depth/width>.85&&depth/width<1.2,'Head depth must be round rather than an extrusion')
+ assert(p.count<2000,'Round head stays lightweight')
+ head.dispose();patch.dispose()
+}
+console.log('Round head passed: closed ellipsoid, full depth, curved feature projection, empty back UVs and bounded geometry.')
