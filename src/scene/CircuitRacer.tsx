@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { RIVALS } from '../game/raceLoop'
 import {OPTIONAL_CIRCUIT_MODEL} from '../game/assetErrors'
 import { NeonRacer, type NeonRacerProps } from './NeonRacer'
+import {DEFAULT_PLAYER_FACE,RIVAL_FACES} from '../avatar/racerFaces'
 import {StylizedFace} from '../avatar/StylizedFace'
 import type {FaceProfile} from '../avatar/faceProfile'
 import type {DriverStyle} from '../avatar/driverStyle'
@@ -56,11 +57,12 @@ class ModelBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 /** Optional local model: public builds never request or preload the personal asset. */
 export function CircuitRacer({ player = false, variant = 0, color, motion,faceProfile,driverStyle }: NeonRacerProps) {
   const index = ((variant % RIVALS.length) + RIVALS.length) % RIVALS.length
+  const racerFace=faceProfile??(player?DEFAULT_PLAYER_FACE:RIVAL_FACES[index])
   const team = color ?? (player ? '#49dce8' : RIVALS[index].color)
-  const fallback = <NeonRacer player={player} variant={variant} color={team} motion={motion} faceProfile={faceProfile} driverStyle={driverStyle}/>
+  const fallback = <NeonRacer player={player} variant={variant} color={team} motion={motion} faceProfile={racerFace} driverStyle={driverStyle}/>
   if (!PERSONAL_ASSETS) return fallback
   return <ModelBoundary fallback={fallback}><Suspense fallback={fallback}>
-    <LoadedCircuit color={team} motion={motion} faceProfile={player?faceProfile:null} driverStyle={player?driverStyle:undefined}/>
+    <LoadedCircuit color={team} motion={motion} faceProfile={racerFace} driverStyle={player?driverStyle:undefined}/>
   </Suspense></ModelBoundary>
 }
 function LoadedCircuit({ color, motion,faceProfile,driverStyle }: { color: string; motion: NeonRacerProps['motion'];faceProfile?:FaceProfile|null;driverStyle?:DriverStyle }) {

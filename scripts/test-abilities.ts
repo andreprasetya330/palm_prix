@@ -8,8 +8,8 @@ const state=createAbilityState(),p=ABILITY_PICKUPS[0],kart={...DEFAULT_KART}
 assert(collectAbility(state,0,p.x-4,p.z,p.x+4,p.z),'Swept motion must collect an item between rendered frames')
 assert.equal(state.held,'turbo')
 assert(activateAbility(state,kart));assert.equal(kart.boostTimer,2);assert.equal(state.held,null)
-assert(!collectAbility(state,0,p.x,p.z,p.x,p.z),'A pickup row may only be collected once per lap')
-assert(collectAbility(state,1,p.x,p.z,p.x,p.z),'The next lap replenishes pickup rows')
+assert(!collectAbility(state,0,p.x,p.z,p.x,p.z),'An individual crystal stays collected without a shared respawn clock')
+assert(collectAbility(state,1,p.x,p.z,p.x,p.z),'The next lap replenishes that individual crystal')
 const runtime=createRuntime(),hazard=getObstaclePose(0,0)
 runtime.race.phase='racing';runtime.abilities.held='shield'
 Object.assign(runtime.kart,{x:hazard.x,z:hazard.z,yaw:hazard.yaw,speed:12,vx:Math.sin(hazard.yaw)*12,vz:Math.cos(hazard.yaw)*12})
@@ -49,3 +49,30 @@ assert.equal(offensive.kart.boostTimer,0,'Offensive item must consume the input 
 assert(offensive.abilities.hits>0,'Offensive effect must reach actual runtime opponents')
 resetRuntime(offensive);assert.equal(offensive.abilities.hits,0);assert.equal(offensive.abilities.mines.length,0);assert.equal(offensive.abilities.shots.length,0)
 console.log('PASS offensive radius/eligibility, homing, swept traps, safe lanes, immunity, CPU recovery, bounded pools, expiry and runtime reset')
+// Individual crystals share a real respawn timer across all racers.
+const shared=ABILITY_PICKUPS.map(()=>0),one=createAbilityState(),two=createAbilityState(),neighbor=ABILITY_PICKUPS[1]
+assert(collectAbility(one,0,p.x,p.z,p.x,p.z,shared));assert(shared[p.id]>0);assert.equal(shared[neighbor.id],0)
+assert(!collectAbility(two,0,p.x,p.z,p.x,p.z,shared),'A CPU/player cannot collect a crystal that another racer just took')
+assert(collectAbility(two,0,neighbor.x,neighbor.z,neighbor.x,neighbor.z,shared),'An adjacent crystal remains independently available')
+assert.equal(one.pickupBursts.length,1);assert.equal(two.pickupBursts.length,1)
+one.held=null;shared[p.id]=0;assert(collectAbility(one,0,p.x,p.z,p.x,p.z,shared),'The same racer can collect a respawned crystal in the same lap')
+// CPU attacks participate in exactly the same hit and shield rules.
+const cpus=createRivalStates();cpus.forEach((r,i)=>{r.distance=100+i*50;r.speed=25})
+const playerAbilities=createAbilityState(),playerKart={...DEFAULT_KART,speed:25,vx:10,vz:20},cpuAttack=createAbilityState(),peerAbilities=cpus.map(()=>createAbilityState())
+const cpuContext={rivals:cpus,distance:100,lane:0,owner:0,peerAbilities,player:{kart:playerKart,distance:115,lane:0,abilities:playerAbilities}}
+cpuAttack.held='pulse';activateAbility(cpuAttack,{...DEFAULT_KART},cpuContext)
+assert.equal(cpus[0].stunTimer,0,'CPU must not hit itself')
+assert.equal(playerAbilities.hitsTaken,1);assert(playerAbilities.stunTimer>0);assert(playerKart.speed<25)
+cpuAttack.held='pulse';activateAbility(cpuAttack,{...DEFAULT_KART},cpuContext);assert.equal(playerAbilities.hitsTaken,1,'Player receives a recovery immunity window')
+playerAbilities.hitCooldown=0;playerAbilities.stunTimer=0;playerAbilities.shieldTimer=4
+cpuAttack.held='pulse';activateAbility(cpuAttack,{...DEFAULT_KART},cpuContext);assert.equal(playerAbilities.hitsTaken,1);assert.equal(playerAbilities.lastEvent,'blocked')
+playerAbilities.shieldTimer=0;peerAbilities[1].shieldTimer=4;cpus[1].distance=110
+cpuAttack.held='pulse';activateAbility(cpuAttack,{...DEFAULT_KART},cpuContext);assert.equal(cpus[1].stunTimer,0,'CPU shields also protect against attacks')
+// Exercise collection and item decisions through the actual race loop.
+const competition=createRuntime();competition.race.phase='racing'
+for(let i=0;i<1800;i++)advanceRuntime(competition,1/120)
+assert(competition.rivalAbilities.reduce((n,a)=>n+a.pickupCount,0)>=3,'CPUs must collect actual world crystals')
+assert(competition.rivalAbilities.some(a=>a.activations>0),'CPUs must use their collected inventory')
+assert(competition.pickupCooldowns.some(t=>t>0)||competition.rivalAbilities.some(a=>a.collected.size>0))
+resetRuntime(competition);assert(competition.rivalAbilities.every(a=>a.pickupCount===0&&a.activations===0));assert(competition.pickupCooldowns.every(t=>t===0))
+console.log('PASS individual contested crystals/respawn/bursts, CPU inventory/use, self-exclusion, player damage/immunity, shields and reset')

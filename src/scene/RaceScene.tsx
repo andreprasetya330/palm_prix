@@ -88,7 +88,7 @@ function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;i
       const pitch=Math.atan(road.grade*Math.cos(delta)+Math.tan(road.bank)*Math.sin(delta))
       const roll=Math.atan(-road.grade*Math.sin(delta)+Math.tan(road.bank)*Math.cos(delta))
       // Follow the road bank without leaning the wheel assembly off the tarmac.
-      root.position.set(k.x,road.height+.005,k.z);root.rotation.set(-pitch,k.yaw,roll,'YXZ')
+      root.position.set(k.x,road.height+.005,k.z);root.rotation.set(-pitch,k.yaw+(runtime.abilities.stunTimer>0?(1.1-runtime.abilities.stunTimer)/1.1*Math.PI*4:0),roll,'YXZ')
       motion.speed=k.speed;motion.steering=k.steering??0
       motion.rev=runtime.race.phase==='countdown'&&runtime.race.countdown<=3?runtime.control.throttle:0
       motion.celebration=runtime.race.phase==='finish'?runtime.race.finishElapsed:0

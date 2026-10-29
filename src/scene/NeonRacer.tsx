@@ -141,7 +141,7 @@ function prepare(team: string, glow: string,helmetAccent=team,personalized=false
 export function NeonRacer({player=false,variant=0,color,motion,faceProfile,driverStyle}:NeonRacerProps) {
   const index=player?0:((variant%5)+5)%5+1
   const team=color??teamColors[index],glow=glowColors[index]
-  const personalized=Boolean(player&&faceProfile)
+  const personalized=Boolean(faceProfile)
   const model=useMemo(()=>prepare(team,glow,player?driverStyle?.helmet:undefined,personalized,player?driverStyle?.suit:undefined),[team,glow,player,driverStyle,personalized])
   const performer=useRef<THREE.Group>(null)
   const pivots=useRef<(THREE.Group|null)[]>([]),spinners=useRef<(THREE.Mesh|null)[]>([])
@@ -158,7 +158,7 @@ export function NeonRacer({player=false,variant=0,color,motion,faceProfile,drive
     <mesh geometry={model.body} material={bodyMaterial} castShadow receiveShadow/>
     <mesh geometry={model.glow} material={glowMaterial}/>
     <group ref={performer}><mesh geometry={model.driver} material={bodyMaterial} castShadow receiveShadow/>
-    {player&&faceProfile?<StylizedFace profile={faceProfile} position={[0,1.31,-.10]}/>:<mesh geometry={model.visor} material={visorMaterial}/>}</group>
+    {faceProfile?<StylizedFace profile={faceProfile} position={[0,1.31,-.10]}/>:<mesh geometry={model.visor} material={visorMaterial}/>}</group>
     {[-1,1,-1,1].map((side,i)=><group key={i} position={[side*.79,.32,i<2?.79:-.8]} ref={node=>{pivots.current[i]=node}}>
       <mesh ref={node=>{spinners.current[i]=node}} geometry={wheel} material={bodyMaterial} castShadow receiveShadow/>
     </group>)}

@@ -62,3 +62,5 @@ The local personal setup uses Nintendo's Tomodachi Life: Living the Dream avatar
 ## Original retro HUD and combat effects
 
 Chrome HUD lettering, vector ability emblems, holographic pickups, Shockwave/Neon Seeker/Echo Trap meshes, particle/reticle animations and their synthesized sound cues are original Palm Prix code. The user-provided retro title images informed the palette and chrome treatment; their artwork is not embedded or redistributed. No external models, textures or sound recordings were added for these effects.
+
+The default player and five CPU face presets combine the locally installed native Mii parts credited in `personal/CREDITS.md`. Preset selections, opaque SVG chrome lettering and shared crystal pickup/respawn animations are original Palm Prix integration code; no additional downloaded game models or audio recordings were added.

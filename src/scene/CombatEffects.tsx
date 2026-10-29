@@ -6,7 +6,7 @@ import type {RaceRuntime} from '../game/runtime'
 import {getTrackSurface,TRACK_LENGTH} from '../game/trackLayout'
 
 /** Bounded original neon meshes: three seekers, four traps and eight impact bursts. */
-export function CombatEffects({runtime}:{runtime:RaceRuntime}){
+export function CombatEffects({runtime,owner=-1}:{runtime:RaceRuntime;owner?:number}){
  const sceneGroup=useRef<THREE.Group>(null)
  const coreGeometry=useMemo(()=>new THREE.TorusGeometry(.55,.08,5,6).rotateX(-Math.PI/2),[])
  useEffect(()=>()=>coreGeometry.dispose(),[coreGeometry])
@@ -15,14 +15,14 @@ export function CombatEffects({runtime}:{runtime:RaceRuntime}){
  const dummy=useMemo(()=>new THREE.Object3D(),[]),color=useMemo(()=>new THREE.Color(),[])
  const point=(distance:number,lane:number)=>getTrackSurface(distance/TRACK_LENGTH,lane)
  useFrame(({clock,camera})=>{
-  const a=runtime.abilities,time=clock.elapsedTime,active=runtime.race.phase==='racing'
+  const a=owner<0?runtime.abilities:runtime.rivalAbilities[owner],time=clock.elapsedTime,active=runtime.race.phase==='racing'
   if(sceneGroup.current)sceneGroup.current.visible=active
   if(!active)return
   if(trails.current)trails.current.count=a.shots.length*10
   if(traps.current)traps.current.count=a.mines.length
   if(cores.current)cores.current.count=a.mines.length
   if(sparks.current)sparks.current.count=a.impacts.length*12
-  if(stars.current)stars.current.visible=runtime.race.rivals.some(r=>r.stunTimer>0)
+  if(stars.current)stars.current.visible=owner<0&&runtime.race.rivals.some(r=>r.stunTimer>0)
   for(let i=0;i<3;i++){
    const root=bolts.current[i],shot=a.shots[i];if(!root)continue;root.visible=active&&!!shot
    if(shot){const s=point(shot.distance,shot.lane);root.position.copy(s.point);root.position.y+=.85;root.rotation.set(-Math.atan(s.grade),s.yaw,time*9,'YXZ')}
@@ -56,7 +56,7 @@ export function CombatEffects({runtime}:{runtime:RaceRuntime}){
    dummy.rotation.set(time,time*3,time*2);dummy.updateMatrix();stars.current?.setMatrixAt(i,dummy.matrix)
   }
   if(stars.current)stars.current.instanceMatrix.needsUpdate=true
-  if(lock.current){const target=a.shots[0]?.target??-1,r=runtime.race.rivals[target];lock.current.visible=active&&!!r&&r.finishedAt===null;if(r){const s=point(r.distance,r.lane);lock.current.position.copy(s.point);lock.current.position.y+=2;lock.current.quaternion.copy(camera.quaternion);lock.current.scale.setScalar(.8+Math.sin(time*8)*.06)}}
+  if(lock.current){const target=a.shots[0]?.target??-1,r=runtime.race.rivals[target];lock.current.visible=owner<0&&active&&!!r&&r.finishedAt===null;if(r){const s=point(r.distance,r.lane);lock.current.position.copy(s.point);lock.current.position.y+=2;lock.current.quaternion.copy(camera.quaternion);lock.current.scale.setScalar(.8+Math.sin(time*8)*.06)}}
  })
  return <group ref={sceneGroup} visible={false}>
   {[0,1,2].map(i=><group key={i} ref={node=>{bolts.current[i]=node}} visible={false}>
