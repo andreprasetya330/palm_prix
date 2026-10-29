@@ -53,3 +53,6 @@ if(existsSync(catalogPath)){
  assert.equal(hashes.size,16,'All sixteen choices must use different real head meshes')
 }
 console.log('Tomodachi creator passed: native catalogue, all head meshes/sockets, single hair variants, RGB mask tinting, eye orientation, migration and photo-free settings.')
+
+const eyeAccent=tintNativePixels(new Uint8ClampedArray([255,0,0,255,128,0,0,255,255,255,0,255,0,0,0,255]),'Eye','#336699')
+assert.deepEqual([...eyeAccent],[0,0,0,0,0,0,0,127,255,255,255,255,0,0,0,255],'Optional upper-eye accent must disappear, preserving mixed sclera and black outlines')

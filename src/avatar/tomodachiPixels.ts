@@ -6,7 +6,7 @@ export function tintNativePixels(input:Uint8ClampedArray,kind:string,colour:stri
  for(let i=0;i<input.length;i+=4){
   const r=input[i]/255,g=input[i+1]/255,b=input[i+2]/255,a=input[i+3]/255
   let red=c.r,green=c.g,blue=c.b,alpha=a
-  if(kind==='Eye'){red=r+g+b*c.r;green=r+g+b*c.g;blue=r+g+b*c.b}
+  if(kind==='Eye'){red=g+b*c.r;green=g+b*c.g;blue=g+b*c.b;alpha=a*(g===0&&b===0?1-r:1)}
   else if(kind==='Mouth'){red=(r+g)*c.r+b;green=(r+g)*c.g+b;blue=(r+g)*c.b+b}
   else if(kind==='Hair'){const weight=Math.max(.7,r+g);red=c.r*weight;green=c.g*weight;blue=c.b*weight}
   else alpha=kind==='BeardShort'?Math.max(r,g):r
