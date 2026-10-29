@@ -43,3 +43,6 @@ public/assets/personal/mii-maker/
 
 # Optional Tomodachi Life game extracts (local personal setup only).
 public/assets/personal/tomodachi/
+
+# Local Python helper bytecode.
+__pycache__/

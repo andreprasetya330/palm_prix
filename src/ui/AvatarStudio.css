@@ -21,3 +21,6 @@
 @media(max-width:620px){.avatar-model{order:0}.avatar-tuning{order:1}.avatar-capture{order:2}}
 
 .mii-advanced{margin:0 0 13px;color:#b8afca;font-size:9px}.mii-advanced summary{cursor:pointer;padding:6px 0}.mii-advanced .mii-categories{margin:7px 0}
+.mii-scan-matches{margin:12px 0;padding:10px;border:1px solid #73deec55;background:#72deec08}.mii-scan-matches>summary{font-size:10px;color:#91edf4;cursor:pointer}.mii-scan-matches>.mii-part-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px}.mii-scan-matches .mii-part-grid span{font-size:7px}
+/* The two-column studio becomes a full-width editor below the preview. */
+@media(min-width:621px) and (max-width:1100px){.avatar-model{position:relative}.avatar-tuning,.mii-creator{min-width:0}}

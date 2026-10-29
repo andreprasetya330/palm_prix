@@ -4,6 +4,7 @@ Only static data is copied. No upstream Python program is executed.
 """
 from pathlib import Path
 import argparse, urllib.request, zipfile, io, json, re, shutil, hashlib
+from tomodachi_hair_index import build_hair_index
 REV='970c22034c1d4cfee2bd7a491a1475d46bb63169'
 URL=f'https://codeload.github.com/zinccat/mii_renderer/zip/{REV}'
 ROOT=Path(__file__).resolve().parents[1]
@@ -52,6 +53,7 @@ def install(source):
             if sourceIcon.suffix=='.png':shutil.copyfile(sourceIcon,target)
             else:(icons/f'{category}-{index}.svg').write_text(sourceIcon.read_text())
             item['icon']=f'icons/{category}-{index}'+sourceIcon.suffix
+    build_hair_index(out,catalog)
     manifest={'version':2,'source':'https://github.com/zinccat/mii_renderer','revision':REV,'categories':catalog}
     (out/'catalog.json').write_text(json.dumps(manifest,separators=(',',':')),encoding='utf-8')
     print('Installed categories:',{k:len(v) for k,v in catalog.items()})

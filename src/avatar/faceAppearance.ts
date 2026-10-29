@@ -4,8 +4,8 @@ const luminance=(hex:string)=>[.2126,.7152,.0722].reduce((sum,weight,i)=>sum+par
 export function inferFacialHair(skin:string,upperLip:string[],jaw:string[]):Pick<FaceProfile,'facialHair'|'facialHairColor'>{
  const baseline=Math.max(20,luminance(skin))
  const dark=(samples:string[],threshold:number)=>samples.filter(c=>luminance(c)/baseline<threshold)
- const upper=dark(upperLip,.52),lower=dark(jaw,.6)
- const facialHair=lower.length>=3?'beard':upper.length>=2?'moustache':'none'
+ const upper=dark(upperLip,.45),lower=dark(jaw,.6)
+ const facialHair=lower.length>=3?'beard':upper.length>=3?'moustache':'none'
  const samples=[...upper,...lower].sort((a,b)=>luminance(a)-luminance(b))
  return {facialHair,facialHairColor:samples[Math.floor(samples.length/2)]??'#38303a'}
 }

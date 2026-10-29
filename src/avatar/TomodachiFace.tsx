@@ -3,7 +3,7 @@ import {useThree} from '@react-three/fiber'
 import * as THREE from 'three'
 import {GLTFLoader,type GLTF} from 'three/addons/loaders/GLTFLoader.js'
 import {buildFaceGeometry} from './faceGeometry'
-import {assetUrl,loadTomodachiCatalog,nativeRoots,nativeY,type NativePart} from './tomodachiAssets'
+import {assetUrl,loadTomodachiCatalog,nativeRoots,nativeY,nativeEyeHeight,type NativePart} from './tomodachiAssets'
 import {eyeIsMirrored,type PartCategory,type MovablePart} from './creatorParts'
 import {tintNativePixels,orientNativePixels} from './tomodachiPixels'
 import type {FaceProfile} from './faceProfile'
@@ -66,7 +66,7 @@ async function assemble(p:FaceProfile,helmeted:boolean){
    const item=part(category),img=await sprite(item,colour);if(!img)return
    const a=adjust?c.placement[adjust]:{x:0,y:0,scale:1,aspect:1,rotation:0},uv=anchor(x+a.x,y+a.y)
    const mirror=side!==0&&eyeIsMirrored(side,category==='eyes'?c.mirrorEyes:false)
-   ctx.save();ctx.translate(uv.x,uv.y);ctx.rotate((item.rotation*Math.PI/180+a.rotation)*(side===1?-1:1));ctx.scale(mirror?-1:1,1)
+   ctx.save();ctx.translate(uv.x,uv.y);ctx.rotate((item.rotation*Math.PI/180+a.rotation)*(side===1?-1:1)+(category==='eyes'?side*p.eyeTilt:category==='eyebrows'?side*p.browTilt:0));ctx.scale(mirror?-1:1,1)
    const w=img.width*scale*a.scale,h=img.height*scale*a.scale*a.aspect*extraY
    ctx.drawImage(img,-w/2,-h/2,w,h);ctx.restore()
   }
@@ -79,14 +79,14 @@ async function assemble(p:FaceProfile,helmeted:boolean){
   await paintWhole('makeup',c.lipColor,ctx);await paintWhole('makeupUpper',c.lipColor,ctx)
   await paintWhole('wrinkles','#745348',headCtx);await paintWhole('wrinklesUpper','#745348',headCtx);await paintWhole('beardShort',p.facialHairColor,headCtx,true)
   for(const side of [-1,1]){
-   const x=side*.061*p.eyeSpacing,y=p.eyeHeight
-   await paint('eyes',x,y,.75*p.eyeSize,p.eyes,side,'eyes')
-   await paint('eyebrows',x,y+.039,.75,c.browsColor,side,'eyebrows')
+   const x=side*.061*p.eyeSpacing,y=nativeEyeHeight(p.eyeHeight)
+   await paint('eyes',x,y,.75*p.eyeSize,p.eyes,side,'eyes',THREE.MathUtils.clamp(p.eyeAspect/.65,.65,1.4))
+   await paint('eyebrows',x,y+.032,.75,c.browsColor,side,'eyebrows',p.browWeight)
    await paint('eyelidUpper',x,y+.013,.8,p.skin,side);await paint('eyelidLower',x,y-.012,.8,p.skin,side)
    await paint('eyelashUpper',x,y+.016,.8,'#211c29',side);await paint('eyelashLower',x,y-.016,.8,'#211c29',side)
    await paint('highlight',x-.005*side,y+.006,.5,'#ffffff',side)
   }
-  await paint('mouth',0,p.mouthHeight,.75*p.mouthWidth,c.lipColor,0,'mouth')
+  await paint('mouth',0,p.mouthHeight,.75*p.mouthWidth,c.lipColor,0,'mouth',.6+p.lipFullness*.4)
   await paint('mustache',0,p.mouthHeight+.026,.40,p.facialHairColor,0,'mustache')
   if(c.mole){const uv=anchor(c.moleX,c.moleY);ctx.fillStyle='#392329';ctx.beginPath();ctx.arc(uv.x,uv.y,4,0,Math.PI*2);ctx.fill()}
   const faceTexture=ownTexture(canvasTexture(faceCanvas));maskMesh.material=ownMaterial(new THREE.MeshBasicMaterial({map:faceTexture,transparent:true,alphaTest:.02,depthWrite:false,side:THREE.DoubleSide}));maskMesh.renderOrder=3;maskMesh.castShadow=false
@@ -128,7 +128,7 @@ async function assemble(p:FaceProfile,helmeted:boolean){
     if(node.name.startsWith('Opa')&&hasTransparent){node.visible=false;continue}
     if(node.name.startsWith('Opa')||node.name.startsWith('Trs'))node.material=ownMaterial(new THREE.MeshBasicMaterial({color:c.glassesColor,transparent:true,opacity:c.lensOpacity,depthWrite:false,side:THREE.DoubleSide}))
    }
-   const a=c.placement.glasses;glass.scale.set(a.scale,a.scale*a.aspect,a.scale);glass.position.set(sockets.nose.x+a.x/sx,nativeY(p.eyeHeight+a.y,p.faceHeight),sockets.nose.z+.015);glass.rotation.z=a.rotation;group.add(glass)
+   const a=c.placement.glasses;glass.scale.set(a.scale,a.scale*a.aspect,a.scale);glass.position.set(sockets.nose.x+a.x/sx,nativeY(nativeEyeHeight(p.eyeHeight)+a.y,p.faceHeight),sockets.nose.z+.015);glass.rotation.z=a.rotation;group.add(glass)
   }
   group.scale.set(sx,sy,sz);group.position.set(0,-.3375736773*sy,-.045+.0427802913*sz)
   return {group,release}

@@ -35,10 +35,12 @@ export function profileFromLandmarks(points:Point[],width:number,height:number,c
  const axis={x:points[263].x-points[33].x,y:points[263].y-points[33].y}
  const angle=(a:number,b:number)=>Math.atan2((points[b].y-points[a].y)*height,(points[b].x-points[a].x)*width)
  const roll=Math.atan2(axis.y*height,axis.x*width)
+ const vertical={x:(points[152].x-points[10].x)*width,y:(points[152].y-points[10].y)*height}
+ const relativeY=(index:number)=>(((points[index].x-points[10].x)*width)*vertical.x+((points[index].y-points[10].y)*height)*vertical.y)/(h*h)
  return {...DEFAULT_FACE,...colors,facialHairColor:colors.hair,
-  eyeHeight:clamp((.5-((points[33].y+points[263].y)*.5-points[10].y)*height/h)*.34,.005,.075),
-  noseHeight:clamp((.5-(points[1].y-points[10].y)*height/h)*.34,-.04,.02),
-  mouthHeight:clamp((.5-((points[61].y+points[291].y)*.5-points[10].y)*height/h)*.34,-.10,-.035),
+  eyeHeight:clamp((.5-(relativeY(33)+relativeY(263))*.5)*.34,.005,.075),
+  noseHeight:clamp((.5-relativeY(1))*.34,-.04,.02),
+  mouthHeight:clamp((.5-(relativeY(61)+relativeY(291))*.5)*.34,-.10,-.035),
   eyeAspect,eyeShape:eyeAspect<.48?'hooded':eyeAspect>.85?'round':'almond',
   eyeTilt:clamp(((angle(33,133)-roll)-(angle(362,263)-roll))*.5,-.3,.3),
   noseLength:clamp(distance(168,2)/h/.28,.65,1.5),

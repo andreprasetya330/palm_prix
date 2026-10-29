@@ -50,3 +50,9 @@ for(const look of ['graphic','soft','portrait']as const)for(const facialHair of 
  g.dispose()
 }
 console.log('Detailed likeness passed: eye aperture inference, five grooming styles, eyelid variants, conservative hair detection and legacy saves.')
+
+const rollAngle=.22,rolled=points.map(p=>({x:.5+(p.x-.5)*Math.cos(rollAngle)-(p.y-.5)*Math.sin(rollAngle),y:.5+(p.x-.5)*Math.sin(rollAngle)+(p.y-.5)*Math.cos(rollAngle),z:p.z}))
+const upright=profileFromLandmarks(points,512,512,colors),tilted=profileFromLandmarks(rolled,512,512,colors)
+for(const key of ['eyeHeight','noseHeight','mouthHeight']as const)assert(Math.abs(upright[key]-tilted[key])<1e-9,'Feature height must not drift when the photo is slightly rolled')
+
+assert.equal(inferFacialHair('#c09070',['#303035','#282830','#b08070'],['#b08060','#a08060','#a08060','#a08060']).facialHair,'none','Two lip-corner shadows must not invent a moustache')

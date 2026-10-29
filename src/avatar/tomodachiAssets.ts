@@ -18,3 +18,6 @@ export function nativeRoots(names:string[],mirror=false,helmeted=false){const ha
 
 export const NATIVE_HEAD_CENTER_Y=.3375736773
 export function nativeY(worldY:number,faceHeight:number){return NATIVE_HEAD_CENTER_Y+worldY/(.5*faceHeight)}
+
+/** Native heads have a taller crown than the fallback sculpt; keep the eyes on the facial midline. */
+export function nativeEyeHeight(height:number){return height-.022}
