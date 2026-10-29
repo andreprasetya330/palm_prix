@@ -6,7 +6,7 @@ import type {FaceProfile} from '../avatar/faceProfile'
 import type {DriverStyle} from '../avatar/driverStyle'
 import {StylizedFace} from '../avatar/StylizedFace'
 
-export type NeonRacerProps = { player?: boolean; variant?: number; color?: string; motion?: { speed: number; steering?: number };faceProfile?:FaceProfile|null;driverStyle?:DriverStyle }
+export type NeonRacerProps = { player?: boolean; variant?: number; color?: string; motion?: { speed: number; steering?: number;rev?:number;celebration?:number };faceProfile?:FaceProfile|null;driverStyle?:DriverStyle }
 type Part = THREE.BufferGeometry
 const teamColors = ['#6833c8', '#ce347e', '#197cbd', '#e47825', '#318c80', '#a634cf']
 const glowColors = ['#55f7ff', '#ffe17b', '#ff6bbd', '#7cffff', '#d7ff65', '#ff8aca']
@@ -143,9 +143,11 @@ export function NeonRacer({player=false,variant=0,color,motion,faceProfile,drive
   const team=color??teamColors[index],glow=glowColors[index]
   const personalized=Boolean(player&&faceProfile)
   const model=useMemo(()=>prepare(team,glow,player?driverStyle?.helmet:undefined,personalized,player?driverStyle?.suit:undefined),[team,glow,player,driverStyle,personalized])
+  const performer=useRef<THREE.Group>(null)
   const pivots=useRef<(THREE.Group|null)[]>([]),spinners=useRef<(THREE.Mesh|null)[]>([])
   useFrame((_,delta)=>{
     const dt=Math.min(delta,.05)
+    if(performer.current){const t=motion?.celebration??0;performer.current.rotation.z=t>0?Math.sin(t*4)*.035:0;performer.current.rotation.x=t>0?Math.sin(t*5)*.025:(motion?.rev??0)*Math.sin(performance.now()*.035)*.009}
     for(let i=0;i<4;i++) {
       const pivot=pivots.current[i],spinner=spinners.current[i]
       if(pivot&&i<2)pivot.rotation.y=THREE.MathUtils.damp(pivot.rotation.y,-(motion?.steering??0)*.4,18,dt)
@@ -155,8 +157,8 @@ export function NeonRacer({player=false,variant=0,color,motion,faceProfile,drive
   return <group dispose={null}>
     <mesh geometry={model.body} material={bodyMaterial} castShadow receiveShadow/>
     <mesh geometry={model.glow} material={glowMaterial}/>
-    <mesh geometry={model.driver} material={bodyMaterial} castShadow receiveShadow/>
-    {player&&faceProfile?<StylizedFace profile={faceProfile} position={[0,1.31,-.10]}/>:<mesh geometry={model.visor} material={visorMaterial}/>}
+    <group ref={performer}><mesh geometry={model.driver} material={bodyMaterial} castShadow receiveShadow/>
+    {player&&faceProfile?<StylizedFace profile={faceProfile} position={[0,1.31,-.10]}/>:<mesh geometry={model.visor} material={visorMaterial}/>}</group>
     {[-1,1,-1,1].map((side,i)=><group key={i} position={[side*.79,.32,i<2?.79:-.8]} ref={node=>{pivots.current[i]=node}}>
       <mesh ref={node=>{spinners.current[i]=node}} geometry={wheel} material={bodyMaterial} castShadow receiveShadow/>
     </group>)}

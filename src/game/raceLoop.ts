@@ -3,11 +3,11 @@ import {createRivalStates,type RivalState} from './rivalAI'
 import {RIVALS} from './rivalRoster'
 export {RIVALS} from './rivalRoster'
 export type RacePhase = 'menu' | 'avatar' | 'calibrate' | 'countdown' | 'racing' | 'finish'
-export type RaceStatus = { phase: RacePhase; countdown: number; lap: number; totalLaps: number; elapsed: number; checkpointsHit: number;rivals:RivalState[];rivalAccumulator:number }
+export type RaceStatus = { phase: RacePhase; countdown: number; lap: number; totalLaps: number; elapsed: number; checkpointsHit: number;rivals:RivalState[];rivalAccumulator:number;finishElapsed:number;finishPosition:number;paradeDistance:number;paradeLane:number }
 export const TOTAL_LAPS = 3
 // Start is t=0; a lap counts only after all four ordered sectors.
 export const CHECKPOINT_ANGLES = [Math.PI / 2, Math.PI, Math.PI * 1.5, 0]
-export function createRaceStatus(): RaceStatus { return { phase: 'menu', countdown: 3, lap: 1, totalLaps: TOTAL_LAPS, elapsed: 0, checkpointsHit: 0,rivals:createRivalStates(),rivalAccumulator:0 } }
+export function createRaceStatus(): RaceStatus { return { phase: 'menu', countdown: 3, lap: 1, totalLaps: TOTAL_LAPS, elapsed: 0, checkpointsHit: 0,rivals:createRivalStates(),rivalAccumulator:0,finishElapsed:0,finishPosition:0,paradeDistance:0,paradeLane:0 } }
 export function kartAngle(x: number, z: number): number { return nearestTrack(x, z).t * Math.PI * 2 }
 export function updateCheckpoints(status: RaceStatus, x: number, z: number): RaceStatus {
   if (status.phase !== 'racing') return status
@@ -36,6 +36,7 @@ export function playerProgressDistance(status:RaceStatus,x:number,z:number){
   return progress/(Math.PI*2)*TRACK_LENGTH
 }
 export function racePosition(status: RaceStatus, x: number, z: number) {
+  if(status.phase==='finish'&&status.finishPosition)return status.finishPosition
   const progress=playerProgressDistance(status,x,z)
   return 1+status.rivals.filter(r=>r.finishedAt!==null||r.distance>progress).length
 }

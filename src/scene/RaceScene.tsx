@@ -14,6 +14,7 @@ import { getRoadPose, getTrackSurface,TRACK_LENGTH } from '../game/trackLayout'
 import { FollowCamera } from './FollowCamera'
 import { CourseFun } from './CourseFun'
 import { Track } from './Track'
+import {RaceCeremony} from './RaceCeremony'
 import { RaceEffects } from './RaceEffects'
 import { RaceSimulation } from './RaceSimulation'
 import { FrameDiagnostics } from './FrameDiagnostics'
@@ -65,7 +66,7 @@ function PauseHiddenRenderer({paused=false}:{paused?:boolean}){
 }
 function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;index?:number;faceProfile?:FaceProfile|null;driverStyle?:DriverStyle}){
   const group=useRef<Group>(null)
-  const motion=useMemo(()=>({speed:0,steering:0}),[])
+  const motion=useMemo(()=>({speed:0,steering:0,rev:0,celebration:0}),[])
   const contact=useMemo(()=>{
     const canvas=document.createElement('canvas');canvas.width=canvas.height=128
     const ctx=canvas.getContext('2d')!,shade=ctx.createRadialGradient(64,64,8,64,64,63)
@@ -89,6 +90,8 @@ function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;i
       // Follow the road bank without leaning the wheel assembly off the tarmac.
       root.position.set(k.x,road.height+.005,k.z);root.rotation.set(-pitch,k.yaw,roll,'YXZ')
       motion.speed=k.speed;motion.steering=k.steering??0
+      motion.rev=runtime.race.phase==='countdown'&&runtime.race.countdown<=3?runtime.control.throttle:0
+      motion.celebration=runtime.race.phase==='finish'?runtime.race.finishElapsed:0
     }else{
       const rival=runtime.race.rivals[index]
       const remainder=1/60-runtime.race.rivalAccumulator
@@ -98,7 +101,7 @@ function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;i
       const pitch=Math.atan(surface.grade*Math.cos(delta)+Math.tan(surface.bank)*Math.sin(delta))
       const bank=Math.atan(-surface.grade*Math.sin(delta)+Math.tan(surface.bank)*Math.cos(delta))
       root.position.copy(surface.point);root.position.y+=.005;root.rotation.set(-pitch,heading,bank,'YXZ')
-      motion.speed=runtime.race.phase==='racing'?rival.speed:0
+      motion.speed=runtime.race.phase==='racing'||runtime.race.phase==='finish'?rival.speed:0
       motion.steering=rival.steering
     }
   },-20)
@@ -129,8 +132,8 @@ export const RaceScene=memo(function RaceScene({runtime,showcase=false,previewT,
       <Racer runtime={runtime} faceProfile={faceProfile} driverStyle={driverStyle}/>
       {!showcase&&RIVALS.map((r,i)=><Racer key={r.name} index={i} runtime={runtime}/>)}
     </Suspense>
-    <RaceEffects kart={runtime.visual}/>
-    <FollowCamera kart={runtime.visual} showcase={showcase} previewT={previewT}/>
+    <RaceEffects kart={runtime.visual}/><RaceCeremony runtime={runtime}/>
+    <FollowCamera kart={runtime.visual} showcase={showcase} previewT={previewT} race={runtime.race}/>
     <NeonPostFX/>
   </Canvas>
 })

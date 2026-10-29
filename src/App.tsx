@@ -175,7 +175,7 @@ export default function App() {
           />
         )}
 
-        {race.phase === 'finish' && (
+        {race.phase === 'finish' && race.finishElapsed>=3.5 && (
           <div className="panel finish-panel">
             <div className="row">
               <button type="button" className="primary" onClick={startCountdown}>

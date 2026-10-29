@@ -10,11 +10,11 @@ let publications=0
 runtime.publish=()=>publications++
 runtime.readControls=()=>({steer:0,throttle:1,brake:0,item:false})
 resetRuntime(runtime,true)
-for(let i=0;i<400;i++)advanceRuntime(runtime,1/120)
+for(let i=0;i<760;i++)advanceRuntime(runtime,1/120)
 assert.equal(runtime.race.phase,'racing')
 assert(runtime.kart.speed>0)
 assert.equal(runtime.kart,kartIdentity);assert.equal(runtime.visual,visualIdentity);assert.equal(runtime.race,raceIdentity)
-assert(publications<40,'UI snapshots should stay near 10Hz, independent of 120Hz simulation')
+assert(publications<70,'UI snapshots should stay near 10Hz, independent of 120Hz simulation')
 const elapsed=runtime.race.elapsed
 advanceRuntime(runtime,5)
 assert.equal(runtime.race.elapsed,elapsed,'Returning from a suspended tab must not teleport the kart')
@@ -52,3 +52,23 @@ for(let i=0;i<3;i++)for(const time of [0,2,9]){
  assert(Math.abs(obstacle.y-road.height)<.015)
 }
 console.log('PASS runtime obstacle impact/reset and elevated reward/hazard alignment')
+// The real final checkpoint must seal results and hand off to a moving road-following ceremony.
+const ceremony=createRuntime(),line=getTrackSurface(.999,0)
+Object.assign(ceremony.race,{phase:'racing',checkpointsHit:11,lap:3,elapsed:90})
+Object.assign(ceremony.kart,{x:line.point.x,z:line.point.z,yaw:line.yaw,speed:30,vx:Math.sin(line.yaw)*30,vz:Math.cos(line.yaw)*30})
+advanceRuntime(ceremony,1/120)
+assert.equal(ceremony.race.phase,'finish')
+const finishTime=ceremony.race.elapsed,finishPlace=ceremony.race.finishPosition,startX=ceremony.kart.x,startZ=ceremony.kart.z
+ceremony.readControls=()=>({steer:1,throttle:0,brake:1,item:true})
+for(let i=0;i<600;i++)advanceRuntime(ceremony,1/120)
+assert.equal(ceremony.race.elapsed,finishTime,'Ceremony must not add to finish time')
+assert.equal(ceremony.race.finishPosition,finishPlace,'Coasting rivals must not change player placing')
+assert(ceremony.race.finishElapsed>4.9)
+assert(Math.hypot(ceremony.kart.x-startX,ceremony.kart.z-startZ)>25,'Kart must continue moving after the line')
+assert(ceremony.kart.speed>10&&ceremony.kart.speed<16)
+assert.equal(ceremony.kart.boostTimer,0,'Input must not activate items during the ceremony')
+resetRuntime(ceremony,true)
+assert.equal(ceremony.race.countdown,6);assert.equal(ceremony.race.finishElapsed,0);assert.equal(ceremony.race.finishPosition,0)
+for(let i=0;i<350;i++)advanceRuntime(ceremony,1/120)
+assert.equal(ceremony.race.phase,'countdown');assert.equal(ceremony.kart.speed,0,'Grid intro must keep the kart grounded on its slot')
+console.log('PASS cinematic grid, live finish handoff, sealed results, rolling ceremony and rematch reset')

@@ -1,5 +1,5 @@
 import { Component, Suspense,useEffect, useMemo, type ReactNode } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { createPortal,useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { RIVALS } from '../game/raceLoop'
@@ -99,14 +99,45 @@ function LoadedCircuit({ color, motion,faceProfile,driverStyle }: { color: strin
       wheel.position.set(0, 0, 0); wheel.quaternion.identity()
       wheels.push({ steer, spinner: wheel, base, front: wheel.name.includes('-front-'),radius:Number(wheel.userData.wheelRadius)||.33 })
     }
-    return { root, wheels,facePosition,ownedMaterials }
+    // The imported driver is baked, so a local morph restores a one-arm cheer without moving the chassis.
+    const performer=new THREE.Group();performer.position.set(0,.72,0);root.add(performer);root.updateMatrixWorld(true)
+    const body=root.getObjectByName('driver') as THREE.Mesh|undefined
+    let cheerGeometry:THREE.BufferGeometry|undefined
+    if(body?.isMesh){
+      cheerGeometry=body.geometry.clone();body.geometry=cheerGeometry
+      const positions=cheerGeometry.getAttribute('position'),cheer=new Float32Array(positions.count*3)
+      // Weld position seams to identify the isolated arm island in the baked source mesh.
+      const parents=Array.from({length:positions.count},(_,i)=>i),weld=new Map<string,number>()
+      const find=(i:number):number=>{while(parents[i]!==i){parents[i]=parents[parents[i]];i=parents[i]}return i}
+      for(let i=0;i<positions.count;i++){
+        const key=[positions.getX(i),positions.getY(i),positions.getZ(i)].map(v=>v.toFixed(4)).join(',')
+        const previous=weld.get(key);if(previous!==undefined)parents[find(i)]=find(previous);else weld.set(key,i)
+      }
+      const indices=cheerGeometry.index
+      for(let i=0;i<(indices?.count??positions.count);i+=3){const vertex=(j:number)=>indices?indices.getX(j):j;for(let j=1;j<3;j++)parents[find(vertex(i+j))]=find(vertex(i))}
+      const bounds=new Map<number,THREE.Box3>()
+      for(let i=0;i<positions.count;i++){const id=find(i),box=bounds.get(id)??new THREE.Box3();box.expandByPoint(new THREE.Vector3(positions.getX(i),positions.getY(i),positions.getZ(i)));bounds.set(id,box)}
+      const arms=new Set([...bounds].filter(([,box])=>box.min.z>.28&&box.min.y>.45&&box.max.y<.75&&box.max.x>.2&&box.min.x>-.06).map(([id])=>id))
+      for(let i=0;i<positions.count;i++){
+        const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i),angle=arms.has(find(i))?-2.45:0,dx=x-.19,dy=y-.70
+        cheer[i*3]=.19+dx*Math.cos(angle)-dy*Math.sin(angle);cheer[i*3+1]=.70+dx*Math.sin(angle)+dy*Math.cos(angle);cheer[i*3+2]=z
+      }
+      cheerGeometry.morphAttributes.position=[new THREE.BufferAttribute(cheer,3)];body.updateMorphTargets();performer.attach(body)
+    }
+    if(original)performer.attach(original)
+    return { root, wheels,facePosition,ownedMaterials,performer,body,cheerGeometry }
   }, [scene, color,driverStyle,personalized])
-  useEffect(()=>()=>prepared.ownedMaterials.forEach(m=>m.dispose()),[prepared])
+  useEffect(()=>()=>{prepared.ownedMaterials.forEach(m=>m.dispose());prepared.cheerGeometry?.dispose()},[prepared])
   const steeringRotation = useMemo(() => new THREE.Quaternion(), [])
   const yAxis = useMemo(() => new THREE.Vector3(0, 1, 0), [])
   const steeringState = useMemo(() => ({ angle: 0 }), [])
   useFrame((_, delta) => {
     const dt = Math.min(delta, .05)
+    const celebration=motion?.celebration??0,rev=motion?.rev??0
+    const cheer=celebration>0?THREE.MathUtils.smoothstep(celebration,.5,1.3)*( .88+.12*Math.sin(celebration*5)):0
+    if(prepared.body?.morphTargetInfluences)prepared.body.morphTargetInfluences[0]=cheer
+    prepared.performer.rotation.z=celebration>0?Math.sin(celebration*4)*.035:0
+    prepared.performer.rotation.x=celebration>0?Math.sin(celebration*5)*.025:rev*Math.sin(performance.now()*.035)*.009
     steeringState.angle = THREE.MathUtils.damp(steeringState.angle, -(motion?.steering ?? 0) * .4, 18, dt)
     steeringRotation.setFromAxisAngle(yAxis, steeringState.angle)
     for (const wheel of prepared.wheels) {
@@ -114,6 +145,6 @@ function LoadedCircuit({ color, motion,faceProfile,driverStyle }: { color: strin
       wheel.spinner.rotation.x += (motion?.speed ?? 0) / wheel.radius * dt
     }
   })
-  return <group><primitive object={prepared.root} dispose={null}/>{faceProfile&&<StylizedFace profile={faceProfile} position={prepared.facePosition}/>}</group>
+  return <group><primitive object={prepared.root} dispose={null}/>{faceProfile&&createPortal(<StylizedFace profile={faceProfile} position={[prepared.facePosition[0],prepared.facePosition[1]-.72,prepared.facePosition[2]]}/>,prepared.performer)}</group>
 }
 

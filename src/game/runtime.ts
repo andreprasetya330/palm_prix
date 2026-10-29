@@ -3,9 +3,9 @@ import {createCourseRewards,updateCourseRewards,type CourseRewards} from './cour
 import type { ControlState } from './controlState'
 import { ZERO_CONTROL } from './controlState'
 import { DEFAULT_KART, FIXED_STEP, stepKart, type KartState } from './kartPhysics'
-import { createRaceStatus, updateCheckpoints,playerProgressDistance, type RaceStatus } from './raceLoop'
+import { createRaceStatus, updateCheckpoints,playerProgressDistance,racePosition, type RaceStatus } from './raceLoop'
 import {advanceRivals} from './rivalAI'
-import {nearestTrack} from './trackLayout'
+import {getTrackSurface,TRACK_LENGTH,nearestTrack} from './trackLayout'
 import {createObstacleState,updateObstacles,type ObstacleState} from './obstacles'
 
 /** Stable, mutable frame data: rendering never waits for a React state commit. */
@@ -30,7 +30,7 @@ export function resetRuntime(runtime:RaceRuntime, racing=false) {
   Object.assign(runtime.kart,DEFAULT_KART)
   for(const key of Object.keys(runtime.visual)) delete (runtime.visual as unknown as Record<string,unknown>)[key]
   Object.assign(runtime.visual,DEFAULT_KART)
-  Object.assign(runtime.race,createRaceStatus(),racing?{phase:'countdown',countdown:3}:{})
+  Object.assign(runtime.race,createRaceStatus(),racing?{phase:'countdown',countdown:6}:{})
   runtime.rewards=createCourseRewards()
   runtime.obstacles=createObstacleState()
   runtime.abilities=createAbilityState()
@@ -64,7 +64,27 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     if(boosted)runtime.kart.boostTimer=Math.max(runtime.kart.boostTimer,.9)
     runtime.race.elapsed+=dt
     advanceRivals(runtime.race,{distance:playerProgressDistance(runtime.race,runtime.kart.x,runtime.kart.z),lane:nearestTrack(runtime.kart.x,runtime.kart.z).signedDistance,speed:runtime.kart.speed},runtime.race.elapsed,dt)
+    const position=racePosition(runtime.race,runtime.kart.x,runtime.kart.z)
     Object.assign(runtime.race,updateCheckpoints(runtime.race,runtime.kart.x,runtime.kart.z))
+    if(runtime.race.phase==='finish'){
+      const track=nearestTrack(runtime.kart.x,runtime.kart.z)
+      runtime.race.finishPosition=position;runtime.race.finishElapsed=0
+      runtime.race.paradeDistance=track.t*TRACK_LENGTH;runtime.race.paradeLane=track.signedDistance
+      runtime.kart.boostTimer=0;runtime.kart.drifting=false;runtime.kart.driftCharge=0
+    }
+  }else if(priorPhase==='finish'){
+    // Continue along the real elevated road; race time and finishing order are already sealed.
+    const r=runtime.race,k=runtime.kart;r.finishElapsed+=dt
+    k.speed+=(12-k.speed)*(1-Math.exp(-.7*dt))
+    r.paradeDistance+=k.speed*dt
+    const surface=getTrackSurface(r.paradeDistance/TRACK_LENGTH,r.paradeLane*Math.exp(-r.finishElapsed*.7))
+    const blend=1-Math.exp(-18*dt)
+    k.x+=(surface.point.x-k.x)*blend;k.z+=(surface.point.z-k.z)*blend
+    k.yaw+=Math.atan2(Math.sin(surface.yaw-k.yaw),Math.cos(surface.yaw-k.yaw))*(1-Math.exp(-6*dt))
+    k.vx=Math.sin(k.yaw)*k.speed;k.vz=Math.cos(k.yaw)*k.speed;k.steering=0;k.offroad=false
+    k.previousX=k.x;k.previousZ=k.z;k.previousYaw=k.yaw;k.physicsRemainder=0
+    for(const rival of r.rivals){rival.speed+=(12-rival.speed)*(1-Math.exp(-.7*dt));rival.distance+=rival.speed*dt;rival.laneVelocity=0}
+
   }
   const k=runtime.kart,alpha=Math.min(1,(k.physicsRemainder??0)/FIXED_STEP)
   Object.assign(runtime.visual,k)

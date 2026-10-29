@@ -91,7 +91,7 @@ export function useRaceAudio(kart: KartState, race: RaceStatus, coins=0, abiliti
     lastCoins.current=coins
     const cueKey = race.phase === 'countdown' ? `count:${Math.ceil(race.countdown)}` : race.phase
     if (lastCue.current !== cueKey) {
-      if (race.phase === 'countdown') cue(520, 0.16)
+      if (race.phase === 'countdown'&&race.countdown<=3) cue(520, 0.16)
       if (race.phase === 'racing' && lastCue.current.startsWith('count')) cue(1040, 0.45)
       if (race.phase === 'finish') [660, 830, 990, 1320].forEach((f, i) => cue(f, 0.45, i * 0.15))
       lastCue.current = cueKey
