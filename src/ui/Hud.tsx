@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import {ABILITY_PATHS} from '../game/abilityArt'
+import {ABILITY_INFO,type Ability} from '../game/abilities'
 import type { AbilityState } from '../game/abilities'
 import type { ControlState } from '../game/controlState'
 import { driftTier, type KartState } from '../game/kartPhysics'
@@ -7,6 +9,7 @@ import { getTrackPoint, TRACK_SAMPLES, TRACK_BOUNDS, getCourseSector, nearestTra
 import { BOOST_PADS } from '../game/courseFeatures'
 import type { MapperDebug } from '../vision/gestureMapper'
 import './RaceHud.css'
+import './RetroHud.css'
 
 const mapScale=Math.min(128/(TRACK_BOUNDS.maxX-TRACK_BOUNDS.minX),112/(TRACK_BOUNDS.maxZ-TRACK_BOUNDS.minZ))
 const mapX=(x:number)=>75+(x-(TRACK_BOUNDS.minX+TRACK_BOUNDS.maxX)/2)*mapScale
@@ -14,8 +17,8 @@ const mapZ=(z:number)=>70-(z-(TRACK_BOUNDS.minZ+TRACK_BOUNDS.maxZ)/2)*mapScale
 const mapPath=TRACK_SAMPLES.map((s,i)=>`${i?'L':'M'}${mapX(s.point.x)},${mapZ(s.point.z)}`).join(' ')+' Z'
 export type HudAbilityState=Omit<AbilityState,'collected'>
 type Props={race:RaceStatus;kart:KartState;control:ControlState;debug:MapperDebug;showPipHint?:boolean;coins?:number;reward?:string|null;impact?:boolean;abilities?:HudAbilityState}
-function ItemIcon({shield=false}:{shield?:boolean}) {
-  return <svg viewBox="0 0 64 64" aria-hidden="true">{shield?<><path d="M32 6 53 14 50 35Q46 49 32 58Q18 49 14 35L11 14Z"/><path d="m21 31 8 8 15-17" fill="none" stroke="currentColor" strokeWidth="4"/></>:<path d="m36 4-23 31h17l-5 25 26-35H34Z"/>}</svg>
+function ItemIcon({kind='turbo'}:{kind?:Ability}) {
+ return <svg viewBox="0 0 64 64" aria-hidden="true"><path d={ABILITY_PATHS[kind]} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/></svg>
 }
 const clock=(seconds:number)=>`${Math.floor(seconds/60).toString().padStart(2,'0')}:${(seconds%60).toFixed(2).padStart(5,'0')}`
 const ordinal=(n:number)=>n===1?'ST':n===2?'ND':n===3?'RD':'TH'
@@ -47,10 +50,11 @@ export function Hud({race,kart,control,debug,coins=0,reward,impact=false,abiliti
       <div className="pp-clock"><small>RACE TIME</small><strong>{clock(race.elapsed)}</strong></div>
       <div className="pp-tokens" aria-label={`${coins} tokens`}><span aria-hidden="true">◈</span><strong>{coins.toString().padStart(2,'0')}</strong></div>
     </div>
-    {!finish&&<aside className={`pp-item ${item?'pp-item--held':''} ${shielded?'pp-item--shield':''}`} aria-label={item==='shield'?'Phase shield ready':item==='turbo'?'Turbo item ready':ready?'Boost ready':`Boost recharging ${cooldown.toFixed(1)} seconds`}>
-      <div className="pp-item__frame"><ItemIcon shield={item==='shield'||shielded}/>{!item&&!ready&&<span className="pp-item__cooldown">{cooldown.toFixed(1)}<small>s</small></span>}</div>
-      <div className="pp-item__copy"><small>{item?'ITEM READY':shielded?'PROTECTED':ready?'RECHARGE BOOST':'RECHARGING'}</small><strong>{item==='shield'?'PHASE SHIELD':item==='turbo'?'TURBO':shielded?`${abilities!.shieldTimer.toFixed(1)}s`:ready?'NITRO READY':`${cooldown.toFixed(1)}s`}</strong><span>{item||ready?'SPACE / THUMB FLICK':'PICK UP AN ITEM'}</span></div>
+    {!finish&&<aside className={`pp-item ${item?'pp-item--held':''} ${shielded?'pp-item--shield':''}`} style={{'--item-color':ABILITY_INFO[item??(shielded?'shield':'turbo')].color} as React.CSSProperties} aria-label={item?`${ABILITY_INFO[item].name} ready`:ready?'Boost ready':`Boost recharging ${cooldown.toFixed(1)} seconds`}>
+      <div className="pp-item__frame"><ItemIcon kind={item??(shielded?'shield':'turbo')}/>{!item&&!ready&&<span className="pp-item__cooldown">{cooldown.toFixed(1)}<small>s</small></span>}</div>
+      <div className="pp-item__copy"><small>{item?'ITEM READY':shielded?'PROTECTED':ready?'RECHARGE BOOST':'RECHARGING'}</small><strong>{item?ABILITY_INFO[item].name:shielded?`${abilities!.shieldTimer.toFixed(1)}s`:ready?'NITRO READY':`${cooldown.toFixed(1)}s`}</strong><span>{item?ABILITY_INFO[item].hint:'SPACE / THUMB FLICK'}</span><em>{item?'SPACE / THUMB FLICK':ready?'READY TO FIRE':'PICK UP AN ITEM'}</em></div>
     </aside>}
+    {!finish&&abilities&&abilities.eventTimer>0&&abilities.feedback&&<div className={`pp-combat-callout ${abilities.lastEvent==='hit'?'pp-combat-callout--hit':''}`} key={abilities.eventId} role="status"><small>{abilities.lastEvent==='hit'?'DIRECT HIT':abilities.lastEvent==='pickup'?'ITEM ACQUIRED':'ABILITY SYSTEM'}</small><strong>{abilities.feedback}</strong>{abilities.lastTarget!==null&&<span>{abilities.lastEvent==='hit'?'DISRUPTED':'TARGET'} · {RIVALS[abilities.lastTarget].name}</span>}</div>}
     {!finish&&action&&<div className={`pp-action ${impact?'pp-action--impact':''}`} role="status">{action}</div>}
     {!finish&&<div className="pp-map"><span>{district.name.toUpperCase()}</span><svg viewBox="0 0 150 140" aria-label="Circuit map with six racers" role="img"><path d={mapPath} fill="none" stroke="#100d28" strokeWidth="12" strokeLinejoin="round"/><path d={mapPath} fill="none" stroke="#a0b7d4" strokeWidth="5" strokeLinejoin="round"/>{BOOST_PADS.map(p=><circle key={p.id} cx={mapX(p.x)} cy={mapZ(p.z)} r="2" fill="#63f3ff"/>)}{RIVALS.map((r,i)=>{const p=getTrackPoint(rivalAngle(i,race.elapsed,race.rivals)/(Math.PI*2));return <circle key={r.name} cx={mapX(p.x)} cy={mapZ(p.z)} r="3.3" fill={r.color} stroke="#161226" strokeWidth="1"/>})}<circle cx={mapX(kart.x)} cy={mapZ(kart.z)} r="5" fill="#fff" stroke="#ed429c" strokeWidth="2.5"/></svg><small><i/> YOU <b>●</b> RIVALS</small></div>}
     {!finish&&<div className="pp-speed"><div className="pp-speed__value"><strong>{speed}</strong><span>KM/H<small>{kart.speed<-.2?'REVERSE':boosted?'OVERDRIVE':'SPEED'}</small></span></div><div className="pp-speed__rail" role="meter" aria-label="Speed" aria-valuemin={0} aria-valuemax={166} aria-valuenow={Math.min(166,speed)}><i style={{transform:`scaleX(${Math.min(1,speed/166)})`}}/></div><div className={`pp-drift ${kart.drifting?'pp-drift--active':''}`}><span>{kart.drifting?'RELEASE SHIFT FOR TURBO':'HOLD SHIFT + TURN TO DRIFT'}</span><div>{[.65,1.5,2.5].map((threshold,i)=><i key={threshold} className={(kart.driftCharge??0)>=threshold?'charged':''} style={{'--drift-color':['#6af0ff','#ffb45c','#ef65ff'][i]} as React.CSSProperties}/>)}</div></div><small className="pp-input">{control.reverse?'OPEN PALM · BRAKE / REVERSE':debug.mode==='two-fist'?'TWO FISTS · DRIVE':debug.handsVisible?'RESTORE BOTH GRIPS · COASTING':'WASD / ARROWS · S TO BRAKE'}</small></div>}

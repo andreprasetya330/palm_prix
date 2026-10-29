@@ -58,3 +58,7 @@ The owner explicitly requested a personal, noncommercial build using Mario Kart 
 ### Optional Tomodachi Life avatar library
 
 The local personal setup uses Nintendo's Tomodachi Life: Living the Dream avatar assets, packaged as GLB/PNG by zinccat (`mii_renderer`, pinned revision `970c22034c1d4cfee2bd7a491a1475d46bb63169`). Public model/face-part submissions are credited to Centrixe the Dodo. Full source links and restrictions are in `personal/CREDITS.md`. Extracted assets are not included in the public source checkout.
+
+## Original retro HUD and combat effects
+
+Chrome HUD lettering, vector ability emblems, holographic pickups, Shockwave/Neon Seeker/Echo Trap meshes, particle/reticle animations and their synthesized sound cues are original Palm Prix code. The user-provided retro title images informed the palette and chrome treatment; their artwork is not embedded or redistributed. No external models, textures or sound recordings were added for these effects.

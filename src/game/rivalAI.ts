@@ -2,13 +2,13 @@ import {getTrackSample,TRACK_LENGTH} from './trackLayout'
 import {getObstaclePose,OBSTACLES} from './obstacles'
 import {RIVALS} from './rivalRoster'
 
-export type RivalState={distance:number;speed:number;lane:number;laneVelocity:number;steering:number;boostTimer:number;boostCooldown:number;driftCharge:number;finishedAt:number|null}
+export type RivalState={distance:number;speed:number;lane:number;laneVelocity:number;steering:number;boostTimer:number;boostCooldown:number;driftCharge:number;finishedAt:number|null;stunTimer:number;slowTimer:number;hitCooldown:number}
 export type RivalRace={rivals:RivalState[];rivalAccumulator:number;totalLaps:number}
 export type RivalPlayer={distance:number;lane:number;speed:number}
 const clamp=(x:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,x))
 const wrap=(t:number)=>((t%1)+1)%1
 const STEP=1/60
-export function createRivalStates():RivalState[]{return RIVALS.map((_,i)=>({distance:-.012*TRACK_LENGTH-(i+1)*3.2,speed:0,lane:[-2.3,2.3,-2.3,2.3,0][i],laneVelocity:0,steering:0,boostTimer:0,boostCooldown:4+i*.8,driftCharge:0,finishedAt:null}))}
+export function createRivalStates():RivalState[]{return RIVALS.map((_,i)=>({distance:-.012*TRACK_LENGTH-(i+1)*3.2,speed:0,lane:[-2.3,2.3,-2.3,2.3,0][i],laneVelocity:0,steering:0,boostTimer:0,boostCooldown:4+i*.8,driftCharge:0,finishedAt:null,stunTimer:0,slowTimer:0,hitCooldown:0}))}
 // Cache the course's local curvature once; runtime planning only interpolates it.
 const curvature=Array.from({length:1024},(_,i)=>{
  const a=getTrackSample(i/1024),b=getTrackSample(i/1024+10/TRACK_LENGTH)
@@ -18,6 +18,7 @@ function bend(t:number){const index=wrap(t)*curvature.length,i=Math.floor(index)
 function stepRivals(race:RivalRace,player:RivalPlayer,elapsed:number){
  for(let i=0;i<race.rivals.length;i++){
   const r=race.rivals[i]
+  r.stunTimer=Math.max(0,r.stunTimer-STEP);r.slowTimer=Math.max(0,r.slowTimer-STEP);r.hitCooldown=Math.max(0,r.hitCooldown-STEP)
   if(r.finishedAt!==null)continue
   const t=wrap(r.distance/TRACK_LENGTH),turn=bend(t+Math.max(6,r.speed*.65)/TRACK_LENGTH),tight=Math.abs(turn)
   const cruise=32+(RIVALS[i].speed-.9)*35
@@ -58,6 +59,8 @@ function stepRivals(race:RivalRace,player:RivalPlayer,elapsed:number){
   }
   if(gap>0&&gap<4.5&&Math.abs(player.lane-r.lane)<1.9)target=Math.min(target,Math.max(0,player.speed-(4.5-gap)*2))
   for(const h of hazards)if(h.ahead<15&&Math.abs(r.lane-h.lane)<h.radius)target=Math.min(target,Math.max(8,h.ahead*.9))
+  if(r.slowTimer>0)target=Math.min(target,r.stunTimer>0?5:17)
+  if(r.stunTimer>0){chosen=r.lane;r.laneVelocity=0;r.boostTimer=0}
   // Acceleration and braking are rate limited; catch-up never changes position.
   r.speed+=clamp(target-r.speed,-28*STEP,19.5*STEP)
   r.laneVelocity+=clamp((chosen-r.lane)*2.4-r.laneVelocity,-6*STEP,6*STEP)

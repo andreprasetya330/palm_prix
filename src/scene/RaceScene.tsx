@@ -100,7 +100,7 @@ function Racer({runtime,index=-1,faceProfile,driverStyle}:{runtime:RaceRuntime;i
       const delta=Math.atan2(rival.laneVelocity,Math.max(1,rival.speed)),heading=surface.yaw+delta
       const pitch=Math.atan(surface.grade*Math.cos(delta)+Math.tan(surface.bank)*Math.sin(delta))
       const bank=Math.atan(-surface.grade*Math.sin(delta)+Math.tan(surface.bank)*Math.cos(delta))
-      root.position.copy(surface.point);root.position.y+=.005;root.rotation.set(-pitch,heading,bank,'YXZ')
+      root.position.copy(surface.point);root.position.y+=.005+(rival.stunTimer>0?Math.sin((1.1-rival.stunTimer)/1.1*Math.PI)*.25:0);root.rotation.set(-pitch,heading+(rival.stunTimer>0?(1.1-rival.stunTimer)/1.1*Math.PI*4:0),bank,'YXZ')
       motion.speed=runtime.race.phase==='racing'||runtime.race.phase==='finish'?rival.speed:0
       motion.steering=rival.steering
     }

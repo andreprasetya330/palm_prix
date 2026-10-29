@@ -1,4 +1,4 @@
-import { createAbilityState, tickAbilities, activateAbility, collectAbility, type AbilityState } from './abilities'
+import { createAbilityState, tickAbilities, advanceCombat, activateAbility, collectAbility, type AbilityState } from './abilities'
 import {createCourseRewards,updateCourseRewards,type CourseRewards} from './courseFeatures'
 import type { ControlState } from './controlState'
 import { ZERO_CONTROL } from './controlState'
@@ -50,7 +50,8 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     // The physics function protects its own accumulator; divide slow visual frames to retain time.
     const previousX=runtime.kart.x,previousZ=runtime.kart.z
     tickAbilities(runtime.abilities,dt)
-    const consumed=runtime.control.item && activateAbility(runtime.abilities,runtime.kart)
+    const combat={rivals:runtime.race.rivals,distance:playerProgressDistance(runtime.race,runtime.kart.x,runtime.kart.z),lane:nearestTrack(runtime.kart.x,runtime.kart.z).signedDistance}
+    const consumed=runtime.control.item && activateAbility(runtime.abilities,runtime.kart,combat)
     const physicsControl=consumed?{...runtime.control,item:false}:runtime.control
     const chunks=Math.ceil(dt/.05)
     for(let i=0;i<chunks;i++)Object.assign(runtime.kart,stepKart(runtime.kart,i===0?physicsControl:{...physicsControl,item:false},dt/chunks))
@@ -64,12 +65,14 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     if(boosted)runtime.kart.boostTimer=Math.max(runtime.kart.boostTimer,.9)
     runtime.race.elapsed+=dt
     advanceRivals(runtime.race,{distance:playerProgressDistance(runtime.race,runtime.kart.x,runtime.kart.z),lane:nearestTrack(runtime.kart.x,runtime.kart.z).signedDistance,speed:runtime.kart.speed},runtime.race.elapsed,dt)
+    advanceCombat(runtime.abilities,combat,dt)
     const position=racePosition(runtime.race,runtime.kart.x,runtime.kart.z)
     Object.assign(runtime.race,updateCheckpoints(runtime.race,runtime.kart.x,runtime.kart.z))
     if(runtime.race.phase==='finish'){
       const track=nearestTrack(runtime.kart.x,runtime.kart.z)
       runtime.race.finishPosition=position;runtime.race.finishElapsed=0
       runtime.race.paradeDistance=track.t*TRACK_LENGTH;runtime.race.paradeLane=track.signedDistance
+      runtime.abilities.shieldTimer=0;runtime.abilities.shots=[];runtime.abilities.mines=[];runtime.abilities.impacts=[];runtime.abilities.pulse=null
       runtime.kart.boostTimer=0;runtime.kart.drifting=false;runtime.kart.driftCharge=0
     }
   }else if(priorPhase==='finish'){
@@ -83,7 +86,7 @@ export function advanceRuntime(runtime:RaceRuntime,delta:number) {
     k.yaw+=Math.atan2(Math.sin(surface.yaw-k.yaw),Math.cos(surface.yaw-k.yaw))*(1-Math.exp(-6*dt))
     k.vx=Math.sin(k.yaw)*k.speed;k.vz=Math.cos(k.yaw)*k.speed;k.steering=0;k.offroad=false
     k.previousX=k.x;k.previousZ=k.z;k.previousYaw=k.yaw;k.physicsRemainder=0
-    for(const rival of r.rivals){rival.speed+=(12-rival.speed)*(1-Math.exp(-.7*dt));rival.distance+=rival.speed*dt;rival.laneVelocity=0}
+    for(const rival of r.rivals){rival.stunTimer=0;rival.slowTimer=0;rival.speed+=(12-rival.speed)*(1-Math.exp(-.7*dt));rival.distance+=rival.speed*dt;rival.laneVelocity=0}
 
   }
   const k=runtime.kart,alpha=Math.min(1,(k.physicsRemainder??0)/FIXED_STEP)

@@ -18,7 +18,7 @@ Open http://localhost:5173. For the production client, run `npm run build` follo
 - **One fist, uncertain pose or lost tracking:** release the pedals and coast; steering recenters gradually.
 - **WASD / arrow keys:** drive and brake. Keyboard pedals override hand pedals.
 - **Shift + turn:** drift; release a charged drift for a mini turbo.
-- **Space / thumb flick:** item boost, with a cooldown.
+- **Space / thumb flick:** use the held item; empty slots use the rechargeable boost.
 
 Use Set up hand controls, keep your wrists and all fingers visible, close both fists at shoulder width, and save your neutral wheel position. The camera overlay draws all 21 landmarks and shows measured tracking/inference latency. Physical webcam performance depends on lighting, camera quality and hardware; synthetic tests do not establish real-hand recognition accuracy.
 
@@ -46,7 +46,7 @@ Tests cover acceleration and braking, reverse, drift rewards, frame-rate indepen
 
 Development diagnostics are DOM data attributes on the page root: `data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, and `data-race-triangles`. They add no visible debug HUD.
 
-This remains an evolving browser racing game. Rivals follow simulated racing lines; physical kart-to-kart collision, weapon items and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
+This remains an evolving browser racing game. Rivals follow simulated racing lines; physical kart-to-kart collision and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
 
 ## On-device AI driver studio
 
@@ -86,7 +86,7 @@ The archived Carnival components read `public/assets/personal/manifest.json`. Th
 
 The expanded circuit is 764 metres per lap across seven connected districts: Marina Launch, Coastal Skyway, Sunset Switchbacks, Uptown Ascent, Rooftop Run, Night Market and Neon Mile. The road climbs through smooth banked ramps to 24 metres. Explore the circuit from the menu to preview each section.
 
-Collect amber Turbo or cyan Phase Shield cells, then press Space (or use the hand item gesture) to activate the held ability. Turbo lasts two seconds; Phase Shield passes through course hazards for 4.5 seconds. With an empty slot, Space uses the rechargeable boost. Hold Shift while turning to charge one of three drift tiers, then release for a mini turbo.
+Collect the coloured holographic cells, then press Space (or use the hand item gesture) to activate the held ability. Amber Overdrive provides a two-second turbo; cyan Phase Shield passes through course hazards for 4.5 seconds. Violet Shockwave disrupts unfinished rivals within 24 metres along the course, ahead and behind. Pink Neon Seeker locks on to the nearest unfinished rival ahead within 125 metres and follows the elevated road. Green Echo Trap drops a 14-second lane hazard behind the player. Offensive hits cancel CPU boost/drift, spin and slow the rival briefly, and then allow normal recovery; hit immunity prevents stacking stuns. Projectiles, traps and impact effects use bounded pools and reset between races. Each item has an original shared HUD/world emblem, procedural mesh animation and synthesized sound cue. With an empty slot, Space uses the rechargeable boost. Hold Shift while turning to charge one of three drift tiers, then release for a mini turbo.
 
 The new score, wind/road layers, engine voices, pickup chimes and drift cues are original procedural WebAudio; no external recording or music download is used. Sound begins after pressing Let's Race and can be muted in the header. The UI stays at full resolution while the 3D render budget adapts under sustained load.
 
@@ -107,3 +107,5 @@ Face capture remains optional and local. Part selection, colour palettes, featur
 ### Race presentation
 
 Starting a race plays a three-second grid camera sweep before the 3–2–1 lights and GO cue. The camera settles into the driving view before control begins. At the final checkpoint, race time and player position lock immediately. The kart and rivals continue along the elevated road during a finish-banner/confetti sequence; the camera swings to a moving driver close-up, and results/rematch controls appear after 3.5 seconds. The native Circuit Special driver uses an isolated baked-arm cheer and gentle body motion; the fallback driver uses body motion. These are original Palm Prix animations, with no imported Nintendo animation clips or audio.
+
+The HUD uses original CSS chrome gradients, cyan/magenta edges and angled instrument panels inspired by the supplied retro-wave references. No third-party title artwork or font image is embedded. Native eye decoding omits the optional upper-eye accent channel while preserving sclera, iris and black outlines.
