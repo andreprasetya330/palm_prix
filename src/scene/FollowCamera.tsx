@@ -20,10 +20,11 @@ export function FollowCamera({ kart, showcase = false,previewT,race }: { race?:R
       r.desired.copy(section.point).addScaledVector(section.tangent,-34).addScaledVector(section.normal,8);r.desired.y+=50
       r.target.copy(section.point).addScaledVector(section.tangent,8);r.target.y+=1
     }else if(showcase){
-      const angle=kart.yaw+Math.PI+.65+Math.sin(clock.elapsedTime*.09)*.09
+      const angle=kart.yaw+.8+Math.sin(clock.elapsedTime*.09)*.09
       r.desired.set(kart.x+Math.sin(angle)*7.2,height+2.6,kart.z+Math.cos(angle)*7.2)
       // Leave room for the menu while presenting the actual racer at the right.
-      r.target.set(kart.x-Math.cos(angle)*1.65,height+.8,kart.z+Math.sin(angle)*1.65)
+      const offset=camera instanceof THREE.PerspectiveCamera?Math.min(1.65,camera.aspect*.9):1.65
+      r.target.set(kart.x-Math.cos(angle)*offset,height+.8,kart.z+Math.sin(angle)*offset)
     }else if(race?.phase==='countdown'&&race.countdown>3){
       const t=(6-race.countdown)/3,angle=kart.yaw+1.0+t*1.65
       r.desired.set(kart.x+Math.sin(angle)*(5.8+t*1.5),height+1.5+t*1.7,kart.z+Math.cos(angle)*(5.8+t*1.5))

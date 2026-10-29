@@ -133,5 +133,12 @@ export function useRaceAudio(kart: KartState, race: RaceStatus, coins=0, abiliti
     const a = rig.current
     if (a) { a.voices.forEach(v => v.stop()); a.noise.stop(); void a.context.close(); rig.current = null }
   }, [])
-  return { enable, enabled, muted, toggleMute }
+  const menuCue=useCallback((confirm:boolean)=>{
+    void enable();const a=rig.current;if(!a||muted)return
+    const now=a.context.currentTime,voice=a.context.createOscillator(),gain=a.context.createGain()
+    voice.type='triangle';voice.frequency.setValueAtTime(confirm?740:440,now);voice.frequency.exponentialRampToValueAtTime(confirm?1110:660,now+.08)
+    gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.075,now+.008);gain.gain.exponentialRampToValueAtTime(.001,now+.13)
+    voice.connect(gain);gain.connect(a.master);voice.start(now);voice.stop(now+.15);voice.onended=()=>{voice.disconnect();gain.disconnect()}
+  },[enable,muted])
+  return { enable, enabled, muted, toggleMute, menuCue }
 }

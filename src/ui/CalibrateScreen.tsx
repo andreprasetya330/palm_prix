@@ -54,17 +54,16 @@ export function CalibrateScreen({
   }
 
   return (
-    <div className="panel calibrate">
-      <span style={{ color: "#78f7d5", fontSize: 11, letterSpacing: "0.2em", fontWeight: 800 }}>DRIVER SETUP</span><h2>Find your racing line.</h2>
+    <div className="panel calibrate vision-calibration">
+      <span style={{ color: "#78f7d5", fontSize: 11, letterSpacing: "0.2em", fontWeight: 800 }}>VISION LINK / DRIVER SETUP</span><h2>LINK YOUR HANDS.</h2>
       <p>
-        Steering uses <strong>wheel angle</strong> (fist rotation), not palm X.
-        Close both fists to accelerate at any height. Open either palm to brake, then reverse while held. One fist or no hands coasts. Keyboard: WASD / arrows + Space boost.
+        Close both fists to accelerate. Tilt your hands like a steering wheel to steer. Open either palm to brake, then reverse while held. Release your grip to coast.
       </p>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '18px 0' }}>
         <div aria-hidden="true" style={{ width: 70, height: 70, flexShrink: 0, border: '5px solid #78f7d5', borderRadius: '50%', transform: `rotate(${control.steer * 55}deg)`, display: 'grid', placeItems: 'center', boxShadow: '0 0 25px #78f7d522', transition: 'transform 80ms linear' }}><div style={{ width: 58, height: 5, background: '#78f7d5' }} /></div>
         <div><strong>{debug.fists >= 2 ? 'Wheel connected' : debug.handsVisible ? 'Close your fists' : 'Let’s find your hands'}</strong><p style={{ margin: '5px 0', fontSize: 13 }}>Start with both palms facing the camera, then close your fists. Keep your hands shoulder-width apart with wrists in view, and light them from the front. If the finger outlines disappear, move closer or use Reset tracking in the camera view.</p></div>
       </div>
-      <div className="hud-stats">
+      <details className="vision-tracking-details"><summary>Tracking details</summary><div className="hud-stats">
         <span>Mode: {debug.mode}</span>
         <span>Hands: {debug.handsVisible}</span>
         <span>Fists: {debug.fists}</span>
@@ -72,6 +71,7 @@ export function CalibrateScreen({
         <span>Throttle: {control.throttle.toFixed(2)}</span>
         <span>Brake: {control.brake.toFixed(2)}</span>
       </div>
+      </details>
       <p className="status" role="status">{msg}</p>
       <div className="row">
         <button type="button" onClick={onBack}>

@@ -91,7 +91,7 @@ export default function App() {
     race.phase === 'finish'
 
   return (
-    <div className="app">
+    <div className={`app ${race.phase==='menu'&&tourSector===null?'app--arcade-menu':''}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">Palm Prix</span>
@@ -151,7 +151,7 @@ export default function App() {
           />
         </div>
 
-        {race.phase === 'menu' && (tourSector===null?<RaceMenu onRace={startCountdown} onCustomize={()=>changePhase('avatar')} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
+        {race.phase === 'menu' && (tourSector===null?<RaceMenu muted={audio.muted} onSound={()=>{void audio.enable();audio.toggleMute()}} onCredits={()=>setShowCredits(true)} onCue={audio.menuCue} cameraEnabled={cameraEnabled} trackingStatus={status} fists={hands.filter(h=>h.isFist).length} steer={control.steer} onRace={startCountdown} onCustomize={()=>changePhase('avatar')} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);if(status==='error'||status==='denied')retry();changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
 
         {race.phase === 'avatar' && (
           <Suspense fallback={<div className="panel">Loading garage…</div>}><AvatarStudio
