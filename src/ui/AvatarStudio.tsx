@@ -2,6 +2,7 @@ import {Suspense,useEffect,useRef,useState} from 'react'
 import {Canvas,useThree} from '@react-three/fiber'
 import {OrbitControls} from '@react-three/drei'
 import {MiiCreator} from './MiiCreator'
+import {loadTomodachiCatalog} from '../avatar/tomodachiAssets'
 import {DEFAULT_PARTS} from '../avatar/creatorParts'
 import {StylizedFace} from '../avatar/StylizedFace'
 import {CircuitRacer} from '../scene/CircuitRacer'
@@ -22,7 +23,7 @@ function DriverPreview({profile,style,close}:{profile:FaceProfile;style:DriverSt
  return <Canvas frameloop="demand" camera={{position:[0,1.12,1.6],fov:34}} dpr={[1,1.5]} aria-label="Actual personalized player model. Drag to rotate.">
   <color attach="background" args={['#141329']}/><hemisphereLight args={['#d6dcff','#54405e',1.4]}/><ambientLight intensity={.7}/>
   <directionalLight position={[2,4,5]} intensity={2.5} color="#ffdfc7"/><directionalLight position={[-3,2,1]} intensity={1.7} color="#7ae8ff"/>
-  <Suspense fallback={null}>{close&&profile.creator?<StylizedFace profile={profile} position={[0,headHeight,.1]}/>:<CircuitRacer player faceProfile={profile} driverStyle={style} color="#49dce8"/>}</Suspense>
+  <Suspense fallback={null}>{close&&profile.creator?<StylizedFace profile={profile} position={[0,headHeight,.1]} helmeted={false}/>:<CircuitRacer player faceProfile={profile} driverStyle={style} color="#49dce8"/>}</Suspense>
   <PreviewCamera close={close}/>
  </Canvas>
 }
@@ -37,7 +38,7 @@ async function preparePhoto(blob:Blob){
 export function AvatarStudio({currentProfile,currentStyle,onApply,onClear,onBack}:Props){
  const [draft,setDraft]=useState<FaceProfile>(currentProfile??{...DEFAULT_FACE}),[style,setStyle]=useState(currentStyle??DEFAULT_DRIVER_STYLE)
  const [partsAvailable,setPartsAvailable]=useState(false)
- useEffect(()=>{let active=true;void fetch('/assets/personal/mii-maker/face-02.svg').then(r=>r.ok?r.text():'').then(text=>{if(active&&text.includes('<svg')){setPartsAvailable(true);setDraft(p=>({...p,creator:p.creator??structuredClone(DEFAULT_PARTS)}))}}).catch(()=>{});return()=>{active=false}},[])
+ useEffect(()=>{let active=true;void loadTomodachiCatalog().then(()=>{if(active){setPartsAvailable(true);setDraft(p=>({...p,creator:p.creator??structuredClone(DEFAULT_PARTS)}))}}).catch(()=>{});return()=>{active=false}},[])
  const [cameraOn,setCameraOn]=useState(false),[ready,setReady]=useState(false),[photo,setPhoto]=useState<Blob|null>(null),[preview,setPreview]=useState<string|null>(null)
  const [busy,setBusy]=useState(false),[status,setStatus]=useState('Capture one face or choose a photo. Your image stays on this device.')
  const [scanned,setScanned]=useState(Boolean(currentProfile)),[points,setPoints]=useState<{x:number;y:number}[]>([]),[close,setClose]=useState(true)
@@ -68,7 +69,7 @@ export function AvatarStudio({currentProfile,currentStyle,onApply,onClear,onBack
  const scan=async()=>{
   if(!photo||busy)return
   setBusy(true);request.current?.abort();const controller=new AbortController();request.current=controller
-  try{const result=await scanFace(photo,setStatus,controller.signal);setDraft({...result.profile,creator:partsAvailable?{...structuredClone(DEFAULT_PARTS),eyes:result.profile.eyeShape==='hooded'?39:result.profile.eyeShape==='round'?3:1,mustache:result.profile.facialHair==='moustache'?2:1,goatee:result.profile.facialHair==='beard'?3:1}:null});setPoints(result.landmarks);setScanned(true);setClose(true);setStatus('Scan complete. Eye shape, nose, lips and colours measured. Check facial hair and fine-tune your likeness, then apply.');if(window.matchMedia('(max-width:620px)').matches)requestAnimationFrame(()=>modelSection.current?.scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}))}
+  try{const result=await scanFace(photo,setStatus,controller.signal);setDraft({...result.profile,creator:partsAvailable?{...structuredClone(DEFAULT_PARTS),eyes:result.profile.eyeShape==='hooded'?39:result.profile.eyeShape==='round'?3:1,mustache:result.profile.facialHair==='moustache'?2:0,goatee:result.profile.facialHair==='beard'?3:0}:null});setPoints(result.landmarks);setScanned(true);setClose(true);setStatus('Scan complete. Eye shape, nose, lips and colours measured. Check facial hair and fine-tune your likeness, then apply.');if(window.matchMedia('(max-width:620px)').matches)requestAnimationFrame(()=>modelSection.current?.scrollIntoView({block:'nearest',behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'}))}
   catch(e){if(!controller.signal.aborted)setStatus(e instanceof Error?e.message:'Face scan failed. Please retry.')}
   finally{if(!controller.signal.aborted)setBusy(false)}
  }
@@ -93,7 +94,7 @@ export function AvatarStudio({currentProfile,currentStyle,onApply,onClear,onBack
    {cameraOn&&<button className="avatar-camera-off" type="button" onClick={()=>setCameraOn(false)}>Turn off webcam</button>}
    </section>
    <section ref={modelSection} className="avatar-model"><h2><span>02</span> {scanned?'Your personalized driver':'Style preview'}</h2><div className="avatar-model-stage"><DriverPreview profile={draft} style={style} close={close}/><div className="avatar-view-toggle"><button type="button" aria-pressed={close} onClick={()=>setClose(true)}>FACE</button><button type="button" aria-pressed={!close} onClick={()=>setClose(false)}>FULL KART</button></div><small>{draft.creator?.nickname??'PLAYER'} · DRAG TO ROTATE · FULL KART FOR RACE FIT</small></div></section>
-   <section className="avatar-tuning"><h2><span>03</span> Mii-style creator</h2>{partsAvailable?<MiiCreator profile={draft} onChange={change} onStatus={setStatus}/>:<><p className="mii-install">Install the optional local creator artwork with scripts/prepare-mii-creator.py to unlock the complete part library.</p>
+   <section className="avatar-tuning"><h2><span>03</span> Tomodachi creator</h2>{partsAvailable?<MiiCreator profile={draft} onChange={change} onStatus={setStatus}/>:<><p className="mii-install">Install the optional local creator artwork with scripts/prepare-tomodachi.py to unlock the Tomodachi Life model and face library.</p>
     <fieldset className="avatar-art-style"><legend>Avatar style</legend><div className="avatar-segments">{(['graphic','soft','portrait']as const).map(look=><button key={look} type="button" aria-pressed={draft.look===look} onClick={()=>change({look})}>{look}</button>)}</div></fieldset>
     <div className="avatar-color-row">{(['skin','hair','eyes','facialHairColor']as const).map(key=><label key={key}><input type="color" aria-label={`${key} colour`} value={draft[key]} onChange={e=>change({[key]:e.target.value})}/><span>{key==='facialHairColor'?'Beard':key}</span></label>)}</div>
     <fieldset><legend>Hair silhouette</legend><div className="avatar-segments">{(['swept','cropped','none']as const).map(hairStyle=><button key={hairStyle} type="button" aria-pressed={draft.hairStyle===hairStyle} onClick={()=>change({hairStyle})}>{hairStyle}</button>)}</div></fieldset>

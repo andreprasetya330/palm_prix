@@ -40,3 +40,6 @@ public/assets/personal/manifest.json
 
 # Optional personal Mii Creator part artwork (not a reusable asset license).
 public/assets/personal/mii-maker/
+
+# Optional Tomodachi Life game extracts (local personal setup only).
+public/assets/personal/tomodachi/

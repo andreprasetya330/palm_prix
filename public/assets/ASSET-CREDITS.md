@@ -54,3 +54,7 @@ The owner explicitly requested a personal, noncommercial build using Mario Kart 
 - The model and WASM runtime load from their official Google/MediaPipe distributions. No model binary is redistributed in this repository.
 - The personalized face geometry, toon treatment, glasses, customizer interface and feature-mapping code are original Palm Prix work. The scan does not modify or redistribute the optional Nintendo source models.
 - User photos stay in the local browser and are not included in the repository or saved as assets.
+
+### Optional Tomodachi Life avatar library
+
+The local personal setup uses Nintendo's Tomodachi Life: Living the Dream avatar assets, packaged as GLB/PNG by zinccat (`mii_renderer`, pinned revision `970c22034c1d4cfee2bd7a491a1475d46bb63169`). Public model/face-part submissions are credited to Centrixe the Dodo. Full source links and restrictions are in `personal/CREDITS.md`. Extracted assets are not included in the public source checkout.
