@@ -1,0 +1,12 @@
+Third-party textures only: cliff-diff.jpg and cliff-normal.jpg
+
+Asset: Cliff Side
+Source: https://polyhaven.com/a/cliff_side
+Authors: James Ray Cock (photography), Dario Barresi (photography), Jenelle van Heerden (processing)
+License: CC0 1.0 Universal
+License statement: https://polyhaven.com/license
+Legal text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+These textures may be used, modified and redistributed, including for commercial projects. Attribution is appreciated but not required. Original resolution: 1K, diffuse and OpenGL normal JPEG files.
+
+The original/generated artwork in this folder is documented separately in ARTWORK.md and is not covered by this third-party license notice.

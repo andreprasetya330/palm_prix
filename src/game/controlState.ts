@@ -9,8 +9,12 @@ export type ControlState = {
   throttle: number
   /** 0…1 brake */
   brake: number
+  /** Explicit reverse request, separate from braking. */
+  reverse?: number
   /** edge-triggered item use this frame */
   item: boolean
+  /** Hold while steering to powerslide; release a charged drift for a mini-turbo. */
+  drift?: boolean
 }
 
 export const ZERO_CONTROL: ControlState = {
@@ -25,6 +29,10 @@ export function clampControl(c: ControlState): ControlState {
     steer: Math.max(-1, Math.min(1, c.steer)),
     throttle: Math.max(0, Math.min(1, c.throttle)),
     brake: Math.max(0, Math.min(1, c.brake)),
+    reverse: Number.isFinite(c.reverse) ? Math.max(0, Math.min(1, c.reverse!)) : 0,
     item: c.item,
+    drift: c.drift,
   }
 }
+
+

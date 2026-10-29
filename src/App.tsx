@@ -1,36 +1,46 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { loadCachedAvatar } from './avatar/stylizeClient'
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {clearCachedAvatar} from './avatar/stylizeClient'
+import {loadFaceProfile,saveFaceProfile,clearFaceProfile,type FaceProfile} from './avatar/faceProfile'
 import { type ControlState } from './game/controlState'
-import { DEFAULT_KART, stepKart, type KartState } from './game/kartPhysics'
+import { DEFAULT_KART, type KartState } from './game/kartPhysics'
 import {
   createRaceStatus,
-  updateCheckpoints,
   type RaceStatus,
 } from './game/raceLoop'
 import { RaceScene } from './scene/RaceScene'
-import { AvatarStudio } from './ui/AvatarStudio'
+const AvatarStudio=lazy(()=>import('./ui/AvatarStudio').then(module=>({default:module.AvatarStudio})))
 import { CalibrateScreen } from './ui/CalibrateScreen'
+import { AssetLoadingOverlay } from './ui/AssetLoadingOverlay'
 import { Hud } from './ui/Hud'
+import {RaceMenu} from './ui/RaceMenu'
+import {CourseTour} from './ui/CourseTour'
+import {COURSE_SECTORS} from './game/trackLayout'
 import { WebcamPip } from './ui/WebcamPip'
 import { loadCalibration, type Calibration } from './vision/calibration'
 import { GestureMapper, mergeControls } from './vision/gestureMapper'
 import { useHandTracker } from './vision/useHandTracker'
 import { useKeyboardControls } from './vision/useKeyboardControls'
+import { loadDriverStyle, saveDriverStyle, type DriverStyle } from './avatar/driverStyle'
+import { createRuntime, resetRuntime } from './game/runtime'
+import { useRaceAudio } from './game/useRaceAudio'
+import {createAbilityState} from './game/abilities'
 import './App.css'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { status, error, hands } = useHandTracker(videoRef)
+  const [cameraEnabled,setCameraEnabled] = useState(false)
+  const [race, setRace] = useState<RaceStatus>(() => createRaceStatus())
+  const { status, stage, error, hands, retry, trackingLatencyMs } = useHandTracker(videoRef,cameraEnabled&&race.phase!=='avatar')
   const readKeyboard = useKeyboardControls()
   const mapper = useMemo(() => new GestureMapper(), [])
 
   const [calibration, setCalibration] = useState<Calibration>(() =>
     loadCalibration(),
   )
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() =>
-    loadCachedAvatar(),
-  )
-  const [race, setRace] = useState<RaceStatus>(() => createRaceStatus())
+  const [faceProfile,setFaceProfile]=useState(loadFaceProfile)
+  const [coins,setCoins] = useState(0)
+  const [impact,setImpact] = useState(false)
+  const [reward,setReward] = useState<string|null>(null)
   const [kart, setKart] = useState<KartState>(DEFAULT_KART)
   const [control, setControl] = useState<ControlState>({
     steer: 0,
@@ -38,68 +48,41 @@ export default function App() {
     brake: 0,
     item: false,
   })
+  const [driverStyle, setDriverStyle] = useState<DriverStyle>(loadDriverStyle)
+  const updateDriverStyle = (style: DriverStyle) => { setDriverStyle(style); saveDriverStyle(style) }
+  const applyDriver=(profile:FaceProfile,style:DriverStyle)=>{setFaceProfile(profile);updateDriverStyle(style);return saveFaceProfile(profile)}
+  const [abilities,setAbilities]=useState(createAbilityState)
+  const audio = useRaceAudio(kart, race,coins,abilities)
+  const [showCredits,setShowCredits] = useState(false)
   const [showPip, setShowPip] = useState(true)
+  const [tourSector,setTourSector]=useState<number|null>(null)
 
-  const raceRef = useRef(race)
-  const kartRef = useRef(kart)
+  const runtime = useMemo(()=>createRuntime(), [])
   const calRef = useRef(calibration)
   const handsRef = useRef(hands)
-  const phaseRef = useRef(race.phase)
-  raceRef.current = race
-  kartRef.current = kart
-  calRef.current = calibration
-  handsRef.current = hands
-  phaseRef.current = race.phase
-
-  // Vision → ControlState + race tick
-  useEffect(() => {
-    let last = performance.now()
-    let raf = 0
-    const tick = (now: number) => {
-      raf = requestAnimationFrame(tick)
-      const dtMs = Math.min(50, now - last)
-      last = now
-      const dt = dtMs / 1000
-
-      const handCtrl = mapper.update(handsRef.current, calRef.current, dtMs)
-      const merged = mergeControls(handCtrl, readKeyboard())
-      setControl(merged)
-
-      const phase = phaseRef.current
-      if (phase === 'countdown') {
-        setRace((r) => {
-          const countdown = r.countdown - dt
-          if (countdown <= 0) {
-            return { ...r, countdown: 0, phase: 'racing' }
-          }
-          return { ...r, countdown }
-        })
-      } else if (phase === 'racing') {
-        const nextKart = stepKart(kartRef.current, merged, dt)
-        setKart(nextKart)
-        setRace((r) => {
-          const withTime = { ...r, elapsed: r.elapsed + dt }
-          return updateCheckpoints(withTime, nextKart.x, nextKart.z)
-        })
-      }
+  useLayoutEffect(() => {
+    calRef.current = calibration
+    handsRef.current = hands
+    runtime.readControls = (dtMs) => mergeControls(mapper.update(handsRef.current,calRef.current,dtMs),readKeyboard())
+    runtime.publish = () => {
+      setCoins(runtime.rewards.coins);setImpact(runtime.obstacles.flashTimer>0)
+      setReward(runtime.rewards.lastReward)
+      setKart({...runtime.kart})
+      setRace({...runtime.race})
+      setControl({...runtime.control})
+      setAbilities({...runtime.abilities})
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [mapper, readKeyboard])
+  }, [runtime, mapper, readKeyboard, calibration, hands])
 
   const startCountdown = () => {
+    setTourSector(null)
+    void audio.enable()
     mapper.reset()
-    setKart({ ...DEFAULT_KART })
-    setRace({
-      ...createRaceStatus(),
-      phase: 'countdown',
-      countdown: 3,
-    })
+    resetRuntime(runtime,true)
   }
-
-  const goMenu = () => {
-    setRace(createRaceStatus())
-    setKart({ ...DEFAULT_KART })
+  const goMenu = () => { mapper.reset();resetRuntime(runtime) }
+  const changePhase = (phase: RaceStatus['phase']) => {
+    runtime.race.phase=phase;runtime.publish()
   }
 
   const inRace =
@@ -108,32 +91,42 @@ export default function App() {
     race.phase === 'finish'
 
   return (
-    <div className="app">
+    <div className={`app ${race.phase==='menu'&&tourSector===null?'app--arcade-menu':''}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">Palm Prix</span>
-          <span className="brand-sub">webcam hand-tracking kart · MVP scaffold</span>
+          <span className="brand-sub">AFTERGLOW CITY</span>
         </div>
         <div className="topbar-actions">
-          <label className="toggle">
+          <button className="retry-camera" onClick={()=>setShowCredits(v=>!v)}>Credits</button>
+          <button className="retry-camera" onClick={audio.toggleMute}>{audio.muted ? 'Sound off' : 'Sound on'}</button>
+          {race.phase!=='avatar'&&<><button className="retry-camera" onClick={()=>setCameraEnabled(v=>!v)}>{cameraEnabled ? 'Disable hands' : 'Enable hand controls'}</button>
+          {cameraEnabled && <label className="toggle">
             <input
               type="checkbox"
               checked={showPip}
               onChange={(e) => setShowPip(e.target.checked)}
             />
-            Webcam PIP
-          </label>
-          <span className={`cam-status ${status}`}>{status}</span>
+            Camera view
+          </label>}
+          <span className={`cam-status ${status}`}>{cameraEnabled ? stage : 'Keyboard ready'}</span>
+          {(status === 'error' || status === 'denied') && <button className="retry-camera" onClick={retry} title={error ?? 'Retry camera'}>Retry camera</button>}
+          </>}
         </div>
       </header>
 
       <main className={`stage ${inRace ? 'racing' : ''}`}>
-        {(inRace || race.phase === 'calibrate' || race.phase === 'avatar') && (
-          <div className="scene-wrap">
-            <RaceScene kart={kart} driverTextureUrl={avatarUrl} />
+        {cameraEnabled && error && <div className="tracking-error" role="alert"><strong>Hand controls need attention</strong><p>{error}</p><button type="button" onClick={retry}>Retry camera</button></div>}
+        {(
+          <div className={`scene-wrap ${race.phase === 'menu' ? 'showcase' : ''}`}>
+            <RaceScene runtime={runtime} showcase={race.phase === 'menu'} paused={race.phase==='avatar'} faceProfile={faceProfile} driverStyle={driverStyle} previewT={tourSector===null?undefined:(COURSE_SECTORS[tourSector].start+COURSE_SECTORS[tourSector].end)/2} />
             {inRace && (
               <Hud
                 race={race}
+                coins={coins}
+                impact={impact}
+                abilities={abilities}
+                reward={reward}
                 kart={kart}
                 control={control}
                 debug={mapper.debug}
@@ -144,62 +137,30 @@ export default function App() {
         )}
 
         <div
-          className={`pip-dock ${inRace ? 'corner' : 'hero'}`}
-          style={showPip ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          className={`pip-dock ${inRace ? 'corner' : 'hero'} ${race.phase === 'menu' ? 'menu-pip' : ''}`}
+          style={showPip && cameraEnabled && race.phase!=='avatar' ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
         >
           <WebcamPip
             videoRef={videoRef}
             hands={hands}
             wheelAngle={mapper.debug.wheelAngle}
             compact={inRace}
+            trackingLatencyMs={trackingLatencyMs}
+            onRetry={retry}
+            stage={stage}
           />
-          {error && showPip && <p className="cam-error">{error}</p>}
         </div>
 
-        {race.phase === 'menu' && (
-          <div className="panel menu">
-            <h1>Palm Prix</h1>
-            <p>
-              Drive with a virtual steering wheel — two fists twist to steer.
-              Camera stays local; only an opt-in selfie still hits the stylize
-              API.
-            </p>
-            <ul className="privacy-list">
-              <li>Hand video: in-browser MediaPipe only</li>
-              <li>Avatar: one still, cloud fal via /api/stylize (opt-in)</li>
-              <li>Keyboard fallback always on (WASD / arrows + Space)</li>
-            </ul>
-            <div className="row">
-              <button
-                type="button"
-                className="primary"
-                onClick={() => setRace((r) => ({ ...r, phase: 'avatar' }))}
-              >
-                Avatar studio
-              </button>
-              <button
-                type="button"
-                onClick={() => setRace((r) => ({ ...r, phase: 'calibrate' }))}
-              >
-                Calibrate & race
-              </button>
-            </div>
-            {status === 'denied' && (
-              <p className="cam-error">
-                Camera denied — use keyboard, or allow webcam and reload.
-              </p>
-            )}
-          </div>
-        )}
+        {race.phase === 'menu' && (tourSector===null?<RaceMenu muted={audio.muted} onSound={()=>{void audio.enable();audio.toggleMute()}} onCredits={()=>setShowCredits(true)} onCue={audio.menuCue} cameraEnabled={cameraEnabled} trackingStatus={status} fists={hands.filter(h=>h.isFist).length} steer={control.steer} onRace={startCountdown} onCustomize={()=>changePhase('avatar')} onTour={()=>setTourSector(0)} onSetup={() => {setCameraEnabled(true);if(status==='error'||status==='denied')retry();changePhase('calibrate')}}/>:<CourseTour index={tourSector} onSelect={setTourSector} onBack={()=>setTourSector(null)} onRace={startCountdown}/>)}
 
         {race.phase === 'avatar' && (
-          <AvatarStudio
-            videoRef={videoRef}
-            currentAvatar={avatarUrl}
-            onAvatar={setAvatarUrl}
+          <Suspense fallback={<div className="panel">Loading garage…</div>}><AvatarStudio
+            currentProfile={faceProfile}
+            currentStyle={driverStyle}
+            onApply={applyDriver}
+            onClear={()=>{clearFaceProfile();clearCachedAvatar();setFaceProfile(null)}}
             onBack={goMenu}
-            onDone={() => setRace((r) => ({ ...r, phase: 'calibrate' }))}
-          />
+          /></Suspense>
         )}
 
         {race.phase === 'calibrate' && (
@@ -214,7 +175,7 @@ export default function App() {
           />
         )}
 
-        {race.phase === 'finish' && (
+        {race.phase === 'finish' && race.finishElapsed>=3.5 && (
           <div className="panel finish-panel">
             <div className="row">
               <button type="button" className="primary" onClick={startCountdown}>
@@ -226,6 +187,21 @@ export default function App() {
             </div>
           </div>
         )}
+        {inRace && <button className="exit-race" onClick={goMenu}>← Paddock</button>}
+        {race.phase === 'menu' && <div className="edition">PALM PRIX <span>CHASE THE CHECKERED FLAG.</span></div>}
+        {showCredits && <div className="credits-backdrop"><section className="panel credits-panel" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+          <div className="eyebrow">ASSETS & CONTRIBUTORS</div><h2 id="credits-title">Original art. Neon soul.</h2>
+          <p>The city, sunset geometry, road, signs, arcade effects and fallback racers are original Palm Prix artwork.</p>
+
+
+          <p>Earlier retained Kenney and Poly Haven assets are released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0 1.0</a>, which permits personal and commercial reuse, modification and redistribution.</p>
+
+          <p>The optional personal build uses Nintendo’s Circuit Special (Mario Kart 8), uploaded by BillyGaming964, and Mii (Mario Kart Tour), uploaded by Centrixe the Dodo, via Models Resource. Their matching kart/suit colors are adapted for this project; the wheels are original Palm Prix art. These extracts are not CC0 and remain local to the owner’s noncommercial build.</p>
+          <p><a href="/assets/personal/CREDITS.md" target="_blank" rel="noreferrer">Personal model sources and contributor credits ↗</a>. OpenWii was consulted as a handling reference.</p>
+          <p><a href="/assets/ASSET-CREDITS.md" target="_blank" rel="noreferrer">View full asset sources and license notes ↗</a></p>
+          <button type="button" className="primary" onClick={()=>setShowCredits(false)}>Back to the game</button>
+        </section></div>}
+        <AssetLoadingOverlay/>
       </main>
     </div>
   )

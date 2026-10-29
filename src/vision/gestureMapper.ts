@@ -4,7 +4,7 @@ import {
   type ControlState,
 } from '../game/controlState'
 import type { Calibration } from './calibration'
-import type { HandSample } from './landmarks'
+import { wheelAngle, type HandSample } from './landmarks'
 
 function ema(prev: number, next: number, alpha: number): number {
   return prev + alpha * (next - prev)
@@ -30,9 +30,6 @@ function mapAngleToSteer(
   return Math.max(-1, Math.min(1, sign * (usable / span)))
 }
 
-function inDriveZone(h: HandSample, cal: Calibration): boolean {
-  return h.height >= cal.driveZoneTop && h.height <= cal.driveZoneBottom
-}
 
 export type MapperDebug = {
   mode: 'two-fist' | 'one-hand' | 'none'
@@ -51,8 +48,7 @@ export class GestureMapper {
   private smoothedThrottle = 0
   private smoothedBrake = 0
   private lossMs = 0
-  private lastDepth = 0
-  private depthPrimed = false
+  private wheelIds: number[] | null = null
   private itemCooldownMs = 0
   private prevThumbUp = false
   debug: MapperDebug = {
@@ -64,11 +60,11 @@ export class GestureMapper {
   }
 
   reset(): void {
+    this.wheelIds = null
     this.smoothedSteer = 0
     this.smoothedThrottle = 0
     this.smoothedBrake = 0
     this.lossMs = 0
-    this.depthPrimed = false
     this.itemCooldownMs = 0
     this.prevThumbUp = false
   }
@@ -78,6 +74,7 @@ export class GestureMapper {
     cal: Calibration,
     dtMs: number,
   ): ControlState {
+    dtMs = Math.max(0, Math.min(100, Number.isFinite(dtMs) ? dtMs : 0))
     this.itemCooldownMs = Math.max(0, this.itemCooldownMs - dtMs)
     const fists = hands.filter((h) => h.isFist)
     this.debug.handsVisible = hands.length
@@ -93,74 +90,49 @@ export class GestureMapper {
       this.debug.mode = 'two-fist'
       // left = smaller mirrored x, right = larger x
       const sorted = [...fists].sort((a, b) => a.grip.x - b.grip.x)
-      const left = sorted[0]
-      const right = sorted[sorted.length - 1]
-      const dx = right.grip.x - left.grip.x
-      const dy = right.grip.y - left.grip.y
-      const wheelAngle = Math.atan2(dy, dx)
-      this.debug.wheelAngle = wheelAngle
-      steerTarget = mapAngleToSteer(wheelAngle, cal.neutralAngle, cal)
-
-      const inZone = fists.every((h) => inDriveZone(h, cal))
-      const avgDepth = fists.reduce((s, h) => s + h.depth, 0) / fists.length
-      if (!this.depthPrimed) {
-        this.lastDepth = avgDepth
-        this.depthPrimed = true
+      if (!this.wheelIds && sorted.every((h) => h.trackingId !== undefined)) this.wheelIds = [sorted[0].trackingId!, sorted[sorted.length-1].trackingId!]
+      let left = this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![0]) : undefined
+      let right = this.wheelIds ? fists.find((h) => h.trackingId === this.wheelIds![1]) : undefined
+      // Reacquired IDs must form a fresh pair; never use the surviving hand twice.
+      if (!left || !right) {
+        left = sorted[0]; right = sorted[sorted.length - 1]
+        this.wheelIds = left.trackingId !== undefined && right.trackingId !== undefined ? [left.trackingId, right.trackingId] : null
       }
-      const depthPull = avgDepth - this.lastDepth
-      this.lastDepth = ema(this.lastDepth, avgDepth, 0.15)
+      const angle = wheelAngle(left, right)
+      this.debug.wheelAngle = angle
+      steerTarget = mapAngleToSteer(angle, cal.neutralAngle, cal)
 
-      const belowZone = fists.every((h) => h.height > cal.driveZoneBottom)
-      if (belowZone || depthPull > cal.brakeDepthDelta) {
-        brakeTarget = 1
-        throttleTarget = 0
-      } else if (inZone) {
-        throttleTarget = 1
-      }
-
-      item = this.detectItem(hands)
-    } else if (fists.length === 1 || hands.length === 1) {
-      this.lossMs = 0
-      this.debug.mode = 'one-hand'
-      const h = fists[0] ?? hands[0]
-      this.debug.wheelAngle = h.yaw
-      if (h.isFist) {
-        steerTarget = mapAngleToSteer(h.yaw, cal.oneHandNeutral, cal)
-        if (inDriveZone(h, cal)) throttleTarget = 0.85
-        if (h.height > cal.driveZoneBottom) brakeTarget = 0.8
-      } else {
-        // open hand: soft decay (handled below via lower target)
-        steerTarget = this.smoothedSteer * 0.5
-      }
+      // A closed two-hand grip is the accelerator, at any height or depth.
+      throttleTarget = 1
       item = this.detectItem(hands)
     } else {
-      this.debug.mode = 'none'
+      this.debug.mode = hands.length ? 'one-hand' : 'none'
       this.debug.wheelAngle = null
       this.lossMs += dtMs
-      this.depthPrimed = false
-      // decay toward 0 over ~200ms
-      const decay = Math.min(1, this.lossMs / 200)
-      steerTarget = this.smoothedSteer * (1 - decay)
-      throttleTarget = 0
-      brakeTarget = 0
+      this.prevThumbUp = false
+      if (this.lossMs > 300) this.wheelIds = null
+      // A partial wheel cannot provide a new angle. Smoothly return to center.
+      steerTarget = this.smoothedSteer * Math.max(0, 1-this.lossMs/200)
     }
-
+    // Opening either visible hand brakes; losing tracking only coasts.
+    brakeTarget = hands.some((h) => h.pose ? h.pose === 'open' : !h.isFist) ? 1 : 0
     this.debug.steerRaw = steerTarget
-    const alpha = 1 - Math.exp(-dtMs / 60) // ~EMA τ≈60ms
+    const alpha = 1 - Math.exp(-dtMs / 35) // Responsive steering, with short jitter filtering.
     this.smoothedSteer = ema(this.smoothedSteer, steerTarget, alpha)
-    this.smoothedThrottle = ema(this.smoothedThrottle, throttleTarget, alpha)
-    this.smoothedBrake = ema(this.smoothedBrake, brakeTarget, alpha)
+    this.smoothedThrottle = throttleTarget > 0 ? ema(this.smoothedThrottle, throttleTarget, alpha) : 0
+    this.smoothedBrake = brakeTarget > 0 ? ema(this.smoothedBrake, brakeTarget, alpha) : 0
 
     return clampControl({
       steer: this.smoothedSteer,
       throttle: this.smoothedThrottle,
       brake: this.smoothedBrake,
+      reverse: brakeTarget,
       item,
     })
   }
 
   private detectItem(hands: HandSample[]): boolean {
-    if (this.itemCooldownMs > 0) return false
+
     // crude thumbs-up: thumb tip above wrist and away from palm center
     let thumbUp = false
     for (const h of hands) {
@@ -173,7 +145,7 @@ export class GestureMapper {
     }
     const edge = thumbUp && !this.prevThumbUp
     this.prevThumbUp = thumbUp
-    if (edge) {
+    if (edge && this.itemCooldownMs <= 0) {
       this.itemCooldownMs = 400
       return true
     }
@@ -189,15 +161,24 @@ export function mergeControls(
   const kbActive =
     fallback.steer !== 0 ||
     fallback.throttle !== 0 ||
-    fallback.brake !== 0 ||
-    fallback.item
+    fallback.brake !== 0 || (fallback.reverse ?? 0) !== 0 ||
+    fallback.item || fallback.drift
   if (!kbActive) return primary
   return clampControl({
     steer: fallback.steer !== 0 ? fallback.steer : primary.steer,
-    throttle: Math.max(primary.throttle, fallback.throttle),
-    brake: Math.max(primary.brake, fallback.brake),
+    throttle: fallback.throttle > 0 || fallback.brake > 0 ? fallback.throttle : primary.throttle,
+    brake: fallback.throttle > 0 || fallback.brake > 0 ? fallback.brake : primary.brake,
+    reverse: fallback.throttle > 0 || fallback.brake > 0 ? (fallback.reverse ?? 0) : Math.max(primary.reverse ?? 0, fallback.reverse ?? 0),
     item: primary.item || fallback.item,
+    drift: Boolean(primary.drift || fallback.drift),
   })
 }
 
 export { ZERO_CONTROL }
+
+
+
+
+
+
+

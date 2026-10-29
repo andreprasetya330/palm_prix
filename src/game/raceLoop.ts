@@ -1,62 +1,43 @@
+import { nearestTrack, ROAD_HALF_WIDTH, TRACK_LENGTH } from './trackLayout'
+import {createRivalStates,type RivalState} from './rivalAI'
+import {RIVALS} from './rivalRoster'
+export {RIVALS} from './rivalRoster'
 export type RacePhase = 'menu' | 'avatar' | 'calibrate' | 'countdown' | 'racing' | 'finish'
-
-export type RaceStatus = {
-  phase: RacePhase
-  countdown: number
-  lap: number
-  totalLaps: number
-  elapsed: number
-  checkpointsHit: number
-}
-
-export const TOTAL_LAPS = 2
-/** Ordered checkpoint angles around oval (radians in XZ plane from center). */
-export const CHECKPOINT_ANGLES = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]
-
-export function createRaceStatus(): RaceStatus {
-  return {
-    phase: 'menu',
-    countdown: 3,
-    lap: 1,
-    totalLaps: TOTAL_LAPS,
-    elapsed: 0,
-    checkpointsHit: 0,
-  }
-}
-
-export function kartAngle(x: number, z: number): number {
-  return Math.atan2(x, z)
-}
-
-function angleDiff(a: number, b: number): number {
-  let d = a - b
-  while (d > Math.PI) d -= Math.PI * 2
-  while (d < -Math.PI) d += Math.PI * 2
-  return Math.abs(d)
-}
-
-export function updateCheckpoints(
-  status: RaceStatus,
-  x: number,
-  z: number,
-): RaceStatus {
+export type RaceStatus = { phase: RacePhase; countdown: number; lap: number; totalLaps: number; elapsed: number; checkpointsHit: number;rivals:RivalState[];rivalAccumulator:number;finishElapsed:number;finishPosition:number;paradeDistance:number;paradeLane:number }
+export const TOTAL_LAPS = 3
+// Start is t=0; a lap counts only after all four ordered sectors.
+export const CHECKPOINT_ANGLES = [Math.PI / 2, Math.PI, Math.PI * 1.5, 0]
+export function createRaceStatus(): RaceStatus { return { phase: 'menu', countdown: 3, lap: 1, totalLaps: TOTAL_LAPS, elapsed: 0, checkpointsHit: 0,rivals:createRivalStates(),rivalAccumulator:0,finishElapsed:0,finishPosition:0,paradeDistance:0,paradeLane:0 } }
+export function kartAngle(x: number, z: number): number { return nearestTrack(x, z).t * Math.PI * 2 }
+export function updateCheckpoints(status: RaceStatus, x: number, z: number): RaceStatus {
   if (status.phase !== 'racing') return status
-  const nextIdx = status.checkpointsHit % CHECKPOINT_ANGLES.length
-  const target = CHECKPOINT_ANGLES[nextIdx]
-  const ang = kartAngle(x, z)
-  const r = Math.hypot(x, z)
-  // oval corridor roughly r ~ 14–22
-  if (r > 12 && r < 26 && angleDiff(ang, target) < 0.35) {
-    const checkpointsHit = status.checkpointsHit + 1
-    let lap = status.lap
-    let phase: RacePhase = status.phase
-    if (checkpointsHit > 0 && checkpointsHit % CHECKPOINT_ANGLES.length === 0) {
-      lap += 1
-      if (lap > status.totalLaps) {
-        return { ...status, checkpointsHit, lap: status.totalLaps, phase: 'finish' }
-      }
-    }
-    return { ...status, checkpointsHit, lap, phase }
-  }
-  return status
+  const target = CHECKPOINT_ANGLES[status.checkpointsHit % 4]
+  const angle = kartAngle(x, z)
+  const difference = Math.abs(Math.atan2(Math.sin(angle - target), Math.cos(angle - target)))
+  const distance = nearestTrack(x, z).distance
+  if (distance > ROAD_HALF_WIDTH + 1 || difference > 0.10) return status
+  const checkpointsHit = status.checkpointsHit + 1
+  const lap = Math.floor(checkpointsHit / 4) + 1
+  return { ...status, checkpointsHit, lap: Math.min(lap, status.totalLaps), phase: lap > status.totalLaps ? 'finish' : status.phase }
 }
+export function rivalAngle(index: number, elapsed: number,rivals?:readonly RivalState[]) {
+  if(rivals)return rivals[index].distance/TRACK_LENGTH*Math.PI*2
+  const r = RIVALS[index]
+  // Acceleration from the grid, shared by rendering and leaderboard.
+  return r.offset * 0.4 + (r.speed * 20 / TRACK_LENGTH * Math.PI * 2) * (elapsed - 1.5 * (1 - Math.exp(-elapsed / 1.5)))
+}
+export function playerProgressDistance(status:RaceStatus,x:number,z:number){
+  const angle = kartAngle(x, z)
+  const completed = Math.floor(status.checkpointsHit / 4)
+  let progress = completed * Math.PI * 2 + angle
+  if (status.checkpointsHit === 0 && angle > Math.PI * 1.5) progress -= Math.PI * 2
+  // Sector four can be registered just before crossing the line.
+  if (status.checkpointsHit > 0 && status.checkpointsHit % 4 === 0 && angle > Math.PI * 1.5) progress -= Math.PI * 2
+  return progress/(Math.PI*2)*TRACK_LENGTH
+}
+export function racePosition(status: RaceStatus, x: number, z: number) {
+  if(status.phase==='finish'&&status.finishPosition)return status.finishPosition
+  const progress=playerProgressDistance(status,x,z)
+  return 1+status.rivals.filter(r=>r.finishedAt!==null||r.distance>progress).length
+}
+

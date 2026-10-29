@@ -1,93 +1,125 @@
-# Palm Prix
+# Palm Prix — Afterglow City
 
-Browser MVP scaffold: **webcam hand-tracking kart racing** with wheel-style fist steering and optional **cloud AI** cartoon selfie avatars.
+A Three.js kart racer controlled with your webcam or keyboard. Afterglow City is a cohesive neon sunset circuit with a coastal skyway, covered night market, terraced city blocks and an observatory halo. The sunset, architecture, racers and landmarks are modeled geometry and procedural materials; no surrounding photographic panorama is used.
 
-Stack: Vite + React + TypeScript · MediaPipe Hands (`@mediapipe/tasks-vision`) · Three.js (`@react-three/fiber` + `@react-three/drei`) · tiny Express stylize proxy (fal.ai).
+## Run locally
 
-Repo: [`andreprasetya330/palm_prix`](https://github.com/andreprasetya330/palm_prix)
-
-## Quick start
-
-```bash
-cp .env.example .env   # optional: add FAL_KEY for real stylize
+```sh
 npm install
-npm run dev            # Vite :5173 + stylize API :8787
+npm run dev
 ```
 
-Open **http://localhost:5173** (HTTPS not required on localhost for `getUserMedia`).
-
-### Scripts
-
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Concurrently runs stylize server + Vite (proxies `/api` → `:8787`) |
-| `npm run dev:client` | Vite only |
-| `npm run server` | Stylize API only |
-| `npm run build` | Production client build |
-| `npm run preview` | Preview production build (still need `npm run server` for stylize) |
-
-## Environment variables
-
-| Var | Where | Required | Purpose |
-| --- | --- | --- | --- |
-| `FAL_KEY` | server `.env` / shell | No (placeholder if missing) | fal.ai API key — **never** commit or use `VITE_` prefix |
-| `FAL_STYLIZE_MODEL` | server | No | Defaults to `fal-ai/flux/dev/image-to-image` |
-| `STYLIZE_PORT` | server | No | Defaults to `8787` |
-| `VITE_STYLIZE_MODE` | client | No | Set to `local` to force canvas posterize fallback (no API) |
-
-Load server env yourself (`export FAL_KEY=...` or a dotenv tool). The Express process reads `process.env.FAL_KEY`.
-
-### fal model
-
-Default stylize model id: **`fal-ai/flux/dev/image-to-image`**
-
-Prompt asks for a cartoon/anime driver portrait. Override with `FAL_STYLIZE_MODEL` if you prefer another fal img2img endpoint.
+Open http://localhost:5173. For the production client, run `npm run build` followed by `npm run preview`. Camera permission works on localhost; remote hosting requires HTTPS. Tracking downloads MediaPipe's WASM runtime and model at startup. Keyboard racing works without camera permission.
 
 ## Controls
 
-**Hands (preferred)**
+- **Two closed fists:** accelerate. Rotate the line between your hands like a steering wheel.
+- **Open either palm:** brake forward motion, then reverse while held. Reverse tops out at 8m/s (29km/h).
+- **One fist, uncertain pose or lost tracking:** release the pedals and coast; steering recenters gradually.
+- **WASD / arrow keys:** drive and brake. Keyboard pedals override hand pedals.
+- **Shift + turn:** drift; release a charged drift for a mini turbo.
+- **Space / thumb flick:** use the held item; empty slots use the rechargeable boost.
 
-- Two fists = steering wheel; twist left/right (wheel angle vs calibrated neutral) — **not** palm-X.
-- Fists in chest–shoulder “drive zone” → accelerate; drop / pull back → brake.
-- Thumb flick → boost item (edge-triggered).
-- One fist → yaw fallback. Lost tracking → steer decays (~200ms).
+Use Set up hand controls, keep your wrists and all fingers visible, close both fists at shoulder width, and save your neutral wheel position. The camera overlay draws all 21 landmarks and shows measured tracking/inference latency. Physical webcam performance depends on lighting, camera quality and hardware; synthetic tests do not establish real-hand recognition accuracy.
 
-**Keyboard fallback:** WASD / arrow keys · Space = boost.
+## Course and graphics
 
-Calibrate: menu → Calibrate → **Save neutral pose** with level fists.
+The 16-metre racing surface follows a 764-metre horizontal spline across seven districts. Smooth ramps climb through a coastal skyway and terraces to a 24-metre rooftop run. Modest banking, visible bridge supports, suspension cables, a roofed market arcade and planted city blocks give the lap distinct spaces. Four directional boost strips, eighteen collectible tokens per lap, two construction islands and a crossing traffic drone reward line choice. The race ends after three ordered laps against five competitive CPU rivals.
 
-## Privacy
+The active world uses original art-deco architecture and signs, a geometric striped sun, procedural water, HDR neon bloom and a unified indigo/cyan/magenta/orange interface. Original beveled racers remain the public fallback. The owner's optional personal build uses Circuit Special bodies and posed Mario Kart Tour Mii drivers, with distinct matching kart/suit colors for every rival and original Palm Prix wheels/tires. The road mesh, racers, camera, effects, rewards and hazards share the same elevation surface. Driving remains a grounded arcade simulation in XZ; this is not an anti-gravity, airborne or branching-route implementation. Create your driver from the menu to personalize the actual player face, helmet accent and suit.
 
-- Continuous webcam frames for hand tracking stay **in the browser** (MediaPipe WASM).
-- Avatar stylize sends **one still** to `POST /api/stylize` only after explicit opt-in.
-- “Clear my data” removes the cached avatar from `localStorage`.
+Afterglow City's environment was authored for this project. Optional Nintendo racers are local personal assets, not CC0; they and their original contributors are credited in [personal model credits](public/assets/personal/CREDITS.md). Extracted binaries are ignored by Git. Older CC0 Kenney/Poly Haven assets and the Cloud Carnival painting remain archived with their credits. See the in-game Credits button and [full asset credits](public/assets/ASSET-CREDITS.md).
 
-## Project layout
+## Performance and validation
 
+Physics uses a fixed 120Hz step with interpolation. The Three.js frame loop owns simulation and visual motion, and React receives HUD snapshots at 10Hz. Camera inference runs in a CPU worker with at most one resized frame in flight, retaining up to 960px of detail and adapting down on slower devices. Deadline-based capture targets 30Hz, dropping to 20Hz when inference takes longer; stale frames never revive driving input.
+
+HDR bloom uses a shared postprocessing pipeline with two-sample antialiasing. After shader warm-up, sustained frame times above the 50fps budget gradually reduce only the 3D render targets to a minimum 65% resolution. The HTML HUD stays native and geometry/physics do not change. Fast displays can restore full resolution. `data-race-render-scale` exposes the current scale for profiling.
+
+```sh
+npm test
+npm run build
+npm run lint
 ```
-.
-  server/index.ts          # /api/stylize + /api/health
-  src/vision/              # camera, MediaPipe, wheel GestureMapper, debug overlay
-  src/game/                # ControlState, arcade kart, race loop stub
-  src/scene/               # R3F Mario Kart–style track, kart, props, follow camera
-  src/avatar/              # stylize client + local filter fallback
-  src/ui/                  # menu, avatar studio, calibrate, HUD
+
+Tests cover acceleration and braking, reverse, drift rewards, frame-rate independence, barrier containment, ordered laps, the full-width course corridor, seamless elevation/grade/banking, elevated reward/hazard alignment, swept obstacle collisions and runtime reset, rotated fist poses, tracking identity and occlusion, capture cadence, runtime/HUD separation, boost/token sweeps and retained local asset resources. Lint reports existing React compiler warnings around imperative Three.js updates; production builds retain a main-chunk size warning.
+
+Development diagnostics are DOM data attributes on the page root: `data-race-fps`, `data-race-frame-p95`, `data-race-draw-calls`, and `data-race-triangles`. They add no visible debug HUD.
+
+This remains an evolving browser racing game. Rivals follow simulated racing lines; physical kart-to-kart collision and multiplayer are not implemented. Visual quality is an aspiration, not a verified claim of parity with a commercial Mario Kart release.
+
+## On-device AI driver studio
+
+Choose **Driver garage** from the main menu. Enable the webcam and capture a still, or choose a photo, then select **Scan & create driver**. MediaPipe Face Landmarker runs in a short-lived local worker and measures face proportions; sampled skin and hair colours and those proportions create an original stylized 3D face. The actual Circuit Special/Mii player model is previewed in the studio; regular builds personalize the original fallback racer. NPC faces and liveries stay independent.
+
+The scan measures eyelid aperture/slant, feature placement, nose bridge/projection, lip fullness and brow weight alongside face proportions. Choose graphic (bold brows and angular nose), soft (rounded toy-like features), or portrait styling. All styles retain the scan measurements. Choose almond, round, hooded or dot eyes and fine-tune the geometry. Facial-hair options include clean-shaven, stubble, moustache, goatee and beard, with an independent colour. A conservative image-colour estimate suggests visible dark facial hair; lighting and fair hair can require manual correction. Adjust hair silhouette, skin/hair/eye colours, glasses, helmet accent and suit, then **Apply to player**. Earlier saved profiles migrate automatically; rescan a photo to obtain the new measurements. Settings persist on this device and can be cleared from the studio. The still and raw landmarks are not saved or uploaded. The model downloads from Google/MediaPipe as needed; no server key or paid image-generation API is needed. This is a parametric 3D avatar built from an AI landmark scan, not a photorealistic reconstruction or identity-recognition system. Racing and continuous hand inference pause while the garage is open.
+
+The older optional cloud portrait proxy remains under `server/` for legacy use; the current studio does not call it. If using that proxy separately, keep `FAL_KEY` server-only and never prefix secrets with `VITE_`.
+
+OpenWii was reviewed as a handling reference: https://github.com/pattssun/OpenWii. Handling was implemented independently.
+
+## Optional personal Circuit Special / Mii racers
+
+Download Circuit Special (Models Resource asset342345) and Mario Kart Tour Mii (asset351442), extract into `assets/source/personal/circuit-special/` and `assets/source/personal/tour-mii/`, then run:
+
+```sh
+blender --background --python scripts/prepare-circuit-racer.py
 ```
 
-## What’s real vs stubbed
+Set `VITE_PERSONAL_ASSETS=true` in ignored `.env.local` and rebuild. This loads the local embedded-texture `public/assets/personal/circuit-special.glb`. Without the flag or model, each racer safely falls back to the original model. The player is cyan; CORAL, VOLT, AZURE, ORCHID and MINT have matching paint, suit and rim accents. Skin/visor, white stripes and dark carbon remain unchanged. All six instances share geometry/maps and animate only steering/spinning wheel pivots. Nintendo owns the source art; full contributor credits and personal-use notes are retained in [personal/CREDITS.md](public/assets/personal/CREDITS.md).
 
-| Feature | Status |
-| --- | --- |
-| Webcam + MediaPipe Hands (2 hands) + skeleton / wheel overlay | **Real** |
-| Wheel-angle `ControlState` + keyboard merge | **Real** |
-| Three.js oval track, kart, chase camera, arcade move | **Real** (Mario Kart–style bright low-poly art) |
-| Countdown → drive → finish (checkpoint laps) | **Stub / minimal** (2 laps, no AI opponent) |
-| Avatar capture → `POST /api/stylize` → driver texture | **Real path**; placeholder SVG if no `FAL_KEY`; local posterize on error |
-| Items / SFX / dummy AI / polish | **Stubbed / deferred** |
-| Online multiplayer | **Not in MVP** (`ControlState` kept clean for Phase 2) |
+## Archived personal Carnival models
 
-## API
+The earlier local noncommercial Carnival scene used Models Resource's textured Teddy Buggy, Sweet Sweet hot-air balloon and Aqua Cup Ride. They are not loaded by Afterglow City, including when the older environment flag remains enabled. Nintendo owns that artwork; uploaded-model contributor credits, source links and usage limits are in [personal model credits](public/assets/personal/CREDITS.md). These are **not CC0**. Downloaded archives, converted model binaries and the local manifest remain excluded from Git.
 
-`POST /api/stylize` — multipart field `image` → `{ ok, imageUrl, placeholder? }`
+After downloading/extracting the archives as described in that credits file, run:
 
-`GET /api/health` — `{ ok, falConfigured, model }`
+```sh
+blender --background --python scripts/prepare-personal-props.py -- --asset sweet-balloon
+blender --background --python scripts/prepare-personal-props.py -- --asset aqua-cups
+blender --background --python scripts/prepare-personal-kart.py
+```
+
+The archived Carnival components read `public/assets/personal/manifest.json`. They are not mounted in the active city. The personal-assets flag now selects the Circuit Special/Mii racer; restoring the older Carnival props requires an intentional scene change.
+
+## Afterglow Grand Prix
+
+The expanded circuit is 764 metres per lap across seven connected districts: Marina Launch, Coastal Skyway, Sunset Switchbacks, Uptown Ascent, Rooftop Run, Night Market and Neon Mile. The road climbs through smooth banked ramps to 24 metres. Explore the circuit from the menu to preview each section.
+
+Collect the coloured holographic cells, then press Space (or use the hand item gesture) to activate the held ability. Amber Overdrive provides a two-second turbo; cyan Phase Shield passes through course hazards for 4.5 seconds. Violet Shockwave disrupts unfinished rivals within 24 metres along the course, ahead and behind. Pink Neon Seeker locks on to the nearest unfinished rival ahead within 125 metres and follows the elevated road. Green Echo Trap drops a 14-second lane hazard behind the player. Offensive hits cancel CPU boost/drift, spin and slow the rival briefly, and then allow normal recovery; hit immunity prevents stacking stuns. Projectiles, traps and impact effects use bounded pools and reset between races. Each item has an original shared HUD/world emblem, procedural mesh animation and synthesized sound cue. Crystals are individually contested by all six racers and respawn after seven seconds; collecting one leaves its neighbours available. Each pickup produces coloured shards, an inventory pop and a chime. CPUs collect their own inventory and use boosts, shields and attacks when useful, including against the player. Player shields block those hits; recovery immunity prevents repeated stun locks. Nearby CPU pickups and item use have quieter sound cues. With an empty slot, Space uses the rechargeable boost. Hold Shift while turning to charge one of three drift tiers, then release for a mini turbo.
+
+The new score, wind/road layers, engine voices, pickup chimes and drift cues are original procedural WebAudio; no external recording or music download is used. Sound begins after pressing Let's Race and can be muted in the header. The UI stays at full resolution while the 3D render budget adapts under sustained load.
+
+## CPU racing
+
+Rivals use a shared fixed-step race state for their rendered positions, minimap and standings. Each driver has a different straight-line pace and cornering grip. They anticipate bends, choose lanes around hazards and traffic, draft, and deploy short boosts on straights. Their bounded pace adjustment (at most 2.2 m/s) responds to a moving player's gap; it never changes their position directly. CPU boost speed stays below the player's boost speed. Finished rivals retain their finishing order, and every rematch starts from a fresh grid.
+
+### Tomodachi Life avatar creator
+
+Run `python scripts/prepare-tomodachi.py` to install the pinned **Tomodachi Life: Living the Dream** model/texture package from `zinccat/mii_renderer`. Only static model, texture, icon and metadata files are used; no upstream program is executed. Extracted game artwork stays under the ignored `public/assets/personal/tomodachi/` directory and is not pushed. See `public/assets/personal/CREDITS.md` for provenance.
+
+Create Your Driver uses real GLB heads, hairstyles, noses, ears, glasses and beards, with the game's facial mask textures and editor icons. The catalogue contains 16 heads, 244 complete hairstyles plus a bald option, and optional mixable front/back hair. Advanced categories provide eyelids, lashes, highlights, makeup, wrinkles and stubble. Complete hairstyles and mixable front/back styles are mutually exclusive so overlapping hair variants do not render together.
+
+Native head sockets attach hair, ears, noses, glasses and beards. Only the selected base or baked-flipped hairstyle renders in the head editor. The kart uses its hat-compatible tree when supplied, without overlapping the normal hairstyle. The native RGB mask textures are decoded into the selected colours, including hair-strand shading. Facial parts use the head's authored face-mask UVs. The player's racing suit and kart stay in the existing neon palette.
+
+Face capture remains optional and local. Part selection, colour palettes, feature placement/scale/stretch/rotation, eye/hair flip, lens opacity, beauty mark and nickname are editable. Settings import/export contains no photos or raw face landmarks. Earlier creator settings migrate to native choices while retaining colours and measured proportions; exact styles can differ because this is a different asset library. Without the optional assets the original sculpted avatar remains available.
+
+### Race presentation
+
+Starting a race plays a three-second grid camera sweep before the 3–2–1 lights and GO cue. The camera settles into the driving view before control begins. At the final checkpoint, race time and player position lock immediately. The kart and rivals continue along the elevated road during a finish-banner/confetti sequence; the camera swings to a moving driver close-up, and results/rematch controls appear after 3.5 seconds. The native Circuit Special driver uses an isolated baked-arm cheer and gentle body motion; the fallback driver uses body motion. These are original Palm Prix animations, with no imported Nintendo animation clips or audio.
+
+The HUD uses original opaque SVG chrome lettering, cyan/magenta edges and angled instrument panels inspired by the supplied retro-wave references. No third-party title artwork or font image is embedded. Native eye decoding omits the optional upper-eye accent channel while preserving sclera, iris and black outlines.
+
+### Hair-aware avatar scans
+
+The native avatar eye baseline is calibrated lower on the face, with brows, lids, lashes and glasses following the same anchor. Eye opening/slant, brow weight/tilt and lip fullness now also affect the native parts. Slight head roll no longer shifts measured feature heights.
+
+Scanning runs the pinned [MediaPipe Hair Segmenter](https://developers.google.com/edge/mediapipe/solutions/vision/image_segmenter) after the face detector, on the local worker. It isolates connected crown/temple hair, measures colour inside high-confidence hair pixels, and compares the outline with all 244 installed native hairstyle silhouettes, including mirrored partings. The closest four styles appear as editable suggestions. Unclear segmentation or unavailable models/indexes show a manual-adjustment message. Matching estimates visible shape, not exact strand texture or hairstyle identity. Keep the complete hairstyle and chin inside the frame; webcam capture now preserves the full image instead of cropping off the crown/sides.
+
+`python scripts/prepare-tomodachi.py --source assets/source/personal/tomodachi` regenerates the ignored local `hair-match.json` from native editor icons using the standard-library helper. On another checkout, run the normal installer. No game-art silhouettes are pushed. The additional hair model downloads on first use from Google's versioned model URL; photos and masks stay local, and only editable avatar settings are saved. Existing saved avatars receive the lower native eye placement; rescan to generate new hair suggestions.
+
+The unspecialized player now starts with a native Mii-style face, and all five CPU racers have distinct native head, hair, eye, nose and mouth presets. Saved player customizations take precedence. The native artwork remains part of the optional local personal asset library. Chrome lettering uses SVG gradient fills rather than animated background-clipped HTML text, preventing missing glyph bands during countdown/GO scaling.
+
+### Vision-first arcade menu
+
+The main menu opens on **Hand control race**. It enters camera/hand setup until the tracker is ready with both fists visible; a connected grip can start the race directly. The Vision Link panel shows camera readiness and the accelerate/steer/brake gestures, with a live steering indicator when connected. The menu does not request camera permission until the player chooses the hand-control path. Keyboard race remains a secondary choice; Driver garage and Circuit tour open the existing customization and tour flows. Up/down, Home/End select entries; Enter/Space confirm, with original synthesized selection/confirmation cues. Sound and credits remain accessible in the footer. The layout uses the existing neon city/racer showcase, opaque chrome lettering, angled arcade selections and reduced-motion alternatives.

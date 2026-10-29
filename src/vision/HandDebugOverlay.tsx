@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { HandSample } from './landmarks'
-import { LM } from './landmarks'
+
 
 type Props = {
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -40,15 +40,19 @@ export function HandDebugOverlay({
         ctx.fillStyle = color
         ctx.fill()
       }
-      // palm bone
-      const a = hand.landmarks[LM.WRIST]
-      const b = hand.landmarks[LM.MIDDLE_MCP]
-      ctx.beginPath()
-      ctx.moveTo(a.x * w, a.y * h)
-      ctx.lineTo(b.x * w, b.y * h)
+      // Every finger remains visible even while its grip is unconfirmed.
+      const chains = [[0,1,2,3,4],[0,5,6,7,8],[5,9,10,11,12],[9,13,14,15,16],[13,17,18,19,20],[0,17]]
       ctx.strokeStyle = color
       ctx.lineWidth = 2
-      ctx.stroke()
+      for (const chain of chains) {
+        ctx.beginPath()
+        chain.forEach((index, i) => {
+          const p = hand.landmarks[index]
+          if (i === 0) ctx.moveTo(p.x*w,p.y*h)
+          else ctx.lineTo(p.x*w,p.y*h)
+        })
+        ctx.stroke()
+      }
     }
 
     if (fists.length >= 2) {
@@ -88,8 +92,12 @@ export function HandDebugOverlay({
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
+        objectFit: 'contain',
         transform: 'scaleX(1)',
       }}
     />
   )
 }
+
+
+

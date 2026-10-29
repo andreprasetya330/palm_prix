@@ -30,12 +30,19 @@ export function loadCalibration(): Calibration {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ...DEFAULT_CALIBRATION }
-    return { ...DEFAULT_CALIBRATION, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const result = { ...DEFAULT_CALIBRATION }
+    for (const key of Object.keys(result) as (keyof Calibration)[]) {
+      if (typeof parsed[key] === 'number' && Number.isFinite(parsed[key])) result[key] = parsed[key] as number
+    }
+    if (result.sensitivityRad <= result.deadzoneRad || result.deadzoneRad < 0 || result.sensitivityRad > Math.PI || result.driveZoneTop < 0 || result.driveZoneBottom > 1 || result.driveZoneTop >= result.driveZoneBottom || result.brakeDepthDelta <= 0) return { ...DEFAULT_CALIBRATION }
+    return result
   } catch {
     return { ...DEFAULT_CALIBRATION }
   }
 }
 
 export function saveCalibration(c: Calibration): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(c))
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)) } catch { /* Session calibration still works when storage is unavailable. */ }
 }
+

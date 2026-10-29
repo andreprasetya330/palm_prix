@@ -26,3 +26,23 @@ dist-ssr
 *.sln
 *.sw?
 dist/
+
+# Blender backup junk. The kart .blend source is kept.
+*.blend1
+*.blend2
+# Local visual review captures (may contain a webcam preview).
+assets/*-review*.png
+
+# Optional personal game extracts: local-only, separate from CC0 sources.
+assets/source/personal/
+public/assets/personal/*.glb
+public/assets/personal/manifest.json
+
+# Optional personal Mii Creator part artwork (not a reusable asset license).
+public/assets/personal/mii-maker/
+
+# Optional Tomodachi Life game extracts (local personal setup only).
+public/assets/personal/tomodachi/
+
+# Local Python helper bytecode.
+__pycache__/
